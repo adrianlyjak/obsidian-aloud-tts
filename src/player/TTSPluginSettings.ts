@@ -11,7 +11,7 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   OPENAI_API_URL: "https://api.openai.com",
   model: "tts-1", // tts-1-hd
   ttsVoice: "shimmer", // alloy, echo, fable, onyx, nova, and shimmer
-  chunkType: "paragraph",
+  chunkType: "sentence",
 } as const;
 
 export const MARKETING_NAME = "OpenAI Text To Speech";

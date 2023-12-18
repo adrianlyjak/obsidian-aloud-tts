@@ -73,19 +73,11 @@ function AudioVisualizer(
       const barHeight2 = dataArray[index2] / 255.0;
       let barHeight = (barHeight1 + barHeight2) / 2;
       // round the wave form to penalize lowest and highest segments.
-      const quarter = Math.floor(nSegments / 4);
-      let factor;
-      if (i < quarter) {
-        // penalize lower end more, its more noisy
-        factor = (1 + (quarter - i)) / (quarter + 1);
-        factor = 1 + factor * 2;
-      } else if (i >= nSegments - quarter) {
-        factor = (1 + (i - quarter * 2)) / (quarter + 1);
-        factor = 1 + factor / 2;
-      } else {
-        factor = 1;
+      let factor = Math.cos((i * Math.PI * 2) / nSegments) + 1;
+      if (i < 2) {
+        factor *= 1.5;
       }
-      barHeight = Math.pow(barHeight, factor);
+      barHeight = Math.pow(barHeight, 1 + factor);
       // convert to percentage
       barHeight *= 100;
       bar.style.height = `${barHeight}%`;

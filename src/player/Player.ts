@@ -134,11 +134,19 @@ export function activateText(
       },
       goToPosition: (position: number) => {
         if (position < 0) {
+          console.log("less");
           self.position = 0;
         } else if (position > audio.tracks.length - 1) {
+          console.log(
+            "greater",
+            position,
+            audio.tracks.length,
+            audio.tracks[0].text
+          );
           self.position = 0;
           self.isPlaying = false;
         } else {
+          console.log("normal");
           self.position = position;
         }
       },
@@ -299,16 +307,6 @@ export interface AudioCache {
     audio: ArrayBuffer
   ): Promise<void>;
   expire(): Promise<void>;
-}
-
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  let binary: string = "";
-  const bytes = new Uint8Array(buffer);
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return window.btoa(binary);
 }
 
 export function memoryStorage(): AudioCache {

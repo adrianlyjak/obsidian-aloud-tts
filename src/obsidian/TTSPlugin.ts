@@ -101,7 +101,10 @@ export default class TTSPlugin extends Plugin {
         playSelection: () => playSelectionIfAny(this.player, this.app),
         openSettings: () => {
           // big ugly hack. There's hopefully a better way to do this
-          (this.app as any)?.commands?.commands?.[
+          type Commands = {
+            commands?: { commands?: Record<string, { callback?: () => void }> };
+          };
+          (this.app as unknown as Commands)?.commands?.commands?.[
             "app:open-settings"
           ]?.callback?.();
         },

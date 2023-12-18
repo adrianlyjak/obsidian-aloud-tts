@@ -19,8 +19,10 @@ export function checksum(text: string): number {
 }
 
 export function randomId(): string {
-  const uint32 = crypto.getRandomValues(new Uint32Array(1))[0];
-  return uint32.toString(16);
+  const S4 = () => {
+    return (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);
+  };
+  return [S4() + S4(), S4(), S4(), S4(), S4() + S4() + S4()].join("-");
 }
 
 export function createSlidingWindowGroups(
