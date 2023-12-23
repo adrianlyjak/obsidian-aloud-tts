@@ -34,7 +34,9 @@ export async function pluginSettingsStore(
 ): Promise<TTSPluginSettingsStore> {
   const store = observable(
     {
-      settings: (await loadData()) as TTSPluginSettings,
+      settings: ((await loadData()) as undefined | TTSPluginSettings) || {
+        ...DEFAULT_SETTINGS,
+      },
       apiKeyValid: undefined,
       apiKeyError: undefined,
       setApiKeyValidity(valid?: boolean, error?: string) {
