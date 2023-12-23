@@ -98,7 +98,7 @@ export function AudioSink(player: AudioStore): AudioSink {
 }
 
 async function waitForEnoughData(audio: HTMLAudioElement): Promise<void> {
-  while (audio.readyState < audio.HAVE_FUTURE_DATA) {
+  while (audio.readyState < audio.HAVE_ENOUGH_DATA) {
     console.log("not enough data... waiting", audio.readyState);
     await new Promise((res, rej) => {
       audio.addEventListener("canplay", res, { once: true });
