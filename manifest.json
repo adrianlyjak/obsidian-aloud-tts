@@ -1,7 +1,7 @@
 {
   "id": "read-aloud-tts",
   "name": "OpenAI Text to Speech",
-  "version": "0.0.1-rc1",
+  "version": "0.0.1-rc2",
   "minAppVersion": "0.15.0",
   "description": "Highlight and speak text from your notes. Converts Text To Speech using lifelike voices from OpenAI using your API key",
   "author": "Adrian Lyjak",
