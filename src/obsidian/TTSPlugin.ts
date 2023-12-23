@@ -118,6 +118,7 @@ export default class TTSPlugin extends Plugin {
   }
 
   onunload() {
+    this.player?.destroy();
     this.audio?.clearAudio();
   }
 

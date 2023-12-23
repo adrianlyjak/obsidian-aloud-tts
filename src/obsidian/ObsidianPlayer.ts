@@ -40,13 +40,12 @@ export function obsidianStorage(app: App): AudioCache {
       }
       await vault.adapter.writeBinary(filepath, audio);
     },
-    async expire(): Promise<void> {
+    async expire(ageInMillis = 1000 * 60 * 60 * 8): Promise<void> {
       const listed = await vault.adapter.list(".tts");
       for (const file of listed.files) {
         const stats = await vault.adapter.stat(file);
         if (stats) {
-          const expiration = 60 * 60 * 24 * 30; // 30 days in seconds
-          const tooOld = stats.mtime + expiration < Date.now().valueOf() / 1000;
+          const tooOld = stats.mtime + ageInMillis < Date.now().valueOf();
           if (tooOld) {
             await vault.adapter.remove(file);
           }

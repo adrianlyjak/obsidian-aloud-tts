@@ -61,6 +61,8 @@ export function AudioSink(player: AudioStore): AudioSink {
           const base64 = arrayBufferToBase64(track.audio);
 
           const audio = new Audio("data:audio/mpeg;base64," + base64);
+          audio.preload = "auto";
+          audio.load();
           audio.id = newAudioId;
           const state = AudioMonitor(newAudioId, audio);
           self.setAudio(state);
@@ -73,7 +75,15 @@ export function AudioSink(player: AudioStore): AudioSink {
         }
 
         if (player.activeText.isPlaying) {
-          self.current?.audio.play();
+          const currentAudio = self.current?.audio;
+          if (currentAudio) {
+            waitForEnoughData(currentAudio)
+              // wait for it
+              .then(() => {
+                console.log("currentAudio.readyState", currentAudio.readyState);
+                currentAudio.play();
+              });
+          }
         } else {
           self.current?.audio.pause();
         }
@@ -87,6 +97,15 @@ export function AudioSink(player: AudioStore): AudioSink {
   return self;
 }
 
+async function waitForEnoughData(audio: HTMLAudioElement): Promise<void> {
+  while (audio.readyState < audio.HAVE_FUTURE_DATA) {
+    console.log("not enough data... waiting", audio.readyState);
+    await new Promise((res, rej) => {
+      audio.addEventListener("canplay", res, { once: true });
+    });
+  }
+}
+
 function AudioMonitor(audioId: string, audio: HTMLAudioElement): AudioState {
   // Create audio context and analyzer
   const audioCtx = new AudioContext();
@@ -95,10 +114,10 @@ function AudioMonitor(audioId: string, audio: HTMLAudioElement): AudioState {
   source.connect(analyzer);
   analyzer.connect(audioCtx.destination);
 
-  // Analyzer settings
-  analyzer.fftSize = 512;
-  analyzer.minDecibels = -100;
-  analyzer.maxDecibels = -30;
-  analyzer.smoothingTimeConstant = 0.6;
+  // Analyzer settings. Magic numbers that make the visualizer icon look good
+  analyzer.fftSize = 512; // controls the resolution of the spectrum
+  analyzer.minDecibels = -100; // notes quieter than this are now shown
+  analyzer.maxDecibels = -30; // notes higher than this just show the max
+  analyzer.smoothingTimeConstant = 0.6; // how rapidly to decay measurement for the value. (Maybe smoothing for growth too?)
   return { audioId, analyzer, audio, audioCtx };
 }

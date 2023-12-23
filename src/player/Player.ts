@@ -15,6 +15,12 @@ export interface AudioStore {
   startPlayer(opts: AudioTextOptions): ActiveAudioText;
 
   closePlayer(): void;
+
+  /**
+   * destroys this audio store. Further interaction
+   * with the store may not work after calling this
+   */
+  destroy(): void;
 }
 
 /** data to run TTS on */
@@ -85,7 +91,22 @@ class AudioStoreImpl implements AudioStore {
       startPlayer: action,
       closePlayer: action,
     });
+    this.initializeBackgroundProcessors();
     return this;
+  }
+
+  _backgroundProcesses: { shutdown: () => void }[] = [];
+  private initializeBackgroundProcessors(): void {
+    // expire storage
+    this.storage.expire();
+    const expireTimer = setInterval(() => {
+      this.storage.expire();
+    }, 30 * 60 * 1000);
+    this._backgroundProcesses.push({
+      shutdown: () => {
+        clearInterval(expireTimer);
+      },
+    });
   }
 
   startPlayer(opts: AudioTextOptions): ActiveAudioText {
@@ -102,7 +123,13 @@ class AudioStoreImpl implements AudioStore {
     return player;
   }
   closePlayer(): void {
+    this.activeText?.destroy();
     this.activeText = null;
+  }
+  destroy(): void {
+    this.closePlayer();
+    this._backgroundProcesses.forEach((p) => p.shutdown());
+    this._backgroundProcesses = [];
   }
 }
 
@@ -134,19 +161,11 @@ export function activateText(
       },
       goToPosition: (position: number) => {
         if (position < 0) {
-          console.log("less");
           self.position = 0;
         } else if (position > audio.tracks.length - 1) {
-          console.log(
-            "greater",
-            position,
-            audio.tracks.length,
-            audio.tracks[0].text
-          );
           self.position = 0;
           self.isPlaying = false;
         } else {
-          console.log("normal");
           self.position = position;
         }
       },
