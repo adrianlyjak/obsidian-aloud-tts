@@ -80,6 +80,7 @@ export function AudioSink(player: AudioStore): AudioSink {
               // wait for it
               .then(() => {
                 console.log("currentAudio.readyState", currentAudio.readyState);
+                currentAudio.currentTime = 0;
                 currentAudio.play();
               });
           }
