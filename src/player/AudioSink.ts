@@ -58,9 +58,8 @@ export function AudioSink(player: AudioStore): AudioSink {
           return; // wait for it
         } else if (newAudioId !== self.current?.audioId) {
           self.clearAudio();
-          const base64 = arrayBufferToBase64(track.audio);
 
-          const audio = new Audio("data:audio/mpeg;base64," + base64);
+          const audio = new Audio(arrayBufferToAudioSrc(track.audio));
           audio.preload = "auto";
           audio.load();
           audio.id = newAudioId;
@@ -97,13 +96,27 @@ export function AudioSink(player: AudioStore): AudioSink {
   return self;
 }
 
+function arrayBufferToAudioSrc(arrayBuffer: ArrayBuffer): string {
+  // Create a blob from the ArrayBuffer. Replace 'audio/mpeg' with the correct MIME type if needed
+  const blob = new Blob([arrayBuffer], { type: "audio/mpeg" });
+
+  // Create an object URL from the blob
+  const audioSrc = URL.createObjectURL(blob);
+
+  return audioSrc;
+}
+
 async function waitForEnoughData(audio: HTMLAudioElement): Promise<void> {
+  const loadedMetaData = new Promise((res) =>
+    audio.addEventListener("loadedmetadata", res, { once: true })
+  );
   while (audio.readyState < audio.HAVE_ENOUGH_DATA) {
     console.log("not enough data... waiting", audio.readyState);
     await new Promise((res, rej) => {
       audio.addEventListener("canplaythrough", res, { once: true });
     });
   }
+  await loadedMetaData;
 }
 
 function AudioMonitor(audioId: string, audio: HTMLAudioElement): AudioState {
