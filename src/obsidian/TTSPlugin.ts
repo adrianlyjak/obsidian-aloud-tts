@@ -11,12 +11,7 @@ import {
   TTSPluginSettingsStore,
   pluginSettingsStore,
 } from "../player/TTSPluginSettings";
-import {
-  ObsidianBridge,
-  ObsidianGlue,
-  playSelectionIfAny,
-  triggerSelection,
-} from "./ObsidianBridge";
+import { ObsidianBridge, ObsidianGlue } from "./ObsidianBridge";
 
 // standard lucide.dev icon, but for some reason not working as a ribbon icon without registering it
 // https://lucide.dev/icons/audio-lines
@@ -43,7 +38,7 @@ export default class TTSPlugin extends Plugin {
             .setTitle(`${MARKETING_NAME}: Play Selection`)
             .setIcon("play")
             .onClick(async () => {
-              await triggerSelection(this.player, view.file, editor);
+              await this.bridge.triggerSelection(view.file, editor);
             });
         });
       })
@@ -57,13 +52,13 @@ export default class TTSPlugin extends Plugin {
         if (checking) {
           return editor.getSelection().length > 0 || !!editor.getCursor("head");
         }
-        triggerSelection(this.player, view.file, editor);
+        this.bridge.triggerSelection(view.file, editor);
       },
     });
 
     // ribbon
     this.addRibbonIcon("audio-lines", MARKETING_NAME_LONG, () =>
-      playSelectionIfAny(this.app, this.player)
+      this.bridge.playSelectionIfAny()
     );
 
     // This adds a simple command that can be triggered anywhere to resume last track

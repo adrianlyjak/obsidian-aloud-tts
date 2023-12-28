@@ -30,7 +30,8 @@ function playerPanel(
   obsidian: ObsidianBridge
 ): Panel {
   const dom = document.createElement("div");
-  createRoot(dom).render(
+  const root = createRoot(dom);
+  root.render(
     React.createElement(PlayerView, {
       editor,
       player,

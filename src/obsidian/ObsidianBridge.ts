@@ -1,40 +1,62 @@
 import * as mobx from "mobx";
 import { EditorView } from "@codemirror/view";
-import { App, Editor, Notice, TFile } from "obsidian";
+import {
+  App,
+  Editor,
+  MarkdownFileInfo,
+  MarkdownView,
+  Notice,
+  TFile,
+} from "obsidian";
 import { AudioStore } from "src/player/Player";
 
 export interface ObsidianBridge {
   activeEditor: EditorView | undefined;
   playSelection: () => void;
+  playSelectionIfAny: () => void;
+  triggerSelection: (file: TFile | null, editor: Editor) => void;
   openSettings: () => void;
 }
 
 export class ObsidianGlue implements ObsidianBridge {
-  activeEditor: EditorView | undefined = undefined;
+  active: MarkdownFileInfo | null = null;
+  activeEditorView: MarkdownView | null;
   audio: AudioStore;
   app: App;
+
+  get activeEditor(): EditorView | undefined {
+    // @ts-expect-error
+    const editor = this.active?.editor?.cm as EditorView | undefined;
+    return editor || undefined;
+  }
 
   constructor(app: App, audio: AudioStore) {
     this.audio = audio;
     this.app = app;
     mobx.makeObservable(this, {
-      activeEditor: mobx.observable.ref,
-      extractEditor: mobx.action,
+      active: mobx.observable.ref,
+      activeEditor: mobx.computed,
+      setActiveEditor: mobx.action,
     });
-
-    app.workspace!.on("active-leaf-change", this.extractEditor);
-    this.extractEditor();
+    this.app.workspace!.on("layout-change", () => {
+      const didMatch = this.app.workspace
+        .getLeavesOfType("markdown")
+        .some((leaf) => leaf.view === this.activeEditorView);
+      if (!didMatch) {
+        this.audio.activeText?.pause();
+      }
+    });
   }
-  extractEditor = () => {
-    // @ts-expect-error
-    const editor = app.workspace?.activeEditor?.editor?.cm as
-      | EditorView
-      | undefined;
-    this.activeEditor = editor;
+  setActiveEditor = () => {
+    this.active = this.app.workspace?.activeEditor || null;
+    this.activeEditorView =
+      this.app.workspace.getActiveViewOfType(MarkdownView);
   };
 
   playSelectionIfAny() {
+    this.setActiveEditor();
     const activeEditor = this.app.workspace.activeEditor;
+
     const maybeCursor = activeEditor?.editor?.getCursor("head");
     if (maybeCursor) {
       triggerSelection(this.audio, activeEditor!.file, activeEditor!.editor!);
@@ -44,8 +66,15 @@ export class ObsidianGlue implements ObsidianBridge {
   }
 
   playSelection(): void {
+    this.setActiveEditor();
     playSelectionIfAny(this.app, this.audio);
   }
+
+  triggerSelection(file: TFile | null, editor: Editor) {
+    this.setActiveEditor();
+    triggerSelection(this.audio, file, editor);
+  }
+
   openSettings(): void {
     // big ugly hack. There's hopefully a better way to do this
     type Commands = {
@@ -57,10 +86,7 @@ export class ObsidianGlue implements ObsidianBridge {
   }
 }
 
-export async function playSelectionIfAny(
-  app: App,
-  audio: AudioStore
-): Promise<void> {
+async function playSelectionIfAny(app: App, audio: AudioStore): Promise<void> {
   const activeEditor = app.workspace.activeEditor;
   const maybeCursor = activeEditor?.editor?.getCursor("head");
   if (maybeCursor) {
@@ -70,7 +96,7 @@ export async function playSelectionIfAny(
   }
 }
 
-export async function triggerSelection(
+async function triggerSelection(
   player: AudioStore,
   file: TFile | null,
   editor: Editor
