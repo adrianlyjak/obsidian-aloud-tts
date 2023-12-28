@@ -23,15 +23,21 @@ import { PlayerView } from "../components/PlayerView";
 import { TTSPluginSettingsStore } from "../player/TTSPluginSettings";
 
 function playerPanel(
+  editor: EditorView,
   player: AudioStore,
   settings: TTSPluginSettingsStore,
   sink: AudioSink,
   obsidian: ObsidianBridge
 ): Panel {
   const dom = document.createElement("div");
-  dom.className = "cm-tts-word-count";
   createRoot(dom).render(
-    React.createElement(PlayerView, { player, settings, obsidian, sink })
+    React.createElement(PlayerView, {
+      editor,
+      player,
+      settings,
+      obsidian,
+      sink,
+    })
   );
   return {
     dom,
@@ -152,7 +158,7 @@ const field = StateField.define<TTSCodeMirrorState>({
   },
 });
 
-function synchronize(player: AudioStore, obsidian: ObsidianBridge) {
+function synchronize(player: AudioStore, obsidian: ObsidianBridge): void {
   // - listen for player changes with mobx and propagate to codemirror
   // - listen for focused code mirror instance and dispatch to that one
   // - keep reference to previous codemirror instance in order to deactivate it once a new command
@@ -163,20 +169,23 @@ function synchronize(player: AudioStore, obsidian: ObsidianBridge) {
   // - somehow bubble out commands back out to mobx to e.g. pause playback. Need to be careful to prevent feedback loops from the event handlers
   // - does the user need a global way to pause playback? Should the play state show playing in each editor?
 
-  let activeEditor: EditorView | undefined;
-
   mobx.reaction(
-    () => playerToCodeMirrorState(player),
-    (newState: TTSCodeMirrorState, previousState?: TTSCodeMirrorState) => {
-      const currentEditor = obsidian.currentCodeMirror();
-      if (activeEditor && currentEditor !== activeEditor) {
-        activeEditor.dispatch({
+    () =>
+      [playerToCodeMirrorState(player), obsidian.activeEditor] as [
+        TTSCodeMirrorState,
+        EditorView | undefined
+      ],
+    (
+      [newState, newEditor]: [TTSCodeMirrorState, EditorView | undefined],
+      previousState?: [TTSCodeMirrorState, EditorView | undefined]
+    ) => {
+      if (previousState?.[1] && previousState[1] !== newEditor) {
+        previousState[1].dispatch({
           effects: setViewState.of({}),
         });
       }
-      activeEditor = currentEditor;
-      if (activeEditor) {
-        activeEditor.dispatch({
+      if (newEditor) {
+        newEditor.dispatch({
           effects: setViewState.of(newState),
         });
       }
@@ -213,6 +222,8 @@ export function TTSCodeMirror(
   return [
     field,
     theme,
-    showPanel.of(() => playerPanel(player, settings, sink, obsidian)),
+    showPanel.of((editorView: EditorView) =>
+      playerPanel(editorView, player, settings, sink, obsidian)
+    ),
   ];
 }

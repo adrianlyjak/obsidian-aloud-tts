@@ -14,7 +14,8 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   chunkType: "sentence",
 } as const;
 
-export const MARKETING_NAME = "OpenAI Text To Speech";
+export const MARKETING_NAME = "Aloud";
+export const MARKETING_NAME_LONG = "Aloud: Text to Speech";
 
 import { action, observable } from "mobx";
 import { OpenAIAPIError, listModels } from "./openai";
@@ -47,7 +48,7 @@ export async function pluginSettingsStore(
         if (!store.settings.OPENAI_API_KEY) {
           store.setApiKeyValidity(
             false,
-            `Please enter an API key in the ${MARKETING_NAME} plugin settings`
+            `Please enter an API key in the ${MARKETING_NAME_LONG} plugin settings`
           );
         } else {
           store.setApiKeyValidity(undefined, undefined);
