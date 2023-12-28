@@ -1,6 +1,6 @@
 import { EditorView } from "@codemirror/view";
-import { obsidianStorage } from "./ObsidianPlayer";
 import { TTSCodeMirror } from "../codemirror/TTSCodemirror";
+import { obsidianStorage } from "./ObsidianPlayer";
 
 import {
   App,
@@ -11,14 +11,14 @@ import {
   TFile,
   addIcon,
 } from "obsidian";
+import { TTSSettingTab } from "../components/TTSPluginSettingsTab";
+import { AudioSink, HTMLAudioSink } from "../player/AudioSink";
 import { AudioStore, loadAudioStore } from "../player/Player";
-import { AudioSink } from "../player/AudioSink";
 import {
   MARKETING_NAME,
-  pluginSettingsStore,
   TTSPluginSettingsStore,
+  pluginSettingsStore,
 } from "../player/TTSPluginSettings";
-import { TTSSettingTab } from "../components/TTSPluginSettingsTab";
 
 // standard lucide.dev icon, but for some reason not working as a ribbon icon without registering it
 // https://lucide.dev/icons/audio-lines
@@ -119,7 +119,6 @@ export default class TTSPlugin extends Plugin {
 
   onunload() {
     this.player?.destroy();
-    this.audio?.clearAudio();
   }
 
   async loadSettings() {
@@ -127,11 +126,12 @@ export default class TTSPlugin extends Plugin {
       () => this.loadData(),
       (data) => this.saveData(data)
     );
+    this.audio = new HTMLAudioSink();
     this.player = await loadAudioStore({
       settings: this.settings.settings,
       storage: obsidianStorage(this.app),
+      audioSink: this.audio,
     });
-    this.audio = AudioSink(this.player);
   }
 }
 

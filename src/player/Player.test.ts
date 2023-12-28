@@ -8,13 +8,14 @@ import {
   memoryStorage,
 } from "./Player";
 import { DEFAULT_SETTINGS, TTSPluginSettings } from "./TTSPluginSettings";
+import { AudioSink, TrackStatus } from "./AudioSink";
+import * as mobx from "mobx";
 
 const ttsSettings: TTSPluginSettings = DEFAULT_SETTINGS;
 
 describe("AudioStore", () => {
   test("should add and play", async () => {
-    const storage = memoryStorage();
-    const store = createStore(storage);
+    const store = createStore();
     const txt = store.startPlayer({
       text: "later tater",
       filename: "potatoes.md",
@@ -49,44 +50,139 @@ describe("Active Track", async () => {
     expect(active.isPlaying).toEqual(true);
   });
 
-  test("load 3 tracks", async () => {
-    const active = await createActiveTrack({
-      text: "First there was one. Then there was two. Eventually there was three. Finally there was four.",
-      filename: "file.md",
-    });
-    await waitForPassing(async () => {
-      expect(active.audio.tracks[0].audio).toEqual(new ArrayBuffer(0));
-      expect(active.audio.tracks[1].audio).toEqual(new ArrayBuffer(0));
-      expect(active.audio.tracks[2].audio).toEqual(new ArrayBuffer(0));
-    });
-
-    expect(active.audio.tracks[3].audio).toBeUndefined();
+  test("should switch tracks", async () => {
+    const sink = new FakeAudioSink();
+    const active = await createActiveTrack(
+      {
+        text: "First there was one. Then there was two. Eventually there was three. Finally there was four.",
+        filename: "file.md",
+      },
+      { audioSink: sink }
+    );
+    expect(active.position).toEqual(0);
+    active.play();
+    await waitForPassing(async () => expect(sink.isPlaying).toEqual(true));
+    sink.setComplete();
+    expect(active.position).toEqual(1);
+    await waitForPassing(async () => expect(sink.isPlaying).toEqual(false));
+    await waitForPassing(async () => expect(sink.isPlaying).toEqual(true));
+    sink.setComplete();
+    expect(active.position).toEqual(2);
+    await waitForPassing(async () => expect(sink.isPlaying).toEqual(false));
+    await waitForPassing(async () => expect(sink.isPlaying).toEqual(true));
+    sink.setComplete();
+    expect(active.position).toEqual(3);
+    await waitForPassing(async () => expect(sink.isPlaying).toEqual(false));
+    await waitForPassing(async () => expect(sink.isPlaying).toEqual(true));
+    sink.setComplete();
+    expect(active.position).toEqual(3);
+    expect(active.isPlaying).toEqual(false);
   });
 
   test("should load the 4th track when the 2nd starts", async () => {
-    const active = await createActiveTrack({
-      text: "First there was one. Then there was two. Eventually there was three. Penultimately there was four. Finally there was five.",
-      filename: "file.md",
-    });
+    const seen: string[] = [];
+    const tts = (settings: TTSPluginSettings, text: string) => {
+      seen.push(text);
+      return fakeTTS();
+    };
+    const active = await createActiveTrack(
+      {
+        text: "First there was one. Then there was two. Eventually there was three. Penultimately there was four. Finally there was five.",
+        filename: "file.md",
+      },
+      {
+        textToSpeech: tts,
+      }
+    );
     expect(active.position).toEqual(0);
+    expect(seen).toEqual([
+      "First there was one. ",
+      "Then there was two. ",
+      "Eventually there was three. ",
+    ]);
     active.goToPosition(1);
-    expect(active.position).toEqual(1);
     await waitForPassing(async () => {
-      expect(active.audio.tracks[3].audio).toEqual(new ArrayBuffer(0));
+      expect(seen).toHaveLength(4);
+      expect(seen[3]).toEqual("Penultimately there was four. ");
     });
-
-    expect(active.audio.tracks[4].audio).toBeUndefined();
   });
 });
 
 const fakeTTS = async () => {
   return new ArrayBuffer(0);
 };
-function createStore(storage: AudioCache = memoryStorage()): AudioStore {
+
+class FakeAudioSink implements AudioSink {
+  currentData: ArrayBuffer | undefined = undefined;
+  isPlaying: boolean = false;
+  isComplete: boolean = false;
+  constructor() {
+    mobx.makeObservable(this, {
+      currentData: mobx.observable,
+      isPlaying: mobx.observable,
+      isComplete: mobx.observable,
+      setMedia: mobx.action,
+      play: mobx.action,
+      pause: mobx.action,
+      setComplete: mobx.action,
+      trackStatus: mobx.computed,
+    });
+  }
+
+  setComplete(): void {
+    this.isComplete = true;
+    this.isPlaying = false;
+  }
+  remove(): void {}
+  async setMedia(data: ArrayBuffer): Promise<void> {
+    this.isComplete = false;
+    this.isPlaying = false;
+    this.currentData = data;
+  }
+  play(): void {
+    this.isPlaying = true;
+  }
+  pause(): void {
+    this.isPlaying = false;
+  }
+  restart(): void {}
+  get trackStatus(): TrackStatus {
+    const derivedStatus = (): TrackStatus => {
+      if (this.isComplete) {
+        return "complete";
+      } else if (!this.currentData) {
+        return "none";
+      } else if (this.isPlaying) {
+        return "playing";
+      } else {
+        return "paused";
+      }
+    };
+    console.log("derirved", derivedStatus());
+    return derivedStatus();
+  }
+  source: AudioNode | undefined;
+  context: AudioContext | undefined;
+}
+
+interface MaybeStoreDependencies {
+  textToSpeech?: (
+    settings: TTSPluginSettings,
+    text: string
+  ) => Promise<ArrayBuffer>;
+  storage?: AudioCache;
+  audioSink?: AudioSink;
+}
+function createStore({
+  storage = memoryStorage(),
+  audioSink = new FakeAudioSink(),
+  textToSpeech = fakeTTS,
+}: MaybeStoreDependencies = {}): AudioStore {
   return loadAudioStore({
     settings: ttsSettings,
-    textToSpeech: fakeTTS,
+    textToSpeech,
     storage: storage,
+    audioSink,
   });
 }
 
@@ -94,9 +190,10 @@ function createActiveTrack(
   opts: AudioTextOptions = {
     text: "how now brown cow",
     filename: "file.md",
-  }
+  },
+  deps: MaybeStoreDependencies = {}
 ): ActiveAudioText {
-  const actualStore = createStore();
+  const actualStore = createStore(deps);
   const active = actualStore.startPlayer(opts);
   return active;
 }

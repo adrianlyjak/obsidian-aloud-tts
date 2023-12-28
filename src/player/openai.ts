@@ -21,6 +21,12 @@ export async function openAITextToSpeech(
   return bf;
 }
 
+export async function fnetch(): Promise<ArrayBuffer> {
+  const fileHeaders = await fetch("./test.mp3");
+  const buff = await fileHeaders.arrayBuffer();
+  return buff;
+}
+
 export async function listModels(
   settings: TTSPluginSettings
 ): Promise<string[]> {
