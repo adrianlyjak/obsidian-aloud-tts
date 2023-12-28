@@ -6,19 +6,22 @@ import { AudioSink } from "../player/AudioSink";
 import { AudioStore } from "../player/Player";
 import { AudioVisualizer } from "./AudioVisualizer";
 import { IconButton, Spinner } from "./IconButton";
+import { EditorView } from "@codemirror/view";
 
 export const PlayerView = observer(({
+  editor,
   player,
   settings,
   sink,
   obsidian,
 }: {
+  editor: EditorView,
   player: AudioStore;
   settings: TTSPluginSettingsStore;
   sink: AudioSink;
   obsidian: ObsidianBridge;
 }): React.ReactNode => {
-  if (!player.activeText) {
+  if (!player.activeText || editor !== obsidian.activeEditor) {
     return <div style={{ display: "none", height: 0, overflow: "hidden" }} />;
   }
   return (
