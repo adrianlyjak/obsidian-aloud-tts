@@ -1,4 +1,4 @@
-import { App } from "obsidian";
+import { App, normalizePath } from "obsidian";
 import { hashString } from "../util/Minhash";
 import { AudioCache } from "../player/Player";
 import { TTSPluginSettings } from "../player/TTSPluginSettings";
@@ -17,7 +17,7 @@ export function obsidianStorage(app: App): AudioCache {
       settings: TTSPluginSettings
     ): Promise<ArrayBuffer | null> {
       const str = toKey(text, settings);
-      const filepath = `/${cachedir}/${str}.mp3`;
+      const filepath = normalizePath(`/${cachedir}/${str}.mp3`);
       const exists = await vault.adapter.exists(filepath);
       if (!exists) {
         return null;
@@ -32,11 +32,11 @@ export function obsidianStorage(app: App): AudioCache {
       audio: ArrayBuffer
     ): Promise<void> {
       const str = toKey(text, settings);
-      const filepath = `/${cachedir}/${str}.mp3`;
+      const filepath = normalizePath(`/${cachedir}/${str}.mp3`);
 
-      const exists = await vault.adapter.exists(`/${cachedir}`);
+      const exists = await vault.adapter.exists(normalizePath(`/${cachedir}`));
       if (!exists) {
-        await vault.adapter.mkdir(`/${cachedir}`);
+        await vault.adapter.mkdir(normalizePath(`/${cachedir}`));
       }
       await vault.adapter.writeBinary(filepath, audio);
     },

@@ -3,8 +3,7 @@ import * as React from "react";
 export const AudioVisualizer: React.FC<{
   audio: AudioNode;
   context: AudioContext;
-  style?: React.CSSProperties;
-}> = ({ audio, context, style }) => {
+}> = ({ audio, context }) => {
   const ref = React.useRef<HTMLElement | null>(null);
   React.useEffect(() => {
 
@@ -27,15 +26,7 @@ export const AudioVisualizer: React.FC<{
   }, [!!ref.current, audio]);
   return (
     <div
-      id="audio-visualizer"
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        width: "100%",
-        maxWidth: "2rem",
-        ...style,
-      }}
+      className="tts-audio-visualizer"
       ref={(x) => (ref.current = x)}
     ></div>
   );
@@ -58,9 +49,7 @@ function attachVisualizationToDom(
     .fill(null)
     .map(() => document.createElement("div"));
   bars.forEach((bar) => {
-    bar.style.backgroundColor = "var(--icon-color)";
-    bar.style.borderRadius = "10px";
-    bar.style.width = "6%";
+    bar.classList.add("tts-audio-visualizer-bar");
     bar.style.height = "0";
     container.appendChild(bar);
   });

@@ -8,13 +8,11 @@ import { CSSProperties } from "react";
 export function IconButton({
   icon,
   onClick,
-  style,
   tooltip,
   className,
 }: {
   icon: string;
   onClick: () => void;
-  style?: CSSProperties;
   tooltip?: string;
   className?: string;
 }) {
@@ -30,9 +28,8 @@ export function IconButton({
   return (
     <div
       className={(className ? [className] : [])
-        .concat(["clickable-icon"])
+        .concat(["clickable-icon tts-toolbar-button"])
         .join(" ")}
-      style={{ display: "inline-block", lineHeight: "1rem", ...style }}
       ref={(x) => (ref.current = x)}
       onClick={onClick}
     ></div>
@@ -41,11 +38,9 @@ export function IconButton({
 
 export function IconSpan({
   icon,
-  style,
   className,
 }: {
   icon: string;
-  style?: CSSProperties;
   className?: string;
 }) {
   const ref = React.useRef<HTMLElement | null>(null);
@@ -56,8 +51,7 @@ export function IconSpan({
   }, [ref.current, icon]);
   return (
     <span
-      className={className}
-      style={{ display: "inline-block", lineHeight: "1rem", ...style }}
+      className={["tts-toolbar-icon"].concat(className ? [className] : []).join(" ")}
       ref={(x) => (ref.current = x)}
     ></span>
   );
@@ -65,10 +59,8 @@ export function IconSpan({
 
 export function Spinner({
   className,
-  style,
 }: {
   className?: string;
-  style?: CSSProperties;
 }) {
   const ref = React.useRef<HTMLElement | null>(null);
   React.useEffect(() => {
@@ -79,7 +71,6 @@ export function Spinner({
   }, [ref.current, "loader"]);
   return (
     <span
-      style={style}
       className={className}
       ref={(x) => (ref.current = x)}
     ></span>

@@ -8,149 +8,110 @@ import { AudioVisualizer } from "./AudioVisualizer";
 import { IconButton, Spinner } from "./IconButton";
 import { EditorView } from "@codemirror/view";
 
-export const PlayerView = observer(({
-  editor,
-  player,
-  settings,
-  sink,
-  obsidian,
-}: {
-  editor: EditorView,
-  player: AudioStore;
-  settings: TTSPluginSettingsStore;
-  sink: AudioSink;
-  obsidian: ObsidianBridge;
-}): React.ReactNode => {
-  const isActive = !!player.activeText && editor === obsidian.activeEditor;
-  if (!isActive) {
-    return <div style={{ display: "none", height: 0, overflow: "hidden" }} />;
-  }
-  return (
-    <div
-      style={{
-        display: "flex",
-        padding: "0.15rem 0.5rem",
-        alignItems: "stretch",
-      }}
-    >
-      <IconButton
-        icon="play"
-        tooltip="Play Selection"
-        style={{
-          marginRight: "0.5rem",
-        }}
-        onClick={() => {
-          obsidian.playSelection();
-        }}
-      />
-      <IconButton
-        icon="skip-back"
-        tooltip="Previous"
-        onClick={() =>
-          player.activeText?.goToPosition(player.activeText?.position - 1 || 0)
-        }
-      />
-      {player.activeText?.isPlaying ? (
-        <IconButton
-          key="pause"
-          icon="pause"
-          tooltip="Pause"
-          onClick={() => player.activeText?.pause()}
-        />
-      ) : (
-        <IconButton
-          key="play"
-          icon="step-forward"
-          tooltip="Resume"
-          onClick={() => player.activeText?.play()}
-        />
-      )}
-      <IconButton
-        icon="skip-forward"
-        tooltip="Next"
-        onClick={() =>
-          player.activeText?.goToPosition(player.activeText?.position + 1 || 0)
-        }
-      />
+export const PlayerView = observer(
+  ({
+    editor,
+    player,
+    settings,
+    sink,
+    obsidian,
+  }: {
+    editor: EditorView;
+    player: AudioStore;
+    settings: TTSPluginSettingsStore;
+    sink: AudioSink;
+    obsidian: ObsidianBridge;
+  }): React.ReactNode => {
+    const isActive = !!player.activeText && editor === obsidian.activeEditor;
+    if (!isActive) {
+      return null;
+    }
+    return (
+      <div className="tts-toolbar-player">
+        <div className="tts-toolbar-player-button-group">
+          <IconButton
+            icon="play"
+            tooltip="Play Selection"
+            onClick={() => {
+              obsidian.playSelection();
+            }}
+          />
+        </div>
+        <div className="tts-toolbar-player-button-group">
+          <IconButton
+            icon="skip-back"
+            tooltip="Previous"
+            onClick={() =>
+              player.activeText?.goToPosition(
+                player.activeText?.position - 1 || 0
+              )
+            }
+          />
 
-      <div
-        style={{
-          flex: "1 1 auto",
-          display: "flex",
-          overflow: "hidden",
-        }}
-      >
-        <AudioStatusInfo
-          audio={sink}
-          player={player}
-          settings={settings}
-          obsidian={obsidian}
-        />
+          {player.activeText?.isPlaying ? (
+            <IconButton
+              key="pause"
+              icon="pause"
+              tooltip="Pause"
+              onClick={() => player.activeText?.pause()}
+            />
+          ) : (
+            <IconButton
+              key="play"
+              icon="step-forward"
+              tooltip="Resume"
+              onClick={() => player.activeText?.play()}
+            />
+          )}
+          <IconButton
+            icon="skip-forward"
+            tooltip="Next"
+            onClick={() =>
+              player.activeText?.goToPosition(
+                player.activeText?.position + 1 || 0
+              )
+            }
+          />
+        </div>
+        <div className="tts-audio-status-container">
+          <AudioStatusInfoContents
+            audio={sink}
+            player={player}
+            settings={settings}
+            obsidian={obsidian}
+          />
+        </div>
+        <div className="tts-toolbar-player-button-group">
+          <IconButton
+            tooltip="Cancel Playback"
+            icon="x"
+            onClick={() => player.closePlayer()}
+          />
+        </div>
       </div>
-      <IconButton
-        tooltip="Cancel Playback"
-        icon="x"
-        onClick={() => player.closePlayer()}
-      />
-    </div>
-  );
-});
+    );
+  }
+);
 
-const AudioStatusInfo: React.FC<{
+const AudioStatusInfoContents: React.FC<{
   audio: AudioSink;
   player: AudioStore;
   settings: TTSPluginSettingsStore;
   obsidian: ObsidianBridge;
 }> = observer(({ audio, player, settings, obsidian }) => {
-  const spacer = "1rem";
   if (settings.apiKeyValid === false) {
     return (
       // Extra span container to absorb the align-items: stretch from the container
-      <span
-        style={{
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        }}
-      >
-        <span
-          style={{
-            marginLeft: `${spacer}`,
-            overflow: "hidden",
-            whiteSpace: "nowrap",
-            textOverflow: "ellipsis",
-            backgroundColor: "rgba(var(--background-modifier-error-rgb), 0.5)",
-            // color: "var(--text-error)",
-            fontStyle: "italic",
-            fontSize: "var(--font-ui-small)",
-            padding: "0.15rem",
-            borderRadius: "var(--radius-s)",
-          }}
-        >
+      <span className="tts-audio-status-error">
+        <span className="tts-audio-status-error-text">
           <a onClick={() => obsidian.openSettings()}>{settings.apiKeyError}</a>
         </span>
       </span>
     );
   } else if (player.activeText?.isLoading) {
-    return (
-      <Spinner
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          marginLeft: spacer,
-        }}
-      />
-    );
+    return <Spinner className="tts-audio-status-loading" />;
   } else if (audio.source && audio.context && player.activeText?.isPlaying) {
-    return (
-      <AudioVisualizer
-        style={{
-          marginLeft: spacer,
-        }}
-        audio={audio.source}
-        context={audio.context}
-      />
-    );
+    return <AudioVisualizer audio={audio.source} context={audio.context} />;
   } else {
     return null;
   }

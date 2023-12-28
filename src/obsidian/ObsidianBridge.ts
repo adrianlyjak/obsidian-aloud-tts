@@ -16,6 +16,7 @@ export interface ObsidianBridge {
   playSelectionIfAny: () => void;
   triggerSelection: (file: TFile | null, editor: Editor) => void;
   openSettings: () => void;
+  destroy: () => void;
 }
 
 export class ObsidianGlue implements ObsidianBridge {
@@ -38,19 +39,27 @@ export class ObsidianGlue implements ObsidianBridge {
       activeEditor: mobx.computed,
       setActiveEditor: mobx.action,
     });
-    this.app.workspace!.on("layout-change", () => {
-      const didMatch = this.app.workspace
-        .getLeavesOfType("markdown")
-        .some((leaf) => leaf.view === this.activeEditorView);
-      if (!didMatch) {
-        this.audio.activeText?.pause();
-      }
-    });
+    this.app.workspace!.on("layout-change", this.onLayoutChange);
   }
+
   setActiveEditor = () => {
     this.active = this.app.workspace?.activeEditor || null;
     this.activeEditorView =
       this.app.workspace.getActiveViewOfType(MarkdownView);
+  };
+
+  onLayoutChange = () => {
+    // pause the current editor when its window closes
+    const didMatch = this.app.workspace
+      .getLeavesOfType("markdown")
+      .some((leaf) => leaf.view === this.activeEditorView);
+    if (!didMatch) {
+      this.audio.activeText?.pause();
+    }
+  };
+
+  destroy: () => void = () => {
+    this.app.workspace?.off("layout-change", this.onLayoutChange);
   };
 
   playSelectionIfAny() {

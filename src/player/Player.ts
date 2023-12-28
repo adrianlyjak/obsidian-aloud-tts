@@ -3,7 +3,7 @@ import { action, computed, observable } from "mobx";
 import { TTSPluginSettings } from "./TTSPluginSettings";
 import { randomId, splitParagraphs, splitSentences } from "../util/misc";
 import { openAITextToSpeech } from "./openai";
-import { AudioSink, HTMLAudioSink } from "./AudioSink";
+import { AudioSink, WebAudioSink } from "./AudioSink";
 
 /** High level track changer interface */
 export interface AudioStore {
@@ -63,7 +63,7 @@ export function loadAudioStore({
   settings,
   storage = memoryStorage(),
   textToSpeech = openAITextToSpeech,
-  audioSink = new HTMLAudioSink(),
+  audioSink = new WebAudioSink(),
 }: {
   settings: TTSPluginSettings;
   storage?: AudioCache;
@@ -133,6 +133,7 @@ class AudioStoreImpl implements AudioStore {
   }
   destroy(): void {
     this.closePlayer();
+    this.sink.remove();
     this._backgroundProcesses.forEach((p) => p.shutdown());
     this._backgroundProcesses = [];
   }
@@ -334,6 +335,7 @@ interface PewPewTrack {
   position: number;
   voice: string;
   audio?: ArrayBuffer;
+  failed?: boolean;
 }
 
 /** Side car to the active audio. plays track after track, exposing activate track and playing status */
@@ -432,7 +434,7 @@ class PewPewQueue {
         const existing = this.upcoming.find(
           (x) => x.position === position && x.voice === this.settings.ttsVoice
         );
-        if (existing) {
+        if (existing && !existing.failed) {
           return existing;
         } else {
           const track = mobx.observable({
@@ -440,9 +442,14 @@ class PewPewQueue {
             position,
             voice: this.settings.ttsVoice,
           }) as PewPewTrack;
-          this.getTrack(x).then((audio) => {
-            this.setAudio(track, audio);
-          });
+          this.getTrack(x)
+            .then((audio) => {
+              this.setAudio(track, audio);
+            })
+            .catch((ex) => {
+              console.error("failed to get audio", ex);
+              mobx.runInAction(() => (track.failed = true));
+            });
           return track;
         }
       });

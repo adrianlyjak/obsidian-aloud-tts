@@ -30,6 +30,7 @@ function playerPanel(
   obsidian: ObsidianBridge
 ): Panel {
   const dom = document.createElement("div");
+  dom.classList.add("tts-toolbar");
   const root = createRoot(dom);
   root.render(
     React.createElement(PlayerView, {
@@ -76,6 +77,7 @@ function playerToCodeMirrorState(player: AudioStore): TTSCodeMirrorState {
   }
 }
 
+/** Highlights the currently selected and playing text */
 const field = StateField.define<TTSCodeMirrorState>({
   create() {
     return {};
@@ -159,17 +161,8 @@ const field = StateField.define<TTSCodeMirrorState>({
   },
 });
 
+/** sends commands to just the current editor, cleaning up old editors */
 function synchronize(player: AudioStore, obsidian: ObsidianBridge): void {
-  // - listen for player changes with mobx and propagate to codemirror
-  // - listen for focused code mirror instance and dispatch to that one
-  // - keep reference to previous codemirror instance in order to deactivate it once a new command
-  //   goes to a new focused instance
-  // - should only apply changes that are relevant to current file...
-  //   but this extension is applied to all files? How can I couple the extension instance to which file it exists in? So that it's
-  //   not needlessly executing on paused editors.
-  // - somehow bubble out commands back out to mobx to e.g. pause playback. Need to be careful to prevent feedback loops from the event handlers
-  // - does the user need a global way to pause playback? Should the play state show playing in each editor?
-
   mobx.reaction(
     () =>
       [playerToCodeMirrorState(player), obsidian.activeEditor] as [
@@ -201,9 +194,6 @@ function synchronize(player: AudioStore, obsidian: ObsidianBridge): void {
 const theme = EditorView.theme({
   ".cm-panels-top": {
     borderBottom: `1px solid var(--background-modifier-border)`,
-  },
-  ".cm-panels-top .cm-tts-word-count": {
-    // backgroundColor: "var(--background-secondary)",
   },
   ".tts-cm-playing-before, .tts-cm-playing-after": {
     backgroundColor: "rgba(var(--color-purple-rgb), 0.2)",

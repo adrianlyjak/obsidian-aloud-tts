@@ -158,7 +158,6 @@ class FakeAudioSink implements AudioSink {
         return "paused";
       }
     };
-    console.log("derirved", derivedStatus());
     return derivedStatus();
   }
   source: AudioNode | undefined;

@@ -55,6 +55,9 @@ devDependencies:
   obsidian:
     specifier: ^1.4.11
     version: 1.4.11(@codemirror/state@6.3.3)(@codemirror/view@6.22.2)
+  prettier:
+    specifier: ^3.1.1
+    version: 3.1.1
   tslib:
     specifier: 2.6.2
     version: 2.6.2
@@ -2336,6 +2339,12 @@ packages:
   /prelude-ls@1.2.1:
     resolution: {integrity: sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==}
     engines: {node: '>= 0.8.0'}
+    dev: true
+
+  /prettier@3.1.1:
+    resolution: {integrity: sha512-22UbSzg8luF4UuZtzgiUOfcGM8s4tjBv6dJRT7j275NXsy2jb4aJa4NNveul5x4eqlF1wuhuR2RElK71RvmVaw==}
+    engines: {node: '>=14'}
+    hasBin: true
     dev: true
 
   /pretty-format@29.7.0:
