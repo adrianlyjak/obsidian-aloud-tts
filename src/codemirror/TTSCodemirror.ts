@@ -55,8 +55,7 @@ interface TTSCodeMirrorState {
 
 function playerToCodeMirrorState(player: AudioStore): TTSCodeMirrorState {
   if (player.activeText) {
-    const currentTrack =
-      player.activeText.audio.tracks[player.activeText.position];
+    const currentTrack = player.activeText.currentTrack;
 
     return {
       playerState: {

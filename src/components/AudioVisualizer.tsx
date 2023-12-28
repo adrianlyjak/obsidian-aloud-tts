@@ -1,16 +1,28 @@
 import * as React from "react";
-import { AudioState } from "../player/AudioSink";
 
-export const AudioAnalyzer: React.FC<{
-  audio: AudioState;
+export const AudioVisualizer: React.FC<{
+  audio: AudioNode;
+  context: AudioContext;
   style?: React.CSSProperties;
-}> = ({ audio, style }) => {
+}> = ({ audio, context, style }) => {
   const ref = React.useRef<HTMLElement | null>(null);
   React.useEffect(() => {
+
     if (ref.current) {
-      const destroyer = AudioVisualizer(ref.current, audio);
+      // maybe the source should be public, and this should be within a component?
+      const analyzer = context.createAnalyser();
+      // Analyzer settings. Magic numbers that make the visualizer icon look good
+      analyzer.fftSize = 512; // controls the resolution of the spectrum
+      analyzer.minDecibels = -100; // notes quieter than this are now shown
+      analyzer.maxDecibels = -30; // notes higher than this just show the max
+      analyzer.smoothingTimeConstant = 0.6; // how rapidly to decay measurement for the value. (Maybe smoothing for growth too?)
+      audio.connect(analyzer);
+      const destroyer = attachVisualizationToDom(ref.current, analyzer);
       // setAudioMotion(newAudioMotion);
-      return destroyer.destroy;
+      return () => {
+        destroyer.destroy
+        audio.disconnect(analyzer);
+      };
     }
   }, [!!ref.current, audio]);
   return (
@@ -29,9 +41,9 @@ export const AudioAnalyzer: React.FC<{
   );
 };
 
-function AudioVisualizer(
+function attachVisualizationToDom(
   container: HTMLElement,
-  { audio, analyzer }: AudioState
+  analyzer : AnalyserNode
 ): {
   destroy: () => void;
 } {
@@ -95,12 +107,8 @@ function AudioVisualizer(
     }
   }
 
-  // Start updating when the audio plays
-  audio.addEventListener("play", resumeAndDraw);
-  if (!audio.paused) {
-    resumeAndDraw();
-  }
-  audio.addEventListener("pause", stopDrawing);
+  resumeAndDraw();
+  
   return {
     destroy() {
       stopDrawing();

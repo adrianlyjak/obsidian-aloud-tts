@@ -4,10 +4,10 @@ import { ObsidianBridge } from "src/obsidian/ObsidianBridge";
 import { TTSPluginSettingsStore } from "src/player/TTSPluginSettings";
 import { AudioSink } from "../player/AudioSink";
 import { AudioStore } from "../player/Player";
-import { AudioAnalyzer } from "./AudioVisualizer";
+import { AudioVisualizer } from "./AudioVisualizer";
 import { IconButton, Spinner } from "./IconButton";
 
-export const PlayerView = observer(function PlayerView({
+export const PlayerView = observer(({
   player,
   settings,
   sink,
@@ -17,7 +17,7 @@ export const PlayerView = observer(function PlayerView({
   settings: TTSPluginSettingsStore;
   sink: AudioSink;
   obsidian: ObsidianBridge;
-}): React.ReactNode {
+}): React.ReactNode => {
   if (!player.activeText) {
     return <div style={{ display: "none", height: 0, overflow: "hidden" }} />;
   }
@@ -126,7 +126,7 @@ const AudioStatusInfo: React.FC<{
         </span>
       </span>
     );
-  } else if (player.activeText && !player.activeText.currentTrack.audio) {
+  } else if (player.activeText?.isLoading) {
     return (
       <Spinner
         style={{
@@ -137,13 +137,14 @@ const AudioStatusInfo: React.FC<{
         }}
       />
     );
-  } else if (audio.current && player.activeText?.isPlaying) {
+  } else if (audio.source && audio.context && player.activeText?.isPlaying) {
     return (
-      <AudioAnalyzer
+      <AudioVisualizer
         style={{
           marginLeft: spacer,
         }}
-        audio={audio.current}
+        audio={audio.source}
+        context={audio.context}
       />
     );
   } else {

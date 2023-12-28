@@ -1,137 +1,180 @@
-import { observable, reaction } from "mobx";
 import * as mobx from "mobx";
-import { AudioStore } from "./Player";
+// import { AudioStore } from "./Player";
 // import { arrayBufferToBase64 } from "src/util/misc";
 
-export interface AudioState {
-  audio: HTMLAudioElement;
-  analyzer: AnalyserNode;
-  audioCtx: AudioContext;
-  audioId: string;
-}
+export type TrackStatus = "playing" | "paused" | "complete" | "none";
 
 export interface AudioSink {
-  clearAudio(): void;
-  current: AudioState | undefined;
+  /** cancel the current audio and remove references to release resources */
+  remove(): void;
+  /** Sets an audio track to play */
+  setMedia(data: ArrayBuffer): Promise<void>;
+  /** play the current audio */
+  play(): void;
+  /** pause the current audio */
+  pause(): void;
+  /** move the audio to the beginning of the track */
+  restart(): void;
+  /** observable for the currently playing track status */
+  readonly trackStatus: TrackStatus;
+  /** HTML5 Audio stuff, for observing the audio state, like visualization */
+  readonly source: AudioNode | undefined;
+  readonly context: AudioContext | undefined;
 }
 
-// consumer
-export function AudioSink(player: AudioStore): AudioSink {
-  const self = observable(
-    {
-      current: undefined as undefined | AudioState,
-      setAudio(audioState: AudioState) {
-        self.current = audioState;
-      },
-      clearAudio() {
-        self.current?.audio.pause();
-        self.current?.audioCtx.suspend();
-        self.current?.audioCtx.close();
-        self.current = undefined;
-      },
-    },
-    {
-      current: mobx.observable.ref,
-      setAudio: mobx.action,
-      clearAudio: mobx.action,
-    }
-  );
+export class HTMLAudioSink implements AudioSink {
+  current?: AudioSourceManager = undefined;
 
-  reaction(
-    () =>
-      player.activeText && [
-        player.activeText.audio.id,
-        player.activeText.position,
-        player.activeText.isPlaying,
-        !!player.activeText.audio.tracks[player.activeText.position]?.audio,
-      ],
-    (inputs) => {
-      if (!player.activeText) {
-        self.clearAudio();
-      } else {
-        const position = player.activeText.position;
-        const activeAudio = player.activeText.audio;
-        const newAudioId = activeAudio.id + "-" + position;
-        const track = activeAudio.tracks[position];
-
-        if (!track?.audio) {
-          return; // wait for it
-        } else if (newAudioId !== self.current?.audioId) {
-          self.clearAudio();
-
-          const audio = new Audio(arrayBufferToAudioSrc(track.audio));
-          audio.preload = "auto";
-          audio.load();
-          audio.id = newAudioId;
-          const state = AudioMonitor(newAudioId, audio);
-          self.setAudio(state);
-          const onEnded = () => {
-            self.clearAudio();
-            player.activeText?.goToPosition(position + 1);
-            self.current?.audio.removeEventListener("ended", onEnded);
-          };
-          audio.addEventListener("ended", onEnded);
-        }
-
-        if (player.activeText.isPlaying) {
-          const currentAudio = self.current?.audio;
-          if (currentAudio) {
-            waitForEnoughData(currentAudio)
-              // wait for it
-              .then(() => {
-                console.log("currentAudio.readyState", currentAudio.readyState);
-                currentAudio.currentTime = 0;
-                currentAudio.play();
-              });
-          }
-        } else {
-          self.current?.audio.pause();
-        }
-      }
-    },
-    {
-      fireImmediately: true,
-      equals: mobx.comparer.shallow,
-    }
-  );
-  return self;
-}
-
-function arrayBufferToAudioSrc(arrayBuffer: ArrayBuffer): string {
-  // Create a blob from the ArrayBuffer. Replace 'audio/mpeg' with the correct MIME type if needed
-  const blob = new Blob([arrayBuffer], { type: "audio/mpeg" });
-
-  // Create an object URL from the blob
-  const audioSrc = URL.createObjectURL(blob);
-
-  return audioSrc;
-}
-
-async function waitForEnoughData(audio: HTMLAudioElement): Promise<void> {
-  const loadedMetaData = new Promise((res) =>
-    audio.addEventListener("loadedmetadata", res, { once: true })
-  );
-  while (audio.readyState < audio.HAVE_ENOUGH_DATA) {
-    console.log("not enough data... waiting", audio.readyState);
-    await new Promise((res, rej) => {
-      audio.addEventListener("canplaythrough", res, { once: true });
+  constructor() {
+    mobx.makeObservable(this, {
+      current: mobx.observable,
+      play: mobx.action,
+      pause: mobx.action,
+      restart: mobx.action,
+      trackStatus: mobx.computed,
+      source: mobx.computed,
+      context: mobx.computed,
     });
   }
-  await loadedMetaData;
+
+  get trackStatus(): TrackStatus {
+    if (!this.current) {
+      return "none";
+    } else if (this.current.state.state === "playing") {
+      return "playing";
+    } else if (this.current.state.state === "complete") {
+      return "complete";
+    } else {
+      return "paused";
+    }
+  }
+
+  get source(): AudioNode | undefined {
+    if (this.current?.state.state === "playing") {
+      return this.current.state.source;
+    }
+  }
+  get context(): AudioContext | undefined {
+    if (this.current?.state.state === "playing") {
+      return this.current.context;
+    }
+  }
+
+  setMedia(data: ArrayBuffer): Promise<void> {
+    this.current?.pause();
+    return AudioSourceManager.create(data).then((data) => {
+      mobx.runInAction(() => {
+        this.current = data;
+      });
+    });
+  }
+  play() {
+    this.current?.play();
+  }
+  pause() {
+    this.current?.pause();
+  }
+  restart() {
+    this.current?.backToStart();
+  }
+  remove() {
+    this.current?.pause();
+    this.current = undefined;
+  }
 }
+// 1. initializing audio data
+// 2. prepped, not started
+// 3. playing
+// -> paused (go to 2)
+// 5. complete
 
-function AudioMonitor(audioId: string, audio: HTMLAudioElement): AudioState {
-  // Create audio context and analyzer
-  const audioCtx = new AudioContext();
-  const analyzer = audioCtx.createAnalyser();
-  const source = audioCtx.createMediaElementSource(audio);
-  source.connect(analyzer);
-  analyzer.connect(audioCtx.destination);
+type Paused = {
+  state: "paused";
+  startTime: number;
+};
 
-  // Analyzer settings. Magic numbers that make the visualizer icon look good
-  analyzer.fftSize = 512; // controls the resolution of the spectrum
-  analyzer.minDecibels = -100; // notes quieter than this are now shown
-  analyzer.maxDecibels = -30; // notes higher than this just show the max
-  analyzer.smoothingTimeConstant = 0.6; // how rapidly to decay measurement for the value. (Maybe smoothing for growth too?)
-  return { audioId, analyzer, audio, audioCtx };
+type Playing = {
+  state: "playing";
+  contextStartTime: number;
+  source: AudioBufferSourceNode;
+};
+
+type Complete = {
+  state: "complete";
+};
+
+type AudioState = Paused | Playing | Complete;
+
+class AudioSourceManager {
+  context: AudioContext;
+  audioData: AudioBuffer;
+  state: AudioState;
+
+  static create(data: ArrayBuffer): Promise<AudioSourceManager> {
+    const context = new AudioContext();
+    const audioData = context.decodeAudioData(data);
+    return audioData.then((data) => new AudioSourceManager(context, data));
+  }
+
+  constructor(context: AudioContext, audioData: AudioBuffer) {
+    this.context = context;
+    this.audioData = audioData;
+    this.state = {
+      state: "paused",
+      startTime: 0,
+    };
+    mobx.makeObservable(this, {
+      state: mobx.observable.ref,
+      setState: mobx.action,
+    });
+  }
+
+  setState(state: AudioState) {
+    this.state = state;
+  }
+
+  play() {
+    if (this.state.state === "paused") {
+      const ready = this.state as Paused;
+
+      const source = this.context.createBufferSource();
+      source.buffer = this.audioData;
+      source.connect(this.context.destination);
+      source.onended = () => this.setState({ state: "complete" });
+      source.start(0, ready.startTime);
+
+      this.setState({
+        state: "playing",
+        contextStartTime: this.context.currentTime - ready.startTime,
+        source,
+      });
+    }
+  }
+
+  pause() {
+    if (this.state.state === "playing") {
+      const playing: Playing = this.state;
+      playing.source.onended = null; // otherwise the completion callback would trigger
+      playing.source.stop();
+      this.setState({
+        state: "paused",
+        startTime: this.context.currentTime - playing.contextStartTime,
+      });
+    }
+  }
+
+  backToStart() {
+    let wasPlaying = false;
+    if (this.state.state === "playing") {
+      wasPlaying = true;
+      this.pause();
+    }
+    this.setState({
+      state: "paused",
+      startTime: 0,
+    });
+    if (wasPlaying) {
+      this.play();
+    }
+  }
 }
