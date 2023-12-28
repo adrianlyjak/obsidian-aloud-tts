@@ -21,7 +21,8 @@ export const PlayerView = observer(({
   sink: AudioSink;
   obsidian: ObsidianBridge;
 }): React.ReactNode => {
-  if (!player.activeText || editor !== obsidian.activeEditor) {
+  const isActive = !!player.activeText && editor === obsidian.activeEditor;
+  if (!isActive) {
     return <div style={{ display: "none", height: 0, overflow: "hidden" }} />;
   }
   return (
