@@ -1,11 +1,11 @@
 {
-  "id": "obsidian-tts",
+  "id": "aloud-tts",
   "name": "Aloud",
-  "version": "0.0.1-rc10",
+  "version": "0.0.1",
   "minAppVersion": "0.15.0",
-  "description": "A Text to Speech Plugin. Highlight and speak text from your notes. Converts Text To Speech in real-time using lifelike voices from OpenAI. Just add your OpenAI API key.",
+  "description": "Highlight and speak text from your notes. Converts Text To Speech in real-time using lifelike voices from OpenAI. Just add your OpenAI API key.",
   "author": "Adrian Lyjak",
-  "authorUrl": "https://gitlab.com/adrianlyjak",
+  "authorUrl": "https://github.com/adrianlyjak",
   "fundingUrl": "",
   "isDesktopOnly": false
 }

@@ -17,12 +17,12 @@ export interface AudioSink {
   restart(): void;
   /** observable for the currently playing track status */
   readonly trackStatus: TrackStatus;
-  /** HTML5 Audio stuff, for observing the audio state, like visualization */
+  /** Web Audio stuff, for observing the audio state, like visualization */
   readonly source: AudioNode | undefined;
   readonly context: AudioContext | undefined;
 }
 
-export class HTMLAudioSink implements AudioSink {
+export class WebAudioSink implements AudioSink {
   current?: AudioSourceManager = undefined;
 
   constructor() {
@@ -61,7 +61,7 @@ export class HTMLAudioSink implements AudioSink {
   }
 
   setMedia(data: ArrayBuffer): Promise<void> {
-    this.current?.pause();
+    this.current?.destroy();
     return AudioSourceManager.create(data).then((data) => {
       mobx.runInAction(() => {
         this.current = data;
@@ -78,7 +78,7 @@ export class HTMLAudioSink implements AudioSink {
     this.current?.backToStart();
   }
   remove() {
-    this.current?.pause();
+    this.current?.destroy();
     this.current = undefined;
   }
 }
@@ -151,6 +151,11 @@ class AudioSourceManager {
     }
   }
 
+  destroy() {
+    this.pause();
+    this.context.close();
+  }
+
   pause() {
     if (this.state.state === "playing") {
       const playing: Playing = this.state;
@@ -167,7 +172,8 @@ class AudioSourceManager {
     let wasPlaying = false;
     if (this.state.state === "playing") {
       wasPlaying = true;
-      this.pause();
+      this.state.source.onended = null; // otherwise the completion callback would trigger
+      this.state.source.stop();
     }
     this.setState({
       state: "paused",

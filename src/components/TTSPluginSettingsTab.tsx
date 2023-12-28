@@ -67,7 +67,7 @@ const APIKeyComponent: React.FC<{
   return (
     <div className="setting-item">
       <div className="setting-item-info">
-        <div className="setting-item-name">Open AI API Key</div>
+        <div className="setting-item-name">OpenAI API key</div>
         <div className="setting-item-description">
           Your OpenAI API key. You can create one{" "}
           <a href="https://platform.openai.com/api-keys" target="_blank">

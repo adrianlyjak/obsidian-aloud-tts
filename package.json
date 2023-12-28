@@ -1,6 +1,6 @@
 {
-  "name": "obsidian-tts",
-  "version": "0.0.1-rc10",
+  "name": "obsidian-aloud-tts",
+  "version": "0.0.1",
   "description": "Highlight and speak text from your obsidian notes",
   "main": "main.js",
   "scripts": {
@@ -16,6 +16,10 @@
   ],
   "author": "Adrian Lyjak",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adrianlyjak/obsidian-aloud-tts"
+  },
   "devDependencies": {
     "@types/node": "^16.11.6",
     "@typescript-eslint/eslint-plugin": "6.13.2",

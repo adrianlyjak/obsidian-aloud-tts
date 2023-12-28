@@ -3,7 +3,7 @@ import { obsidianStorage } from "./ObsidianPlayer";
 
 import { Editor, MarkdownView, Plugin, addIcon } from "obsidian";
 import { TTSSettingTab } from "../components/TTSPluginSettingsTab";
-import { AudioSink, HTMLAudioSink } from "../player/AudioSink";
+import { AudioSink, WebAudioSink } from "../player/AudioSink";
 import { AudioStore, loadAudioStore } from "../player/Player";
 import {
   MARKETING_NAME,
@@ -94,7 +94,8 @@ export default class TTSPlugin extends Plugin {
   }
 
   onunload() {
-    this.player?.destroy();
+    this.player?.destroy(); // player clears the audio
+    this.bridge?.destroy();
   }
 
   async loadSettings() {
@@ -102,7 +103,7 @@ export default class TTSPlugin extends Plugin {
       () => this.loadData(),
       (data) => this.saveData(data)
     );
-    this.audio = new HTMLAudioSink();
+    this.audio = new WebAudioSink();
     this.player = await loadAudioStore({
       settings: this.settings.settings,
       storage: obsidianStorage(this.app),
