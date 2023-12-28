@@ -1,24 +1,22 @@
-import { EditorView } from "@codemirror/view";
 import { TTSCodeMirror } from "../codemirror/TTSCodemirror";
 import { obsidianStorage } from "./ObsidianPlayer";
 
-import {
-  App,
-  Editor,
-  MarkdownView,
-  Notice,
-  Plugin,
-  TFile,
-  addIcon,
-} from "obsidian";
+import { Editor, MarkdownView, Plugin, addIcon } from "obsidian";
 import { TTSSettingTab } from "../components/TTSPluginSettingsTab";
 import { AudioSink, HTMLAudioSink } from "../player/AudioSink";
 import { AudioStore, loadAudioStore } from "../player/Player";
 import {
   MARKETING_NAME,
+  MARKETING_NAME_LONG,
   TTSPluginSettingsStore,
   pluginSettingsStore,
 } from "../player/TTSPluginSettings";
+import {
+  ObsidianBridge,
+  ObsidianGlue,
+  playSelectionIfAny,
+  triggerSelection,
+} from "./ObsidianBridge";
 
 // standard lucide.dev icon, but for some reason not working as a ribbon icon without registering it
 // https://lucide.dev/icons/audio-lines
@@ -32,6 +30,7 @@ export default class TTSPlugin extends Plugin {
 
   player: AudioStore;
   audio: AudioSink;
+  bridge: ObsidianBridge;
 
   async onload() {
     await this.loadSettings();
@@ -63,8 +62,8 @@ export default class TTSPlugin extends Plugin {
     });
 
     // ribbon
-    this.addRibbonIcon("audio-lines", MARKETING_NAME, () =>
-      playSelectionIfAny(this.player, this.app)
+    this.addRibbonIcon("audio-lines", MARKETING_NAME_LONG, () =>
+      playSelectionIfAny(this.app, this.player)
     );
 
     // This adds a simple command that can be triggered anywhere to resume last track
@@ -90,25 +89,7 @@ export default class TTSPlugin extends Plugin {
     });
 
     this.registerEditorExtension(
-      TTSCodeMirror(this.player, this.settings, this.audio, {
-        currentCodeMirror: () => {
-          // @ts-expect-error
-          const editor = this.app.workspace?.activeEditor?.editor?.cm as
-            | EditorView
-            | undefined;
-          return editor;
-        },
-        playSelection: () => playSelectionIfAny(this.player, this.app),
-        openSettings: () => {
-          // big ugly hack. There's hopefully a better way to do this
-          type Commands = {
-            commands?: { commands?: Record<string, { callback?: () => void }> };
-          };
-          (this.app as unknown as Commands)?.commands?.commands?.[
-            "app:open-settings"
-          ]?.callback?.();
-        },
-      })
+      TTSCodeMirror(this.player, this.settings, this.audio, this.bridge)
     );
 
     // This adds a settings tab so the user can configure various aspects of the plugin
@@ -132,48 +113,6 @@ export default class TTSPlugin extends Plugin {
       storage: obsidianStorage(this.app),
       audioSink: this.audio,
     });
-  }
-}
-
-////////////////////////////////////////
-// Obsidian+Business Logic Glue
-
-function playSelectionIfAny(player: AudioStore, app: App) {
-  const activeEditor = app.workspace.activeEditor;
-  const maybeCursor = activeEditor?.editor?.getCursor("head");
-  if (maybeCursor) {
-    triggerSelection(player, activeEditor!.file, activeEditor!.editor!);
-  } else {
-    new Notice("No Text Selected To Speak");
-  }
-}
-
-async function triggerSelection(
-  player: AudioStore,
-  file: TFile | null,
-  editor: Editor
-): Promise<void> {
-  let selection = editor.getSelection();
-  const maybeCursor = editor.getCursor("head");
-
-  if (!selection && maybeCursor) {
-    selection = editor.getRange(maybeCursor, {
-      line: maybeCursor.line + 4096,
-      ch: 0,
-    });
-  }
-
-  if (selection) {
-    try {
-      await player.startPlayer({
-        text: selection,
-        filename:
-          [file?.path, file?.name].filter((x) => x).join("/") || "Untitled",
-      });
-    } catch (ex) {
-      console.error("problems!", ex);
-    }
-  } else {
-    new Notice("No Text Selected To Speak");
+    this.bridge = new ObsidianGlue(this.app, this.player);
   }
 }
