@@ -43,7 +43,7 @@ export const PlayerView = observer(
             tooltip="Previous"
             onClick={() =>
               player.activeText?.goToPosition(
-                player.activeText?.position - 1 || 0
+                player.activeText?.position - 1 || 0,
               )
             }
           />
@@ -68,7 +68,7 @@ export const PlayerView = observer(
             tooltip="Next"
             onClick={() =>
               player.activeText?.goToPosition(
-                player.activeText?.position + 1 || 0
+                player.activeText?.position + 1 || 0,
               )
             }
           />
@@ -90,7 +90,7 @@ export const PlayerView = observer(
         </div>
       </div>
     );
-  }
+  },
 );
 
 const AudioStatusInfoContents: React.FC<{

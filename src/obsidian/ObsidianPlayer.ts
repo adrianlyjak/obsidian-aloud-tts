@@ -14,7 +14,7 @@ export function obsidianStorage(app: App): AudioCache {
   return {
     async getAudio(
       text: string,
-      settings: TTSPluginSettings
+      settings: TTSPluginSettings,
     ): Promise<ArrayBuffer | null> {
       const str = toKey(text, settings);
       const filepath = normalizePath(`/${cachedir}/${str}.mp3`);
@@ -29,7 +29,7 @@ export function obsidianStorage(app: App): AudioCache {
     async saveAudio(
       text: string,
       settings: TTSPluginSettings,
-      audio: ArrayBuffer
+      audio: ArrayBuffer,
     ): Promise<void> {
       const str = toKey(text, settings);
       const filepath = normalizePath(`/${cachedir}/${str}.mp3`);

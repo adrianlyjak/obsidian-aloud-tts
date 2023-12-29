@@ -31,7 +31,7 @@ export interface TTSPluginSettingsStore {
 
 export async function pluginSettingsStore(
   loadData: () => Promise<unknown>,
-  saveData: (data: unknown) => Promise<void>
+  saveData: (data: unknown) => Promise<void>,
 ): Promise<TTSPluginSettingsStore> {
   const store = observable(
     {
@@ -48,7 +48,7 @@ export async function pluginSettingsStore(
         if (!store.settings.OPENAI_API_KEY) {
           store.setApiKeyValidity(
             false,
-            `Please enter an API key in the ${MARKETING_NAME_LONG} plugin settings`
+            `Please enter an API key in the ${MARKETING_NAME_LONG} plugin settings`,
           );
         } else {
           store.setApiKeyValidity(undefined, undefined);
@@ -87,7 +87,7 @@ export async function pluginSettingsStore(
       apiKeyError: observable,
       setApiKeyValidity: action,
       updateSettings: action,
-    }
+    },
   );
   store.checkApiKey();
   return store;

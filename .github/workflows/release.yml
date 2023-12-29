@@ -26,6 +26,7 @@ jobs:
         run: |
           pnpm install
           pnpm run lint
+          pnpm run format:check
           pnpm run test
           pnpm run build
 

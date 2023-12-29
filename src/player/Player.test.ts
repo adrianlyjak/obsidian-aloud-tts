@@ -57,7 +57,7 @@ describe("Active Track", async () => {
         text: "First there was one. Then there was two. Eventually there was three. Finally there was four.",
         filename: "file.md",
       },
-      { audioSink: sink }
+      { audioSink: sink },
     );
     expect(active.position).toEqual(0);
     active.play();
@@ -92,7 +92,7 @@ describe("Active Track", async () => {
       },
       {
         textToSpeech: tts,
-      }
+      },
     );
     expect(active.position).toEqual(0);
     expect(seen).toEqual([
@@ -167,7 +167,7 @@ class FakeAudioSink implements AudioSink {
 interface MaybeStoreDependencies {
   textToSpeech?: (
     settings: TTSPluginSettings,
-    text: string
+    text: string,
   ) => Promise<ArrayBuffer>;
   storage?: AudioCache;
   audioSink?: AudioSink;
@@ -190,7 +190,7 @@ function createActiveTrack(
     text: "how now brown cow",
     filename: "file.md",
   },
-  deps: MaybeStoreDependencies = {}
+  deps: MaybeStoreDependencies = {},
 ): ActiveAudioText {
   const actualStore = createStore(deps);
   const active = actualStore.startPlayer(opts);
@@ -205,7 +205,7 @@ async function waitForPassing(
   }: {
     timeout?: number;
     interval?: number;
-  } = {}
+  } = {},
 ) {
   const start = new Date().valueOf();
   let lastErr;
@@ -218,8 +218,8 @@ async function waitForPassing(
         new Promise((res, rej) =>
           setTimeout(
             () => rej(new Error("timeout of " + timeout + "ms exceeded")),
-            remaining
-          )
+            remaining,
+          ),
         ),
       ]);
       return;

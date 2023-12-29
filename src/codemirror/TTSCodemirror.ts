@@ -27,7 +27,7 @@ function playerPanel(
   player: AudioStore,
   settings: TTSPluginSettingsStore,
   sink: AudioSink,
-  obsidian: ObsidianBridge
+  obsidian: ObsidianBridge,
 ): Panel {
   const dom = document.createElement("div");
   dom.classList.add("tts-toolbar");
@@ -39,7 +39,7 @@ function playerPanel(
       settings,
       obsidian,
       sink,
-    })
+    }),
   );
   return {
     dom,
@@ -83,8 +83,8 @@ const field = StateField.define<TTSCodeMirrorState>({
     return {};
   },
   update(value, tr): TTSCodeMirrorState {
-    const effects: StateEffect<TTSCodeMirrorState>[] = tr.effects.flatMap((e) =>
-      e.is(setViewState) ? [e] : []
+    const effects: StateEffect<TTSCodeMirrorState>[] = tr.effects.flatMap(
+      (e) => (e.is(setViewState) ? [e] : []),
     );
     if (!effects && !tr.docChanged) {
       return value;
@@ -128,7 +128,7 @@ const field = StateField.define<TTSCodeMirrorState>({
           currentTextPosition.from,
           Decoration.mark({
             class: "tts-cm-playing-before",
-          })
+          }),
         );
       }
       b.add(
@@ -136,7 +136,7 @@ const field = StateField.define<TTSCodeMirrorState>({
         currentTextPosition.to,
         Decoration.mark({
           class: "tts-cm-playing-now",
-        })
+        }),
       );
       if (textPosition) {
         b.add(
@@ -144,7 +144,7 @@ const field = StateField.define<TTSCodeMirrorState>({
           textPosition.to,
           Decoration.mark({
             class: "tts-cm-playing-after",
-          })
+          }),
         );
       }
       return {
@@ -156,7 +156,7 @@ const field = StateField.define<TTSCodeMirrorState>({
   provide: (field) => {
     return EditorView.decorations.from(
       field,
-      (x) => x.decoration || Decoration.none
+      (x) => x.decoration || Decoration.none,
     );
   },
 });
@@ -167,11 +167,11 @@ function synchronize(player: AudioStore, obsidian: ObsidianBridge): void {
     () =>
       [playerToCodeMirrorState(player), obsidian.activeEditor] as [
         TTSCodeMirrorState,
-        EditorView | undefined
+        EditorView | undefined,
       ],
     (
       [newState, newEditor]: [TTSCodeMirrorState, EditorView | undefined],
-      previousState?: [TTSCodeMirrorState, EditorView | undefined]
+      previousState?: [TTSCodeMirrorState, EditorView | undefined],
     ) => {
       if (previousState?.[1] && previousState[1] !== newEditor) {
         previousState[1].dispatch({
@@ -187,7 +187,7 @@ function synchronize(player: AudioStore, obsidian: ObsidianBridge): void {
     {
       fireImmediately: true,
       equals: mobx.comparer.structural,
-    }
+    },
   );
 }
 
@@ -207,14 +207,14 @@ export function TTSCodeMirror(
   player: AudioStore,
   settings: TTSPluginSettingsStore,
   sink: AudioSink,
-  obsidian: ObsidianBridge
+  obsidian: ObsidianBridge,
 ): Extension {
   synchronize(player, obsidian);
   return [
     field,
     theme,
     showPanel.of((editorView: EditorView) =>
-      playerPanel(editorView, player, settings, sink, obsidian)
+      playerPanel(editorView, player, settings, sink, obsidian),
     ),
   ];
 }

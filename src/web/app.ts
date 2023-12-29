@@ -111,7 +111,7 @@ reactRoot.render(
         onClick: () => store.activeText!.play(),
       }),
     ],
-  })
+  }),
 );
 
 const store = loadAudioStore({

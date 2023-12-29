@@ -17,7 +17,7 @@ import { ObsidianBridge, ObsidianGlue } from "./ObsidianBridge";
 // https://lucide.dev/icons/audio-lines
 addIcon(
   "audio-lines",
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-audio-lines"><path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/></svg>'
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-audio-lines"><path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/></svg>',
 );
 
 export default class TTSPlugin extends Plugin {
@@ -41,7 +41,7 @@ export default class TTSPlugin extends Plugin {
               await this.bridge.triggerSelection(view.file, editor);
             });
         });
-      })
+      }),
     );
 
     // Also add an editor command that can perform the same play selection
@@ -58,7 +58,7 @@ export default class TTSPlugin extends Plugin {
 
     // ribbon
     this.addRibbonIcon("audio-lines", MARKETING_NAME_LONG, () =>
-      this.bridge.playSelectionIfAny()
+      this.bridge.playSelectionIfAny(),
     );
 
     // This adds a simple command that can be triggered anywhere to resume last track
@@ -84,12 +84,12 @@ export default class TTSPlugin extends Plugin {
     });
 
     this.registerEditorExtension(
-      TTSCodeMirror(this.player, this.settings, this.audio, this.bridge)
+      TTSCodeMirror(this.player, this.settings, this.audio, this.bridge),
     );
 
     // This adds a settings tab so the user can configure various aspects of the plugin
     this.addSettingTab(
-      new TTSSettingTab(this.app, this, this.settings, this.player)
+      new TTSSettingTab(this.app, this, this.settings, this.player),
     );
   }
 
@@ -101,7 +101,7 @@ export default class TTSPlugin extends Plugin {
   async loadSettings() {
     this.settings = await pluginSettingsStore(
       () => this.loadData(),
-      (data) => this.saveData(data)
+      (data) => this.saveData(data),
     );
     this.audio = new WebAudioSink();
     this.player = await loadAudioStore({

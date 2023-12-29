@@ -49,7 +49,7 @@ describe("Minhash", () => {
     // We expect internal hash values to be updated
     // The exact values depend on the hash function and permutations
     expect(
-      minhash.hashvalues.some((value) => value !== INTERNAL.MAX_HASH)
+      minhash.hashvalues.some((value) => value !== INTERNAL.MAX_HASH),
     ).toBe(true);
   });
 

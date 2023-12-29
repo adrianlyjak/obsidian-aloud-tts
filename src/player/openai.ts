@@ -2,7 +2,7 @@ import { TTSPluginSettings } from "./TTSPluginSettings";
 
 export async function openAITextToSpeech(
   settings: TTSPluginSettings,
-  text: string
+  text: string,
 ): Promise<ArrayBuffer> {
   const headers = await fetch(settings.OPENAI_API_URL + "/v1/audio/speech", {
     headers: {
@@ -28,7 +28,7 @@ export async function fnetch(): Promise<ArrayBuffer> {
 }
 
 export async function listModels(
-  settings: TTSPluginSettings
+  settings: TTSPluginSettings,
 ): Promise<string[]> {
   const headers = await fetch(settings.OPENAI_API_URL + "/v1/models", {
     headers: {

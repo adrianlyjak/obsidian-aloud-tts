@@ -28,7 +28,7 @@ export function randomId(): string {
 export function createSlidingWindowGroups(
   text: string,
   windowSize: number = 12,
-  stepSize: number = 3
+  stepSize: number = 3,
 ): string[][] {
   // Create sliding windows of 5 sentences
   const sentences = splitSentences(text);
@@ -102,7 +102,7 @@ export function splitSentences(text: string): string[] {
 export function createWindows<T>(
   sentences: T[],
   windowSize: number,
-  windowStep: number
+  windowStep: number,
 ): T[][] {
   const windows: T[][] = [];
 
@@ -118,7 +118,7 @@ export function createWindows<T>(
 
 export function debounce<T extends unknown[]>(
   callback: (...args: T) => void,
-  waitMillis: number
+  waitMillis: number,
 ): (...args: T) => void {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   return (...args: T) => {

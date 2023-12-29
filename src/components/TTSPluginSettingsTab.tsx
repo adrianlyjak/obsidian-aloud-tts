@@ -14,7 +14,7 @@ export class TTSSettingTab extends PluginSettingTab {
     app: App,
     plugin: Plugin,
     settings: TTSPluginSettingsStore,
-    player: AudioStore
+    player: AudioStore,
   ) {
     super(app, plugin);
     this.settings = settings;
@@ -25,7 +25,7 @@ export class TTSSettingTab extends PluginSettingTab {
     const containerEl = this.containerEl;
     containerEl.empty();
     createRoot(containerEl).render(
-      <TTSSettingsTabComponent store={this.settings} player={this.player} />
+      <TTSSettingsTabComponent store={this.settings} player={this.player} />,
     );
   }
 }

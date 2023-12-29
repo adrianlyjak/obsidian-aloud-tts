@@ -88,7 +88,7 @@ function RandomishGenerator({
 
 function sampleListOfUniqueInts(
   count: number = 128,
-  random: RandomishGenerator
+  random: RandomishGenerator,
 ): number[] {
   const seen = new Set<number>();
   const nums: number[] = [];

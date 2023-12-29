@@ -108,7 +108,7 @@ async function playSelectionIfAny(app: App, audio: AudioStore): Promise<void> {
 async function triggerSelection(
   player: AudioStore,
   file: TFile | null,
-  editor: Editor
+  editor: Editor,
 ): Promise<void> {
   let selection = editor.getSelection();
   const maybeCursor = editor.getCursor("head");

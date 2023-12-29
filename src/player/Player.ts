@@ -85,7 +85,7 @@ class AudioStoreImpl implements AudioStore {
     settings: TTSPluginSettings,
     storage: AudioCache,
     textToSpeech: ConvertTextToSpeech,
-    sink: AudioSink
+    sink: AudioSink,
   ) {
     this.settings = settings;
     this.storage = storage;
@@ -104,9 +104,12 @@ class AudioStoreImpl implements AudioStore {
   private initializeBackgroundProcessors(): void {
     // expire storage
     this.storage.expire();
-    const expireTimer = setInterval(() => {
-      this.storage.expire();
-    }, 30 * 60 * 1000);
+    const expireTimer = setInterval(
+      () => {
+        this.storage.expire();
+      },
+      30 * 60 * 1000,
+    );
     this._backgroundProcesses.push({
       shutdown: () => {
         clearInterval(expireTimer);
@@ -122,7 +125,7 @@ class AudioStoreImpl implements AudioStore {
       this.settings,
       this.storage,
       this.textToSpeech,
-      this.sink
+      this.sink,
     );
     this.activeText!.play();
     return this.activeText!;
@@ -166,7 +169,7 @@ class ActiveAudioTextImpl implements ActiveAudioText {
     settings: TTSPluginSettings,
     storage: AudioCache,
     textToSpeech: ConvertTextToSpeech,
-    sink: AudioSink
+    sink: AudioSink,
   ) {
     this.audio = audio;
     this.settings = settings;
@@ -208,7 +211,7 @@ class ActiveAudioTextImpl implements ActiveAudioText {
   goToPosition(position: number): void {
     this.position = Math.min(
       Math.max(position, 0),
-      this.audio.tracks.length - 1
+      this.audio.tracks.length - 1,
     ); // note: could maybe allow to overflow by one to represent "finished"
   }
 
@@ -220,7 +223,7 @@ class ActiveAudioTextImpl implements ActiveAudioText {
   private async loadTrack(track: AudioTextTrack): Promise<ArrayBuffer> {
     const stored: ArrayBuffer | null = await this.storage.getAudio(
       track.text,
-      this.settings
+      this.settings,
     );
     if (stored) {
       return stored;
@@ -240,7 +243,7 @@ class ActiveAudioTextImpl implements ActiveAudioText {
   async tryLoadTrack(
     track: AudioTextTrack,
     attempt: number = 0,
-    maxAttempts: number = 3
+    maxAttempts: number = 3,
   ): Promise<ArrayBuffer> {
     try {
       return await this.loadTrack(track);
@@ -249,7 +252,7 @@ class ActiveAudioTextImpl implements ActiveAudioText {
         throw ex;
       } else {
         await new Promise((resolve) =>
-          setTimeout(resolve, 250 * Math.pow(2, attempt))
+          setTimeout(resolve, 250 * Math.pow(2, attempt)),
         );
         return await this.tryLoadTrack(track, attempt + 1, maxAttempts);
       }
@@ -263,7 +266,7 @@ export function joinTrackText(track: AudioText): string {
 
 export function buildTrack(
   opts: AudioTextOptions,
-  splitMode: "sentence" | "paragraph" = "sentence"
+  splitMode: "sentence" | "paragraph" = "sentence",
 ): AudioText {
   const splits =
     splitMode === "sentence"
@@ -294,12 +297,12 @@ export interface ConvertTextToSpeech {
 export interface AudioCache {
   getAudio(
     text: string,
-    settings: TTSPluginSettings
+    settings: TTSPluginSettings,
   ): Promise<ArrayBuffer | null>;
   saveAudio(
     text: string,
     settings: TTSPluginSettings,
-    audio: ArrayBuffer
+    audio: ArrayBuffer,
   ): Promise<void>;
   expire(): Promise<void>;
 }
@@ -313,14 +316,14 @@ export function memoryStorage(): AudioCache {
   return {
     async getAudio(
       text: string,
-      settings: TTSPluginSettings
+      settings: TTSPluginSettings,
     ): Promise<ArrayBuffer | null> {
       return audios[toKey(text, settings)] || null;
     },
     async saveAudio(
       text: string,
       settings: TTSPluginSettings,
-      audio: ArrayBuffer
+      audio: ArrayBuffer,
     ): Promise<void> {
       audios[toKey(text, settings)] = audio;
     },
@@ -387,17 +390,17 @@ class PewPewQueue {
             this.isPlaying = false;
           } else {
             this.activeAudioText.goToPosition(
-              this.activeAudioText.position + 1
+              this.activeAudioText.position + 1,
             );
           }
         }
-      }
+      },
     );
     const trackSwitcher = mobx.reaction(
       () => this.activeAudioText.position,
       () => {
         this.activate();
-      }
+      },
     );
     this.cancelMonitor = () => {
       positionChanger();
@@ -432,7 +435,7 @@ class PewPewQueue {
       .map((x, i) => {
         const position = this.activeAudioText.position + i;
         const existing = this.upcoming.find(
-          (x) => x.position === position && x.voice === this.settings.ttsVoice
+          (x) => x.position === position && x.voice === this.settings.ttsVoice,
         );
         if (existing && !existing.failed) {
           return existing;

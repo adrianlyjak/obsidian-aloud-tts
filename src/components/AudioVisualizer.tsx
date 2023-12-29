@@ -6,7 +6,6 @@ export const AudioVisualizer: React.FC<{
 }> = ({ audio, context }) => {
   const ref = React.useRef<HTMLElement | null>(null);
   React.useEffect(() => {
-
     if (ref.current) {
       // maybe the source should be public, and this should be within a component?
       const analyzer = context.createAnalyser();
@@ -19,22 +18,19 @@ export const AudioVisualizer: React.FC<{
       const destroyer = attachVisualizationToDom(ref.current, analyzer);
       // setAudioMotion(newAudioMotion);
       return () => {
-        destroyer.destroy
+        destroyer.destroy;
         audio.disconnect(analyzer);
       };
     }
   }, [!!ref.current, audio]);
   return (
-    <div
-      className="tts-audio-visualizer"
-      ref={(x) => (ref.current = x)}
-    ></div>
+    <div className="tts-audio-visualizer" ref={(x) => (ref.current = x)}></div>
   );
 };
 
 function attachVisualizationToDom(
   container: HTMLElement,
-  analyzer : AnalyserNode
+  analyzer: AnalyserNode,
 ): {
   destroy: () => void;
 } {
@@ -97,7 +93,7 @@ function attachVisualizationToDom(
   }
 
   resumeAndDraw();
-  
+
   return {
     destroy() {
       stopDrawing();

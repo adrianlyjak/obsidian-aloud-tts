@@ -1,6 +1,5 @@
 import { setIcon, setTooltip } from "obsidian";
 import * as React from "react";
-import { CSSProperties } from "react";
 
 /**
  * obsidian uses https://lucide.dev/
@@ -51,17 +50,15 @@ export function IconSpan({
   }, [ref.current, icon]);
   return (
     <span
-      className={["tts-toolbar-icon"].concat(className ? [className] : []).join(" ")}
+      className={["tts-toolbar-icon"]
+        .concat(className ? [className] : [])
+        .join(" ")}
       ref={(x) => (ref.current = x)}
     ></span>
   );
 }
 
-export function Spinner({
-  className,
-}: {
-  className?: string;
-}) {
+export function Spinner({ className }: { className?: string }) {
   const ref = React.useRef<HTMLElement | null>(null);
   React.useEffect(() => {
     if (ref.current) {
@@ -69,10 +66,5 @@ export function Spinner({
       ref.current.children[0].classList.add("tts-spin");
     }
   }, [ref.current, "loader"]);
-  return (
-    <span
-      className={className}
-      ref={(x) => (ref.current = x)}
-    ></span>
-  );
+  return <span className={className} ref={(x) => (ref.current = x)}></span>;
 }
