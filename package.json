@@ -9,7 +9,6 @@
     "version": "./version-bump.sh",
     "lint": "eslint src",
     "test": "vitest",
-    "test": "vitest",
     "format:check": "prettier --check src",
     "format:write": "prettier --write src"
   },
