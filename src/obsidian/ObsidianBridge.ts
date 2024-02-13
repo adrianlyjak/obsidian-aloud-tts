@@ -70,7 +70,7 @@ export class ObsidianGlue implements ObsidianBridge {
     if (maybeCursor) {
       triggerSelection(this.audio, activeEditor!.file, activeEditor!.editor!);
     } else {
-      new Notice("No Text Selected To Speak");
+      new Notice("No text selected to speak");
     }
   }
 
@@ -101,7 +101,7 @@ async function playSelectionIfAny(app: App, audio: AudioStore): Promise<void> {
   if (maybeCursor) {
     await triggerSelection(audio, activeEditor!.file, activeEditor!.editor!);
   } else {
-    new Notice("No Text Selected To Speak");
+    new Notice("No text selected to speak");
   }
 }
 
@@ -128,9 +128,9 @@ async function triggerSelection(
           [file?.path, file?.name].filter((x) => x).join("/") || "Untitled",
       });
     } catch (ex) {
-      console.error("problems!", ex);
+      console.error("Couldn't start player!", ex);
     }
   } else {
-    new Notice("No Text Selected To Speak");
+    new Notice("No text selected to speak");
   }
 }

@@ -15,11 +15,11 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
 } as const;
 
 export const MARKETING_NAME = "Aloud";
-export const MARKETING_NAME_LONG = "Aloud: Text to Speech";
+export const MARKETING_NAME_LONG = "Aloud: text to speech";
 
 import { action, observable } from "mobx";
 import { OpenAIAPIError, listModels } from "./openai";
-import { debounce } from "../util/misc";
+import { debounce } from "obsidian";
 
 export interface TTSPluginSettingsStore {
   settings: TTSPluginSettings;
@@ -48,7 +48,7 @@ export async function pluginSettingsStore(
         if (!store.settings.OPENAI_API_KEY) {
           store.setApiKeyValidity(
             false,
-            `Please enter an API key in the ${MARKETING_NAME_LONG} plugin settings`,
+            `Please enter an API key in the "${MARKETING_NAME_LONG}" plugin settings`,
           );
         } else {
           store.setApiKeyValidity(undefined, undefined);
@@ -56,6 +56,7 @@ export async function pluginSettingsStore(
             await listModels(store.settings);
             store.setApiKeyValidity(true, undefined);
           } catch (ex: unknown) {
+            console.error("Could not validate API key", ex);
             let message = "Cannot connect to OpenAI";
             if (ex instanceof OpenAIAPIError) {
               if (ex.errorCode() === "invalid_api_key") {

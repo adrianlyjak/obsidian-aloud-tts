@@ -1,4 +1,4 @@
-import { test, describe, expect } from "vitest";
+import { test, describe, expect, vi } from "vitest";
 import {
   ActiveAudioText,
   AudioCache,
@@ -12,6 +12,10 @@ import { AudioSink, TrackStatus } from "./AudioSink";
 import * as mobx from "mobx";
 
 const ttsSettings: TTSPluginSettings = DEFAULT_SETTINGS;
+
+vi.mock("obsidian", () => ({
+  requestUrl: vi.fn(),
+}));
 
 describe("AudioStore", () => {
   test("should add and play", async () => {

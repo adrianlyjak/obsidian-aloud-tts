@@ -1,10 +1,12 @@
+import { type RequestUrlResponse, requestUrl } from "obsidian";
 import { TTSPluginSettings } from "./TTSPluginSettings";
 
 export async function openAITextToSpeech(
   settings: TTSPluginSettings,
   text: string,
 ): Promise<ArrayBuffer> {
-  const headers = await fetch(settings.OPENAI_API_URL + "/v1/audio/speech", {
+  const headers = await requestUrl({
+    url: settings.OPENAI_API_URL + "/v1/audio/speech",
     headers: {
       Authorization: "Bearer " + settings.OPENAI_API_KEY,
       "Content-Type": "application/json",
@@ -17,32 +19,27 @@ export async function openAITextToSpeech(
     }),
   });
   await validate200(headers);
-  const bf = await headers.arrayBuffer();
+  const bf = headers.arrayBuffer;
   return bf;
-}
-
-export async function fnetch(): Promise<ArrayBuffer> {
-  const fileHeaders = await fetch("./test.mp3");
-  const buff = await fileHeaders.arrayBuffer();
-  return buff;
 }
 
 export async function listModels(
   settings: TTSPluginSettings,
 ): Promise<string[]> {
-  const headers = await fetch(settings.OPENAI_API_URL + "/v1/models", {
+  const headers = await requestUrl({
+    url: settings.OPENAI_API_URL + "/v1/models",
+    method: "GET",
     headers: {
       Authorization: "Bearer " + settings.OPENAI_API_KEY,
       "Content-Type": "application/json",
     },
-    method: "GET",
   });
   await validate200(headers);
-  const models = await headers.json();
+  const models = await headers.json;
   return models.data as string[];
 }
 
-async function validate200(response: Response) {
+async function validate200(response: RequestUrlResponse) {
   if (response.status !== 200) {
     let body;
     try {

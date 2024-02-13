@@ -1,13 +1,3 @@
-export function arrayBufferToBase64(buffer: ArrayBuffer) {
-  let binary = "";
-  const bytes = new Uint8Array(buffer);
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return window.btoa(binary);
-}
-
 export function checksum(text: string): number {
   let hash = 0;
   for (let i = 0; i < text.length; i++) {
@@ -114,19 +104,4 @@ export function createWindows<T>(
   }
 
   return windows;
-}
-
-export function debounce<T extends unknown[]>(
-  callback: (...args: T) => void,
-  waitMillis: number,
-): (...args: T) => void {
-  let timeoutId: ReturnType<typeof setTimeout> | undefined;
-  return (...args: T) => {
-    if (timeoutId !== undefined) {
-      clearTimeout(timeoutId);
-    }
-    timeoutId = setTimeout(() => {
-      callback(...args);
-    }, waitMillis);
-  };
 }

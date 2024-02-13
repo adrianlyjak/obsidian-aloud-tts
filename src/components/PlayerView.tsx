@@ -31,7 +31,7 @@ export const PlayerView = observer(
         <div className="tts-toolbar-player-button-group">
           <IconButton
             icon="play"
-            tooltip="Play Selection"
+            tooltip="Play selection"
             onClick={() => {
               obsidian.playSelection();
             }}
@@ -83,7 +83,7 @@ export const PlayerView = observer(
         </div>
         <div className="tts-toolbar-player-button-group">
           <IconButton
-            tooltip="Cancel Playback"
+            tooltip="Cancel playback"
             icon="x"
             onClick={() => player.closePlayer()}
           />

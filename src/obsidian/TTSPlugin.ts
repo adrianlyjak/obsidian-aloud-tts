@@ -35,7 +35,7 @@ export default class TTSPlugin extends Plugin {
       this.app.workspace.on("editor-menu", (menu, editor, view) => {
         menu.addItem((item) => {
           item
-            .setTitle(`${MARKETING_NAME}: Play Selection`)
+            .setTitle(`${MARKETING_NAME}: play selection`)
             .setIcon("play")
             .onClick(async () => {
               await this.bridge.triggerSelection(view.file, editor);
@@ -46,8 +46,8 @@ export default class TTSPlugin extends Plugin {
 
     // Also add an editor command that can perform the same play selection
     this.addCommand({
-      id: "tts-play-selection",
-      name: "Play Selection",
+      id: "play-selection",
+      name: "Play selection",
       editorCheckCallback: (checking, editor: Editor, view: MarkdownView) => {
         if (checking) {
           return editor.getSelection().length > 0 || !!editor.getCursor("head");
@@ -63,7 +63,7 @@ export default class TTSPlugin extends Plugin {
 
     // This adds a simple command that can be triggered anywhere to resume last track
     this.addCommand({
-      id: "tts-resume",
+      id: "resume",
       name: "Resume",
       checkCallback: (checking) => {
         const active = this.player.activeText;
@@ -76,7 +76,7 @@ export default class TTSPlugin extends Plugin {
 
     // This adds an editor command that can perform some operation on the current editor instance
     this.addCommand({
-      id: "tts-pause",
+      id: "pause",
       name: "Pause",
       editorCallback: (editor: Editor, view: MarkdownView) => {
         this.player.activeText?.pause();
