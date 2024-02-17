@@ -4,6 +4,7 @@ export interface TTSPluginSettings {
   model: string;
   ttsVoice: string;
   chunkType: "sentence" | "paragraph";
+  playbackSpeed: number;
 }
 
 export const DEFAULT_SETTINGS: TTSPluginSettings = {
@@ -12,7 +13,17 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   model: "tts-1", // tts-1-hd
   ttsVoice: "shimmer", // alloy, echo, fable, onyx, nova, and shimmer
   chunkType: "sentence",
+  playbackSpeed: 1.0,
 } as const;
+
+/** interface is easier if its just some canned speeds */
+export const PLAYBACK_SPEEDS = [0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
+
+export function nextSpeed(current: number): number {
+  return PLAYBACK_SPEEDS[
+    (PLAYBACK_SPEEDS.indexOf(current) + 1) % PLAYBACK_SPEEDS.length
+  ];
+}
 
 export const MARKETING_NAME = "Aloud";
 export const MARKETING_NAME_LONG = "Aloud: text to speech";
@@ -27,6 +38,7 @@ export interface TTSPluginSettingsStore {
   apiKeyError?: string;
   checkApiKey: () => void;
   updateSettings: (settings: Partial<TTSPluginSettings>) => Promise<void>;
+  changeSpeed(): void;
 }
 
 export async function pluginSettingsStore(
@@ -35,8 +47,9 @@ export async function pluginSettingsStore(
 ): Promise<TTSPluginSettingsStore> {
   const store = observable(
     {
-      settings: ((await loadData()) as undefined | TTSPluginSettings) || {
+      settings: {
         ...DEFAULT_SETTINGS,
+        ...((await loadData()) as undefined | TTSPluginSettings),
       },
       apiKeyValid: undefined,
       apiKeyError: undefined,
@@ -73,13 +86,20 @@ export async function pluginSettingsStore(
           }
         }
       }, 500),
-      async updateSettings(update: Partial<TTSPluginSettings>) {
-        const before = this.settings.OPENAI_API_KEY;
-        Object.assign(this.settings, update);
-        if (before !== this.settings.OPENAI_API_KEY) {
-          await this.checkApiKey();
+      updateSettings: async (
+        update: Partial<TTSPluginSettings>,
+      ): Promise<void> => {
+        const before = store.settings.OPENAI_API_KEY;
+        Object.assign(store.settings, update);
+        if (before !== store.settings.OPENAI_API_KEY) {
+          await store.checkApiKey();
         }
-        await saveData(this.settings);
+        await saveData(store.settings);
+      },
+      changeSpeed: (): void => {
+        store.updateSettings({
+          playbackSpeed: nextSpeed(store.settings.playbackSpeed),
+        });
       },
     },
     {

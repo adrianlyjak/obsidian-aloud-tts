@@ -72,6 +72,13 @@ export const PlayerView = observer(
               )
             }
           />
+          <div
+            className={"clickable-icon tts-toolbar-button"}
+            style={{ fontSize: "var(--font-ui-smaller)" }}
+            onClick={settings.changeSpeed}
+          >
+            {settings.settings.playbackSpeed}x
+          </div>
         </div>
         <div className="tts-audio-status-container">
           <AudioStatusInfoContents

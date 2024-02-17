@@ -148,7 +148,7 @@ class ActiveAudioTextImpl implements ActiveAudioText {
   private storage: AudioCache;
   private textToSpeech: ConvertTextToSpeech;
   private sink: AudioSink;
-  private queue: PewPewQueue;
+  queue: PewPewQueue;
 
   position = 0;
   get currentTrack(): AudioTextTrack {
@@ -176,26 +176,48 @@ class ActiveAudioTextImpl implements ActiveAudioText {
     this.storage = storage;
     this.textToSpeech = textToSpeech;
     this.sink = sink;
+    this.initializeQueue();
 
     mobx.makeObservable(this, {
       isPlaying: computed,
       isLoading: computed,
       position: observable,
       currentTrack: computed,
+      queue: observable,
       error: observable,
       play: action,
       pause: action,
       destroy: action,
       goToPosition: action,
+      initializeQueue: action,
     });
 
+    mobx.reaction(
+      () => ({
+        speed: this.settings.playbackSpeed,
+        voice: this.settings.ttsVoice,
+      }),
+      this.initializeQueue,
+      {
+        fireImmediately: false,
+        equals: mobx.comparer.structural,
+      },
+    );
+  }
+  initializeQueue = () => {
+    const wasPlaying = this.queue?.isPlaying ?? false;
+    this.queue?.destroy();
+    this.queue?.pause();
     this.queue = new PewPewQueue({
       activeAudioText: this,
-      sink,
+      sink: this.sink,
       getTrack: (txt) => this.tryLoadTrack(txt),
-      settings,
+      settings: this.settings,
     });
-  }
+    if (wasPlaying) {
+      this.queue.play();
+    }
+  };
 
   play() {
     this.queue.play();
@@ -221,21 +243,24 @@ class ActiveAudioTextImpl implements ActiveAudioText {
 
   /** non-stateful function (barring layers of caching and API calls) */
   private async loadTrack(track: AudioTextTrack): Promise<ArrayBuffer> {
+    // copy the settings to make sure audio isn't stored under under the wrong key
+    // if the settings are changed while request is in flight
+    const settingsCopy = mobx.toJS(this.settings);
     const stored: ArrayBuffer | null = await this.storage.getAudio(
       track.text,
-      this.settings,
+      settingsCopy,
     );
     if (stored) {
       return stored;
     } else {
       let buff: ArrayBuffer;
       try {
-        buff = await this.textToSpeech(this.settings, track.text);
+        buff = await this.textToSpeech(settingsCopy, track.text);
       } catch (ex) {
         this.onError(ex.message);
         throw ex;
       }
-      await this.storage.saveAudio(track.text, this.settings, buff);
+      await this.storage.saveAudio(track.text, settingsCopy, buff);
       return buff;
     }
   }
@@ -311,7 +336,12 @@ export function memoryStorage(): AudioCache {
   const audios: Record<string, ArrayBuffer> = {};
 
   function toKey(text: string, settings: TTSPluginSettings): string {
-    return [settings.model, settings.ttsVoice, text].join("/");
+    return [
+      settings.model,
+      settings.ttsVoice,
+      settings.playbackSpeed,
+      text,
+    ].join("/");
   }
   return {
     async getAudio(
@@ -337,6 +367,7 @@ interface PewPewTrack {
   text: string;
   position: number;
   voice: string;
+  speed: number;
   audio?: ArrayBuffer;
   failed?: boolean;
 }
@@ -351,6 +382,7 @@ class PewPewQueue {
   private getTrack: (text: AudioTextTrack) => Promise<ArrayBuffer>;
   active?: PewPewTrack = undefined;
   upcoming: PewPewTrack[] = [];
+  private isDestroyed = false;
 
   constructor({
     activeAudioText,
@@ -420,8 +452,9 @@ class PewPewQueue {
       this.isPlaying = false;
     } else {
       await mobx.when(() => !!this.active?.audio);
+      if (this.isDestroyed) return;
       await this.sink.setMedia(this.active!.audio!);
-      if (this.isPlaying) {
+      if (this.isPlaying && !this.isDestroyed) {
         this.sink.play();
       }
     }
@@ -435,16 +468,20 @@ class PewPewQueue {
       .map((x, i) => {
         const position = this.activeAudioText.position + i;
         const existing = this.upcoming.find(
-          (x) => x.position === position && x.voice === this.settings.ttsVoice,
+          (x) =>
+            x.position === position &&
+            x.voice === this.settings.ttsVoice &&
+            x.speed === this.settings.playbackSpeed,
         );
         if (existing && !existing.failed) {
           return existing;
         } else {
-          const track = mobx.observable({
+          const track: PewPewTrack = mobx.observable({
             text: x.text,
             position,
             voice: this.settings.ttsVoice,
-          }) as PewPewTrack;
+            speed: this.settings.playbackSpeed,
+          });
           this.getTrack(x)
             .then((audio) => {
               this.setAudio(track, audio);
@@ -460,6 +497,7 @@ class PewPewQueue {
   }
 
   destroy() {
+    this.isDestroyed = true;
     this.cancelMonitor();
   }
 
