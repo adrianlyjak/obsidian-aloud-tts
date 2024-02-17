@@ -8,7 +8,17 @@ export function obsidianStorage(app: App): AudioCache {
   const cachedir = ".tts";
 
   function toKey(text: string, settings: TTSPluginSettings): string {
-    return "" + hashString([settings.model, settings.ttsVoice, text].join("/"));
+    return (
+      "" +
+      hashString(
+        [
+          settings.model,
+          settings.ttsVoice,
+          `${settings.playbackSpeed}`,
+          text,
+        ].join("/"),
+      )
+    );
   }
 
   return {

@@ -7,9 +7,12 @@ const pkgVersion = pkg.version.split(/[\\.\\-]/g);
 let targetVersion;
 if (bumpStyle === "major") {
   pkgVersion[0] = `${Number.parseInt(pkgVersion[0]) + 1}`;
+  pkgVersion[1] = "0";
+  pkgVersion[2] = "0";
   targetVersion = pkgVersion.slice(0, 3).join(".");
 } else if (bumpStyle === "minor") {
   pkgVersion[1] = `${Number.parseInt(pkgVersion[1]) + 1}`;
+  pkgVersion[2] = "0";
   targetVersion = pkgVersion.slice(0, 3).join(".");
 } else if (bumpStyle === "patch") {
   pkgVersion[2] = `${Number.parseInt(pkgVersion[2]) + 1}`;

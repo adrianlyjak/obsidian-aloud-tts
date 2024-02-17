@@ -16,6 +16,7 @@ export async function openAITextToSpeech(
       model: settings.model,
       voice: settings.ttsVoice,
       input: text,
+      speed: settings.playbackSpeed,
     }),
   });
   await validate200(headers);

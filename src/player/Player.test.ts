@@ -11,8 +11,6 @@ import { DEFAULT_SETTINGS, TTSPluginSettings } from "./TTSPluginSettings";
 import { AudioSink, TrackStatus } from "./AudioSink";
 import * as mobx from "mobx";
 
-const ttsSettings: TTSPluginSettings = DEFAULT_SETTINGS;
-
 vi.mock("obsidian", () => ({
   requestUrl: vi.fn(),
 }));
@@ -110,6 +108,34 @@ describe("Active Track", async () => {
       expect(seen[3]).toEqual("Penultimately there was four. ");
     });
   });
+
+  test("should switch out the queue when the settings change", async () => {
+    const seen: { text: string; settings: TTSPluginSettings }[] = [];
+    const tts = (settings: TTSPluginSettings, text: string) => {
+      seen.push({ text, settings });
+      return fakeTTS();
+    };
+    const settings = mobx.observable({ ...DEFAULT_SETTINGS });
+    await createActiveTrack(
+      {
+        text: "First there was one. Then there was two. Eventually there was three. Penultimately there was four. Finally there was five.",
+        filename: "file.md",
+      },
+      {
+        textToSpeech: tts,
+        ttsSettings: settings,
+      },
+    );
+    mobx.runInAction(() => {
+      settings.playbackSpeed = 1.75;
+    });
+    await waitForPassing(async () => {
+      expect(seen).toHaveLength(6);
+    });
+    expect(seen.map((x) => x.settings.playbackSpeed)).toEqual([
+      1, 1, 1, 1.75, 1.75, 1.75,
+    ]);
+  });
 });
 
 const fakeTTS = async () => {
@@ -175,11 +201,13 @@ interface MaybeStoreDependencies {
   ) => Promise<ArrayBuffer>;
   storage?: AudioCache;
   audioSink?: AudioSink;
+  ttsSettings?: TTSPluginSettings;
 }
 function createStore({
   storage = memoryStorage(),
   audioSink = new FakeAudioSink(),
   textToSpeech = fakeTTS,
+  ttsSettings = DEFAULT_SETTINGS,
 }: MaybeStoreDependencies = {}): AudioStore {
   return loadAudioStore({
     settings: ttsSettings,
