@@ -37,8 +37,36 @@ const TTSSettingsTabComponent: React.FC<{
   return (
     <>
       <APIKeyComponent store={store} />
+      <APIBaseURLComponent store={store} />
       <VoiceComponent store={store} player={player} />
     </>
+  );
+});
+
+const APIBaseURLComponent: React.FC<{
+  store: TTSPluginSettingsStore;
+}> = observer(({ store }) => {
+  const onChange: React.ChangeEventHandler<HTMLInputElement> =
+    React.useCallback((v: React.ChangeEvent<HTMLInputElement>) => {
+      store.updateSettings({ OPENAI_API_URL: v.target.value });
+    }, []);
+  return (
+    <div className="setting-item">
+      <div className="setting-item-info">
+        <div className="setting-item-name">OpenAI API Base URL</div>
+        <div className="setting-item-description">
+          The base URL for the OpenAI API
+        </div>
+      </div>
+      <div className="setting-item-control">
+        <input
+          type="text"
+          placeholder="API Base URL"
+          value={store.settings.OPENAI_API_URL}
+          onChange={onChange}
+        />
+      </div>
+    </div>
   );
 });
 
