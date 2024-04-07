@@ -12,7 +12,7 @@ import {
 } from "@codemirror/view";
 import * as mobx from "mobx";
 import { AudioSink } from "../player/AudioSink";
-import { AudioStore } from "../player/Player";
+import { AudioStore, AudioTextTrack } from "../player/Player";
 
 import * as React from "react";
 import { createRoot } from "react-dom/client";
@@ -55,8 +55,8 @@ const setViewState = StateEffect.define<TTSCodeMirrorState>();
 interface TTSCodeMirrorState {
   playerState?: {
     isPlaying: boolean;
-    playingTrack?: string;
-    tracks?: string[];
+    playingTrack?: AudioTextTrack;
+    tracks?: AudioTextTrack[];
   };
   decoration?: DecorationSet;
 }
@@ -68,8 +68,8 @@ function playerToCodeMirrorState(player: AudioStore): TTSCodeMirrorState {
     return {
       playerState: {
         isPlaying: player.activeText.isPlaying,
-        playingTrack: currentTrack.text,
-        tracks: player.activeText.audio.tracks.map((x) => x.text),
+        playingTrack: currentTrack,
+        tracks: player.activeText.audio.tracks,
       },
     };
   } else {
@@ -96,15 +96,15 @@ const field = StateField.define<TTSCodeMirrorState>({
     let textPosition: { from: number; to: number } | undefined;
     if (currentState.playerState?.playingTrack) {
       const doc = tr.state.doc.toString();
-      const index = doc.indexOf(currentState.playerState.playingTrack);
+      const index = doc.indexOf(currentState.playerState.playingTrack?.rawText);
       if (index > -1) {
         currentTextPosition = {
           from: index,
-          to: index + currentState.playerState.playingTrack.length,
+          to: index + currentState.playerState.playingTrack!.rawText.length,
         };
       }
 
-      const fullText = (currentState.playerState?.tracks || []).join("");
+      const fullText = (currentState.playerState?.tracks || []).map(x => x.rawText).join("");
       const fullIndex = doc.indexOf(fullText);
 
       if (fullIndex > -1) {

@@ -4,6 +4,7 @@ import { TTSPluginSettings } from "./TTSPluginSettings";
 import { randomId, splitParagraphs, splitSentences } from "../util/misc";
 import { openAITextToSpeech } from "./openai";
 import { AudioSink, WebAudioSink } from "./AudioSink";
+import cleanMarkdown from "src/util/cleanMarkdown";
 
 /** High level track changer interface */
 export interface AudioStore {
@@ -39,8 +40,11 @@ export interface AudioText {
   tracks: AudioTextTrack[];
 }
 
-/** An atomic segment of an audio that may or may not yet have been converted to audio and saved to disk  */
+/** A chunk of the text to be played */
 export interface AudioTextTrack {
+  /** Text as it appears in the source */
+  rawText: string;
+  /** Text that will be spoken */
   text: string;
 }
 
@@ -255,6 +259,7 @@ class ActiveAudioTextImpl implements ActiveAudioText {
     } else {
       let buff: ArrayBuffer;
       try {
+        // TODO - handle weird "just whitespace," or otherwise stripped of all content text
         buff = await this.textToSpeech(settingsCopy, track.text);
       } catch (ex) {
         this.onError(ex.message);
@@ -285,9 +290,6 @@ class ActiveAudioTextImpl implements ActiveAudioText {
   }
 }
 
-export function joinTrackText(track: AudioText): string {
-  return track.tracks.map((s) => s.text).join("");
-}
 
 export function buildTrack(
   opts: AudioTextOptions,
@@ -306,11 +308,12 @@ export function buildTrack(
       splits[0].slice(0, 20) +
       (splits[0].length > 20 ? "..." : ""),
     created: new Date().valueOf(),
-    tracks: splits.map((s) => ({
-      text: s,
-      isLoadable: false,
-      audio: undefined,
-    })),
+    tracks: splits.map((s) => {
+      return {
+        rawText: s,
+        text: cleanMarkdown(s),
+      }
+    }),
   });
 }
 
@@ -364,7 +367,6 @@ export function memoryStorage(): AudioCache {
 }
 
 interface PewPewTrack {
-  text: string;
   position: number;
   voice: string;
   speed: number;
@@ -477,7 +479,6 @@ class PewPewQueue {
           return existing;
         } else {
           const track: PewPewTrack = mobx.observable({
-            text: x.text,
             position,
             voice: this.settings.ttsVoice,
             speed: this.settings.playbackSpeed,
