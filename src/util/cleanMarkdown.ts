@@ -38,7 +38,7 @@ export default function cleanMarkdown(md: string) {
     //   2. Or _ is at the start/end of the string.
     .replace(/(^|\W)([_]+)(\S)(.*?\S)??\2($|\W)/g, "$1$3$4$5")
     // Remove code blocks
-    .replace(/(`{3,})(.*?)\1/gm, "$2")
+    .replace(/^```\w*$\n?/gm, "")
     // Remove inline code
     .replace(/`(.+?)`/g, "$1")
     // Replace strike through
