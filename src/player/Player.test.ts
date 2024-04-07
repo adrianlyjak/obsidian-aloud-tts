@@ -102,7 +102,7 @@ describe("Active Track", async () => {
       "Then there was two. ",
       "Eventually there was three. ",
     ]);
-    active.goToPosition(1);
+    active.goToNext();
     await waitForPassing(async () => {
       expect(seen).toHaveLength(4);
       expect(seen[3]).toEqual("Penultimately there was four. ");

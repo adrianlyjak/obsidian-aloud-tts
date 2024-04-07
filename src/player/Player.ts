@@ -4,6 +4,7 @@ import { TTSPluginSettings } from "./TTSPluginSettings";
 import { randomId, splitParagraphs, splitSentences } from "../util/misc";
 import { openAITextToSpeech } from "./openai";
 import { AudioSink, WebAudioSink } from "./AudioSink";
+import cleanMarkdown from "src/util/cleanMarkdown";
 
 /** High level track changer interface */
 export interface AudioStore {
@@ -39,8 +40,11 @@ export interface AudioText {
   tracks: AudioTextTrack[];
 }
 
-/** An atomic segment of an audio that may or may not yet have been converted to audio and saved to disk  */
+/** A chunk of the text to be played */
 export interface AudioTextTrack {
+  /** Text as it appears in the source */
+  rawText: string;
+  /** Text that will be spoken */
   text: string;
 }
 
@@ -49,14 +53,15 @@ export interface ActiveAudioText {
   audio: AudioText;
   readonly isPlaying: boolean;
   readonly isLoading: boolean;
-  position: number; // TODO - make optional
+  position: number | -1; // -1 represents complete
   // should be computed.
-  currentTrack: AudioTextTrack;
+  currentTrack: AudioTextTrack | null;
   //   position && audio.tracks[position]
   play(): void;
   pause(): void;
   destroy(): void;
-  goToPosition(position: number): void;
+  goToNext(): void;
+  goToPrevious(): void;
 }
 
 export function loadAudioStore({
@@ -150,8 +155,12 @@ class ActiveAudioTextImpl implements ActiveAudioText {
   private sink: AudioSink;
   queue: PewPewQueue;
 
+  // goes to -1 once completed
   position = 0;
-  get currentTrack(): AudioTextTrack {
+  get currentTrack(): AudioTextTrack | null {
+    if (this.position < 0) {
+      return null;
+    }
     return this.audio.tracks[this.position];
   }
   error: string | null = null;
@@ -161,7 +170,7 @@ class ActiveAudioTextImpl implements ActiveAudioText {
   }
 
   get isLoading(): boolean {
-    return !this.queue.active?.audio;
+    return this.queue.active ? !this.queue.active.audio : false;
   }
 
   constructor(
@@ -188,7 +197,8 @@ class ActiveAudioTextImpl implements ActiveAudioText {
       play: action,
       pause: action,
       destroy: action,
-      goToPosition: action,
+      goToNext: action,
+      goToPrevious: action,
       initializeQueue: action,
     });
 
@@ -230,11 +240,25 @@ class ActiveAudioTextImpl implements ActiveAudioText {
     this.sink?.remove();
     this.queue?.destroy();
   }
-  goToPosition(position: number): void {
-    this.position = Math.min(
-      Math.max(position, 0),
-      this.audio.tracks.length - 1,
-    ); // note: could maybe allow to overflow by one to represent "finished"
+  goToNext(): void {
+    let next = this.position + 1;
+    if (next >= this.audio.tracks.length) {
+      next = -1;
+    }
+    this.position = next;
+  }
+
+  goToPrevious(): void {
+    let next
+    if (this.position == -1) {
+      next = this.audio.tracks.length - 1;
+    } else {
+      next = this.position - 1;
+      if (next < 0) {
+        next = 0;
+      }  
+    }
+    this.position = next;
   }
 
   private onError(error: string): void {
@@ -285,9 +309,6 @@ class ActiveAudioTextImpl implements ActiveAudioText {
   }
 }
 
-export function joinTrackText(track: AudioText): string {
-  return track.tracks.map((s) => s.text).join("");
-}
 
 export function buildTrack(
   opts: AudioTextOptions,
@@ -295,7 +316,7 @@ export function buildTrack(
 ): AudioText {
   const splits =
     splitMode === "sentence"
-      ? splitSentences(opts.text)
+      ? splitSentences(opts.text, { minLength: 20 })
       : splitParagraphs(opts.text);
   return observable({
     id: randomId(),
@@ -306,11 +327,12 @@ export function buildTrack(
       splits[0].slice(0, 20) +
       (splits[0].length > 20 ? "..." : ""),
     created: new Date().valueOf(),
-    tracks: splits.map((s) => ({
-      text: s,
-      isLoadable: false,
-      audio: undefined,
-    })),
+    tracks: splits.map((s) => {
+      return {
+        rawText: s,
+        text: cleanMarkdown(s),
+      }
+    }),
   });
 }
 
@@ -364,7 +386,6 @@ export function memoryStorage(): AudioCache {
 }
 
 interface PewPewTrack {
-  text: string;
   position: number;
   voice: string;
   speed: number;
@@ -415,15 +436,9 @@ class PewPewQueue {
       () => this.sink.trackStatus,
       () => {
         if (this.sink.trackStatus === "complete") {
-          if (
-            this.activeAudioText.position ===
-            this.activeAudioText.audio.tracks.length - 1
-          ) {
+          this.activeAudioText.goToNext();
+          if (this.activeAudioText.position === -1) {
             this.isPlaying = false;
-          } else {
-            this.activeAudioText.goToPosition(
-              this.activeAudioText.position + 1,
-            );
           }
         }
       },
@@ -477,7 +492,6 @@ class PewPewQueue {
           return existing;
         } else {
           const track: PewPewTrack = mobx.observable({
-            text: x.text,
             position,
             voice: this.settings.ttsVoice,
             speed: this.settings.playbackSpeed,
