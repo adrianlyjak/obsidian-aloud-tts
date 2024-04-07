@@ -7,9 +7,11 @@ export interface TTSPluginSettings {
   playbackSpeed: number;
 }
 
+export const REAL_OPENAI_API_URL = "https://api.openai.com";
+
 export const DEFAULT_SETTINGS: TTSPluginSettings = {
   OPENAI_API_KEY: "",
-  OPENAI_API_URL: "https://api.openai.com",
+  OPENAI_API_URL: REAL_OPENAI_API_URL,
   model: "tts-1", // tts-1-hd
   ttsVoice: "shimmer", // alloy, echo, fable, onyx, nova, and shimmer
   chunkType: "sentence",
@@ -58,40 +60,48 @@ export async function pluginSettingsStore(
         this.apiKeyError = error;
       },
       checkApiKey: debounce(async () => {
-        if (!store.settings.OPENAI_API_KEY) {
-          store.setApiKeyValidity(
-            false,
-            `Please enter an API key in the "${MARKETING_NAME_LONG}" plugin settings`,
-          );
+        if (store.settings.OPENAI_API_URL !== REAL_OPENAI_API_URL) {
+          store.setApiKeyValidity(true);
         } else {
-          store.setApiKeyValidity(undefined, undefined);
-          try {
-            await listModels(store.settings);
-            store.setApiKeyValidity(true, undefined);
-          } catch (ex: unknown) {
-            console.error("Could not validate API key", ex);
-            let message = "Cannot connect to OpenAI";
-            if (ex instanceof OpenAIAPIError) {
-              if (ex.errorCode() === "invalid_api_key") {
-                message =
-                  "Invalid API key! Enter a valid API key in the plugin settings";
-              } else {
-                const msg = ex.jsonMessage();
-                if (msg) {
-                  message = msg;
+          if (!store.settings.OPENAI_API_KEY) {
+            store.setApiKeyValidity(
+              false,
+              `Please enter an API key in the "${MARKETING_NAME_LONG}" plugin settings`,
+            );
+          } else {
+            store.setApiKeyValidity(undefined, undefined);
+            try {
+              await listModels(store.settings);
+              store.setApiKeyValidity(true, undefined);
+            } catch (ex: unknown) {
+              console.error("Could not validate API key", ex);
+              let message = "Cannot connect to OpenAI";
+              if (ex instanceof OpenAIAPIError) {
+                if (ex.errorCode() === "invalid_api_key") {
+                  message =
+                    "Invalid API key! Enter a valid API key in the plugin settings";
+                } else {
+                  const msg = ex.jsonMessage();
+                  if (msg) {
+                    message = msg;
+                  }
                 }
               }
+              store.setApiKeyValidity(false, message);
             }
-            store.setApiKeyValidity(false, message);
           }
         }
       }, 500),
       updateSettings: async (
         update: Partial<TTSPluginSettings>,
       ): Promise<void> => {
-        const before = store.settings.OPENAI_API_KEY;
+        const keyBefore = store.settings.OPENAI_API_KEY;
+        const apiBefore = store.settings.OPENAI_API_URL;
         Object.assign(store.settings, update);
-        if (before !== store.settings.OPENAI_API_KEY) {
+        if (
+          keyBefore !== store.settings.OPENAI_API_KEY ||
+          apiBefore !== store.settings.OPENAI_API_URL
+        ) {
           await store.checkApiKey();
         }
         await saveData(store.settings);

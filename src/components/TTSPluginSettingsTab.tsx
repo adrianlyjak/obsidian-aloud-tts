@@ -3,7 +3,10 @@ import { App, Plugin, PluginSettingTab } from "obsidian";
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { AudioStore } from "src/player/Player";
-import { TTSPluginSettingsStore } from "../player/TTSPluginSettings";
+import {
+  REAL_OPENAI_API_URL,
+  TTSPluginSettingsStore,
+} from "../player/TTSPluginSettings";
 import { IconButton, IconSpan } from "./IconButton";
 
 export class TTSSettingTab extends PluginSettingTab {
@@ -36,9 +39,41 @@ const TTSSettingsTabComponent: React.FC<{
 }> = observer(({ store, player }) => {
   return (
     <>
+      <h1>Open AI TTS</h1>
       <APIKeyComponent store={store} />
       <VoiceComponent store={store} player={player} />
+      <h1>Advanced</h1>
+      <APIBaseURLComponent store={store} />
     </>
+  );
+});
+
+const APIBaseURLComponent: React.FC<{
+  store: TTSPluginSettingsStore;
+}> = observer(({ store }) => {
+  const onChange: React.ChangeEventHandler<HTMLInputElement> =
+    React.useCallback((v: React.ChangeEvent<HTMLInputElement>) => {
+      store.updateSettings({ OPENAI_API_URL: v.target.value });
+    }, []);
+  return (
+    <div className="setting-item">
+      <div className="setting-item-info">
+        <div className="setting-item-name">OpenAI API base URL</div>
+        <div className="setting-item-description">
+          Change to use a custom OpenAI compatible API server. Default is{" "}
+          {REAL_OPENAI_API_URL}. Note: Token validation will be disabled if this
+          is set
+        </div>
+      </div>
+      <div className="setting-item-control">
+        <input
+          type="text"
+          placeholder="API Base URL"
+          value={store.settings.OPENAI_API_URL}
+          onChange={onChange}
+        />
+      </div>
+    </div>
   );
 });
 
