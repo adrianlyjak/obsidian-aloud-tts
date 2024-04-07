@@ -56,7 +56,7 @@ describe("Active Track", async () => {
     const sink = new FakeAudioSink();
     const active = await createActiveTrack(
       {
-        text: "First there was one. Then there was two. Eventually there was three. Finally there was four.",
+        text: "First there was one bottle top. Then there were two bottle tops. Eventually there were three bottle tops. Finally there was four.",
         filename: "file.md",
       },
       { audioSink: sink },
@@ -77,7 +77,7 @@ describe("Active Track", async () => {
     await waitForPassing(async () => expect(sink.isPlaying).toEqual(false));
     await waitForPassing(async () => expect(sink.isPlaying).toEqual(true));
     sink.setComplete();
-    expect(active.position).toEqual(3);
+    expect(active.position).toEqual(-1);
     expect(active.isPlaying).toEqual(false);
   });
 
@@ -89,7 +89,7 @@ describe("Active Track", async () => {
     };
     const active = await createActiveTrack(
       {
-        text: "First there was one. Then there was two. Eventually there was three. Penultimately there was four. Finally there was five.",
+        text: "First there was one star in the sky. Then there were two stars in the sky. Eventually there were three or more stars in the sky. Penultimately there was four. Finally there was five.",
         filename: "file.md",
       },
       {
@@ -98,9 +98,9 @@ describe("Active Track", async () => {
     );
     expect(active.position).toEqual(0);
     expect(seen).toEqual([
-      "First there was one. ",
-      "Then there was two. ",
-      "Eventually there was three. ",
+      "First there was one star in the sky. ",
+      "Then there were two stars in the sky. ",
+      "Eventually there were three or more stars in the sky. ",
     ]);
     active.goToNext();
     await waitForPassing(async () => {
