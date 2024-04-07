@@ -109,8 +109,11 @@ console.log("wow");
       "- 3. [[local link!]]\n\n",
       "![my picture](./picture.png)\n\n",
       "## Formatting\n",
-      "**Bold text makes a strong statement.** ", "_italic text does as well._ ", "~woops, scratch that~\n\n",
-      '```js\nconsole.log("wow");\n', '```\n',
+      "**Bold text makes a strong statement.** ",
+      "_italic text does as well._ ",
+      "~woops, scratch that~\n\n",
+      '```js\nconsole.log("wow");\n',
+      "```\n",
     ] as string[];
     expect(splitSentences(markdown)).toEqual(expected);
   });
