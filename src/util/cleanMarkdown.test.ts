@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import cleanMarkdown from "./cleanMarkdown";
 describe("cleanMarkdown", () => {
-    
   it("should remove horizontal rules", () => {
     const md = "wow\n---\nsuch wow";
     const cleaned = cleanMarkdown(md);

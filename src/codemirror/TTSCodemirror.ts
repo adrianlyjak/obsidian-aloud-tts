@@ -104,7 +104,9 @@ const field = StateField.define<TTSCodeMirrorState>({
         };
       }
 
-      const fullText = (currentState.playerState?.tracks || []).map(x => x.rawText).join("");
+      const fullText = (currentState.playerState?.tracks || [])
+        .map((x) => x.rawText)
+        .join("");
       const fullIndex = doc.indexOf(fullText);
 
       if (fullIndex > -1) {

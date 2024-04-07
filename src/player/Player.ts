@@ -249,14 +249,14 @@ class ActiveAudioTextImpl implements ActiveAudioText {
   }
 
   goToPrevious(): void {
-    let next
+    let next;
     if (this.position == -1) {
       next = this.audio.tracks.length - 1;
     } else {
       next = this.position - 1;
       if (next < 0) {
         next = 0;
-      }  
+      }
     }
     this.position = next;
   }
@@ -309,7 +309,6 @@ class ActiveAudioTextImpl implements ActiveAudioText {
   }
 }
 
-
 export function buildTrack(
   opts: AudioTextOptions,
   splitMode: "sentence" | "paragraph" = "sentence",
@@ -331,7 +330,7 @@ export function buildTrack(
       return {
         rawText: s,
         text: cleanMarkdown(s),
-      }
+      };
     }),
   });
 }

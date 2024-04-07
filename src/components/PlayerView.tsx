@@ -41,9 +41,7 @@ export const PlayerView = observer(
           <IconButton
             icon="skip-back"
             tooltip="Previous"
-            onClick={() =>
-              player.activeText?.goToPrevious()
-            }
+            onClick={() => player.activeText?.goToPrevious()}
           />
 
           {player.activeText?.isPlaying ? (
@@ -64,9 +62,7 @@ export const PlayerView = observer(
           <IconButton
             icon="skip-forward"
             tooltip="Next"
-            onClick={() =>
-              player.activeText?.goToNext()
-            }
+            onClick={() => player.activeText?.goToNext()}
           />
           <div
             className={"clickable-icon tts-toolbar-button"}

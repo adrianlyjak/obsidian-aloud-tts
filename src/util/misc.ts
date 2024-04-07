@@ -42,9 +42,10 @@ function* genParagraphs(text: string): Iterable<string> {
   }
 }
 
-export function splitSentences(text: string, {
-  minLength = 8,
-}: { minLength?: number } = {}): string[] {
+export function splitSentences(
+  text: string,
+  { minLength = 8 }: { minLength?: number } = {},
+): string[] {
   // Split the text into sentences while keeping the separators (periods, exclamation marks, etc.)
   let remaining = text;
   const sentences: string[] = [];
