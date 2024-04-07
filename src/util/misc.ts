@@ -42,19 +42,21 @@ function* genParagraphs(text: string): Iterable<string> {
   }
 }
 
-export function splitSentences(text: string): string[] {
+export function splitSentences(text: string, {
+  minLength = 8,
+}: { minLength?: number } = {}): string[] {
   // Split the text into sentences while keeping the separators (periods, exclamation marks, etc.)
   let remaining = text;
   const sentences: string[] = [];
   while (remaining.length > 0) {
-    // take at least 8 characters, stop early for `\n`
+    // take at least `minLength` characters, stop early for `\n`
     // then look for next punctuation. One of `.`, `!`, `?`, `\n`
     // if one of `.`, `!`, `?`, must not be immediately followed by a letter.
     //   additionally capture all trailing quotes, and similiar "container" characters, such as markdown * and _ (repeating)
     // then take all whitespace including line breaks
-    let buff = remaining.slice(0, 8);
-    remaining = remaining.slice(8);
-    const match = remaining.match(/[.!?\n][\W]/);
+    let buff = remaining.slice(0, minLength);
+    remaining = remaining.slice(minLength);
+    const match = remaining.match(/(\n+\s*|[.!?][^a-zA-Z0-9]*\s+)/);
     if (match) {
       buff += remaining.slice(0, match.index! + 1);
       remaining = remaining.slice(match.index! + 1);

@@ -42,9 +42,7 @@ export const PlayerView = observer(
             icon="skip-back"
             tooltip="Previous"
             onClick={() =>
-              player.activeText?.goToPosition(
-                player.activeText?.position - 1 || 0,
-              )
+              player.activeText?.goToPrevious()
             }
           />
 
@@ -67,9 +65,7 @@ export const PlayerView = observer(
             icon="skip-forward"
             tooltip="Next"
             onClick={() =>
-              player.activeText?.goToPosition(
-                player.activeText?.position + 1 || 0,
-              )
+              player.activeText?.goToNext()
             }
           />
           <div
