@@ -11,7 +11,7 @@ import {
   TTSPluginSettingsStore,
   pluginSettingsStore,
 } from "../player/TTSPluginSettings";
-import { ObsidianBridge, ObsidianGlue } from "./ObsidianBridge";
+import { ObsidianBridge, ObsidianBridgeImpl } from "./ObsidianBridge";
 
 // standard lucide.dev icon, but for some reason not working as a ribbon icon without registering it
 // https://lucide.dev/icons/audio-lines
@@ -109,6 +109,6 @@ export default class TTSPlugin extends Plugin {
       storage: obsidianStorage(this.app),
       audioSink: this.audio,
     });
-    this.bridge = new ObsidianGlue(this.app, this.player);
+    this.bridge = new ObsidianBridgeImpl(this.app, this.player);
   }
 }

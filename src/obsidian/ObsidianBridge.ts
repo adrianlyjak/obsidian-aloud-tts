@@ -8,18 +8,24 @@ import {
   Notice,
   TFile,
 } from "obsidian";
-import { AudioStore } from "src/player/Player";
+import { AudioStore, TextPosition } from "src/player/Player";
 
 export interface ObsidianBridge {
   activeEditor: EditorView | undefined;
   playSelection: () => void;
   playSelectionIfAny: () => void;
+  onTextChanged: (
+    position: TextPosition,
+    type: "add" | "remove",
+    text: string,
+  ) => void;
   triggerSelection: (file: TFile | null, editor: Editor) => void;
   openSettings: () => void;
   destroy: () => void;
 }
 
-export class ObsidianGlue implements ObsidianBridge {
+/** observable class for obsidian related implementation to activate audio */
+export class ObsidianBridgeImpl implements ObsidianBridge {
   active: MarkdownFileInfo | null = null;
   activeEditorView: MarkdownView | null;
   audio: AudioStore;
@@ -79,6 +85,8 @@ export class ObsidianGlue implements ObsidianBridge {
     playSelectionIfAny(this.app, this.audio);
   }
 
+  onTextChanged(position: TextPosition, type: "add" | "remove", text: string) {}
+
   triggerSelection(file: TFile | null, editor: Editor) {
     this.setActiveEditor();
     triggerSelection(this.audio, file, editor);
@@ -110,15 +118,16 @@ async function triggerSelection(
   file: TFile | null,
   editor: Editor,
 ): Promise<void> {
-  let selection = editor.getSelection();
-  const maybeCursor = editor.getCursor("head");
-
-  if (!selection && maybeCursor) {
-    selection = editor.getRange(maybeCursor, {
-      line: maybeCursor.line + 4096,
+  const from = editor.getCursor("from");
+  let to = editor.getCursor("to");
+  if (from.ch === to.ch && from.line === to.line) {
+    to = {
+      line: editor.lastLine(),
       ch: 0,
-    });
+    };
   }
+
+  const selection = editor.getRange(from, to);
 
   if (selection) {
     try {
@@ -126,6 +135,8 @@ async function triggerSelection(
         text: selection,
         filename:
           [file?.path, file?.name].filter((x) => x).join("/") || "Untitled",
+        start: from,
+        end: to,
       });
     } catch (ex) {
       console.error("Couldn't start player!", ex);

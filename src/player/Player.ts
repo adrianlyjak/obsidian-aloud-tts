@@ -29,6 +29,8 @@ export interface AudioStore {
 export interface AudioTextOptions {
   filename: string;
   text: string;
+  start: TextPosition;
+  end: TextPosition;
 }
 
 /** Container for lazily loaded TTS that's text has been chunked for faster streaming of output and seeking of position by chunk */
@@ -46,6 +48,16 @@ export interface AudioTextTrack {
   rawText: string;
   /** Text that will be spoken */
   text: string;
+
+  start: TextPosition;
+  // exlusive?
+  end: TextPosition;
+}
+
+export interface TextPosition {
+  // 0 indexed?
+  line: number;
+  ch: number;
 }
 
 /** Player interface for loading and controlling a track */
@@ -58,6 +70,11 @@ export interface ActiveAudioText {
   currentTrack: AudioTextTrack | null;
   //   position && audio.tracks[position]
   play(): void;
+  onTextChanged(
+    position: TextPosition,
+    type: "add" | "remove",
+    text: string,
+  ): void;
   pause(): void;
   destroy(): void;
   goToNext(): void;
@@ -200,6 +217,7 @@ class ActiveAudioTextImpl implements ActiveAudioText {
       goToNext: action,
       goToPrevious: action,
       initializeQueue: action,
+      onTextChanged: action,
     });
 
     mobx.reaction(
@@ -214,6 +232,37 @@ class ActiveAudioTextImpl implements ActiveAudioText {
       },
     );
   }
+
+  onTextChanged(
+    position: TextPosition,
+    type: "add" | "remove",
+    text: string,
+  ): void {
+    const idx = this.audio.tracks.findIndex((x) => {
+      const isWithinLine =
+        x.start.line >= position.line && x.end.line <= position.line;
+      if (!isWithinLine) {
+        return false;
+      }
+      if (position.line === x.start.line && x.start.line == x.end.line) {
+        return position.ch >= x.start.ch && position.ch <= x.end.ch;
+      } else if (position.line === x.start.line) {
+        return position.ch >= x.start.ch;
+      } else if (position.line === x.end.line) {
+        return position.ch <= x.end.ch;
+      } else {
+        return true;
+      }
+    });
+    if (idx === -1) {
+      return;
+    } else {
+      const affected = this.audio.tracks.slice(idx);
+      const main = affected[0];
+      const text = main.rawText;
+    }
+  }
+
   initializeQueue = () => {
     const wasPlaying = this.queue?.isPlaying ?? false;
     this.queue?.destroy();
@@ -317,6 +366,25 @@ export function buildTrack(
     splitMode === "sentence"
       ? splitSentences(opts.text, { minLength: 20 })
       : splitParagraphs(opts.text);
+
+  let start = opts.start;
+  const tracks = [];
+  for (const s of splits) {
+    const lines = s.split("\n");
+    const endLine = start.line + lines.length - 1;
+    const endChar =
+      endLine === start.line ? start.ch + s.length : lines.at(-1)!.length;
+    const end = { line: endLine, ch: endChar };
+    const track = {
+      rawText: s,
+      text: cleanMarkdown(s),
+      // TODO - fixme
+      start,
+      end,
+    };
+    start = end;
+    tracks.push(track);
+  }
   return observable({
     id: randomId(),
     filename: opts.filename,
@@ -326,12 +394,7 @@ export function buildTrack(
       splits[0].slice(0, 20) +
       (splits[0].length > 20 ? "..." : ""),
     created: new Date().valueOf(),
-    tracks: splits.map((s) => {
-      return {
-        rawText: s,
-        text: cleanMarkdown(s),
-      };
-    }),
+    tracks: tracks,
   });
 }
 
@@ -389,6 +452,7 @@ interface PewPewTrack {
   voice: string;
   speed: number;
   audio?: ArrayBuffer;
+  noContent: boolean;
   failed?: boolean;
 }
 
@@ -490,19 +554,23 @@ class PewPewQueue {
         if (existing && !existing.failed) {
           return existing;
         } else {
+          const noContent = !x.text.trim();
           const track: PewPewTrack = mobx.observable({
             position,
             voice: this.settings.ttsVoice,
             speed: this.settings.playbackSpeed,
+            noContent,
           });
-          this.getTrack(x)
-            .then((audio) => {
-              this.setAudio(track, audio);
-            })
-            .catch((ex) => {
-              console.error("failed to get audio", ex);
-              mobx.runInAction(() => (track.failed = true));
-            });
+          if (!noContent) {
+            this.getTrack(x)
+              .then((audio) => {
+                this.setAudio(track, audio);
+              })
+              .catch((ex) => {
+                console.error("failed to get audio", ex);
+                mobx.runInAction(() => (track.failed = true));
+              });
+          }
           return track;
         }
       });

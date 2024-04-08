@@ -22,6 +22,7 @@ import { ObsidianBridge } from "src/obsidian/ObsidianBridge";
 import { PlayerView } from "../components/PlayerView";
 import { TTSPluginSettingsStore } from "../player/TTSPluginSettings";
 
+let id = 0;
 function playerPanel(
   editor: EditorView,
   player: AudioStore,
@@ -41,10 +42,32 @@ function playerPanel(
       sink,
     }),
   );
+  id += 1;
+  const unique = id;
+  console.log("make player " + id);
   return {
     dom,
     top: true,
     update(update) {
+      if (update.docChanged) {
+        // Loop through each change in the transaction
+        update.changes.iterChanges((fromA, toA, fromB, toB, inserted) => {
+          const startPos = update.state.doc.lineAt(fromA);
+          const endPos = update.state.doc.lineAt(toA);
+          const addedText = inserted.toString();
+          const removedText = update.startState.doc.sliceString(fromA, toA);
+
+          const range = `from ${startPos.number}:${startPos.from + 1} to ${
+            endPos.number
+          }:${endPos.to + 1}`;
+          console.log(update);
+          console.log(
+            `uuid:${unique} ${addedText ? "Added" : "Removed"} text: '${
+              addedText || removedText
+            }' ${range}`,
+          );
+        });
+      }
       // TODO - handle selection change, fuzzy match
     },
   };
@@ -83,6 +106,8 @@ const field = StateField.define<TTSCodeMirrorState>({
     return {};
   },
   update(value, tr): TTSCodeMirrorState {
+    // reset code-mirror highlights when text changes or when external track state changes
+
     const effects: StateEffect<TTSCodeMirrorState>[] = tr.effects.flatMap(
       (e) => (e.is(setViewState) ? [e] : []),
     );
@@ -94,6 +119,7 @@ const field = StateField.define<TTSCodeMirrorState>({
 
     let currentTextPosition: { from: number; to: number } | undefined;
     let textPosition: { from: number; to: number } | undefined;
+
     if (currentState.playerState?.playingTrack) {
       const doc = tr.state.doc.toString();
       const index = doc.indexOf(currentState.playerState.playingTrack?.rawText);
@@ -163,20 +189,21 @@ const field = StateField.define<TTSCodeMirrorState>({
   },
 });
 
-/** sends commands to just the current editor, cleaning up old editors */
+/** serializes state from mobx-application, and sends events describing the changes */
 function synchronize(player: AudioStore, obsidian: ObsidianBridge): void {
+  type State = {
+    state: TTSCodeMirrorState;
+    editorView: EditorView | undefined;
+  };
   mobx.reaction(
     () =>
-      [playerToCodeMirrorState(player), obsidian.activeEditor] as [
-        TTSCodeMirrorState,
-        EditorView | undefined,
-      ],
-    (
-      [newState, newEditor]: [TTSCodeMirrorState, EditorView | undefined],
-      previousState?: [TTSCodeMirrorState, EditorView | undefined],
-    ) => {
-      if (previousState?.[1] && previousState[1] !== newEditor) {
-        previousState[1].dispatch({
+      ({
+        state: playerToCodeMirrorState(player),
+        editorView: obsidian.activeEditor,
+      }) as State,
+    ({ state: newState, editorView: newEditor }: State, previous?: State) => {
+      if (previous?.editorView && previous.editorView !== newEditor) {
+        previous.editorView.dispatch({
           effects: setViewState.of({}),
         });
       }
