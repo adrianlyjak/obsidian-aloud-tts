@@ -29,8 +29,12 @@ export interface AudioStore {
 export interface AudioTextOptions {
   filename: string;
   text: string;
-  start: TextPosition;
-  end: TextPosition;
+  // character index of the start of the text track
+  start: number;
+  // character index of the end of the text track
+  end: number;
+  // minimum chunk length before merging with the next (e.g. short sentences are added to the next sentence)
+  minChunkLength?: number;
 }
 
 /** Container for lazily loaded TTS that's text has been chunked for faster streaming of output and seeking of position by chunk */
@@ -49,15 +53,10 @@ export interface AudioTextTrack {
   /** Text that will be spoken */
   text: string;
 
-  start: TextPosition;
-  // exlusive?
-  end: TextPosition;
-}
-
-export interface TextPosition {
-  // 0 indexed?
-  line: number;
-  ch: number;
+  // character index of the start of the text track
+  start: number;
+  // character index of the end of the text track, exclusive
+  end: number;
 }
 
 /** Player interface for loading and controlling a track */
@@ -70,11 +69,7 @@ export interface ActiveAudioText {
   currentTrack: AudioTextTrack | null;
   //   position && audio.tracks[position]
   play(): void;
-  onTextChanged(
-    position: TextPosition,
-    type: "add" | "remove",
-    text: string,
-  ): void;
+  onTextChanged(position: number, type: "add" | "remove", text: string): void;
   pause(): void;
   destroy(): void;
   goToNext(): void;
@@ -233,33 +228,103 @@ class ActiveAudioTextImpl implements ActiveAudioText {
     );
   }
 
-  onTextChanged(
-    position: TextPosition,
-    type: "add" | "remove",
-    text: string,
-  ): void {
-    const idx = this.audio.tracks.findIndex((x) => {
-      const isWithinLine =
-        x.start.line >= position.line && x.end.line <= position.line;
-      if (!isWithinLine) {
-        return false;
-      }
-      if (position.line === x.start.line && x.start.line == x.end.line) {
-        return position.ch >= x.start.ch && position.ch <= x.end.ch;
-      } else if (position.line === x.start.line) {
-        return position.ch >= x.start.ch;
-      } else if (position.line === x.end.line) {
-        return position.ch <= x.end.ch;
+  onTextChanged(position: number, type: "add" | "remove", text: string): void {
+    if (this.audio.tracks.length) {
+      // left-most part of the add or delete
+      const left = position;
+      // right-most part of the add or delete
+      const right = position + text.length;
+      const end = this.audio.tracks.at(-1)!.end;
+
+      if (type == "add") {
+        // this kind of needs to be "smart" about whether the change is inclusive to the range or not
+        const isAffected = position <= end;
+        if (isAffected) {
+          for (const [track, idx] of this.audio.tracks.map(
+            (x, i) => [x, i] as const,
+          )) {
+            const isLast = idx === this.audio.tracks.length - 1;
+            const isAddAtVeryEnd = isLast && position === end;
+            const isTrackAffected = left < track.end || isAddAtVeryEnd;
+
+            if (isTrackAffected) {
+              track.end += text.length;
+              if (position < track.start) {
+                track.start += text.length;
+              } else {
+                const split = position - track.start;
+                track.rawText =
+                  track.text.slice(0, split) + text + track.text.slice(split);
+                track.text = cleanMarkdown(track.rawText);
+              }
+            }
+          }
+        }
       } else {
-        return true;
+        // start or end of the deletion are inside the range
+        let isAffected = left < end;
+        // or the whole range has been deleted
+        if (isAffected) {
+          for (const track of this.audio.tracks) {
+            let update: Partial<AudioTextTrack> & {
+              updateType: "after" | "before" | "left" | "right" | "interior";
+            };
+            if (track.end <= left) {
+              // is completely after
+              update = { updateType: "after" };
+            } else if (right < track.start) {
+              // is completely before
+              update = {
+                updateType: "before",
+                start: track.start - text.length,
+                end: track.end - text.length,
+              };
+            } else if (left <= track.start) {
+              // is left side deletion
+              const removedBefore = Math.max(0, track.start - left);
+              const removed = Math.min(
+                right - Math.max(left, track.start),
+                track.text.length,
+              );
+              update = {
+                updateType: "left",
+                start: track.start - removedBefore,
+                end: track.end - removed - removedBefore,
+                rawText: track.rawText.slice(removed),
+              };
+            } else if (left < track.end && track.end <= right) {
+              // is right side deletion
+              const removed = track.end - left;
+              update = {
+                updateType: "right",
+                rawText: track.rawText.slice(0, -removed),
+                end: track.end - removed,
+              };
+            } else {
+              // is interior deletion
+              update = {
+                updateType: "interior",
+                end: track.end - (right - left),
+                rawText:
+                  track.rawText.slice(0, left - track.start) +
+                  track.rawText.slice(right - track.start),
+              };
+            }
+            const { updateType, rawText, ...updates } = update;
+            console.log(
+              `Type: ${updateType} ${rawText ? `'${track.rawText}' -> '${rawText}'` : "[no text change]"}`,
+              Object.keys(updates).map((x) => {
+                return `${x}: '${(track as any)[x]}' -> '${(updates as any)[x]}'`;
+              }),
+            );
+            if (rawText !== undefined) {
+              track.rawText = rawText;
+              track.text = cleanMarkdown(rawText);
+            }
+            Object.assign(track, updates);
+          }
+        }
       }
-    });
-    if (idx === -1) {
-      return;
-    } else {
-      const affected = this.audio.tracks.slice(idx);
-      const main = affected[0];
-      const text = main.rawText;
     }
   }
 
@@ -364,17 +429,13 @@ export function buildTrack(
 ): AudioText {
   const splits =
     splitMode === "sentence"
-      ? splitSentences(opts.text, { minLength: 20 })
+      ? splitSentences(opts.text, { minLength: opts.minChunkLength ?? 20 })
       : splitParagraphs(opts.text);
 
   let start = opts.start;
   const tracks = [];
   for (const s of splits) {
-    const lines = s.split("\n");
-    const endLine = start.line + lines.length - 1;
-    const endChar =
-      endLine === start.line ? start.ch + s.length : lines.at(-1)!.length;
-    const end = { line: endLine, ch: endChar };
+    const end = start + s.length;
     const track = {
       rawText: s,
       text: cleanMarkdown(s),

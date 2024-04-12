@@ -8,14 +8,14 @@ import {
   Notice,
   TFile,
 } from "obsidian";
-import { AudioStore, TextPosition } from "src/player/Player";
+import { AudioStore } from "src/player/Player";
 
 export interface ObsidianBridge {
   activeEditor: EditorView | undefined;
   playSelection: () => void;
   playSelectionIfAny: () => void;
   onTextChanged: (
-    position: TextPosition,
+    position: number,
     type: "add" | "remove",
     text: string,
   ) => void;
@@ -85,7 +85,9 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     playSelectionIfAny(this.app, this.audio);
   }
 
-  onTextChanged(position: TextPosition, type: "add" | "remove", text: string) {}
+  onTextChanged(position: number, type: "add" | "remove", text: string) {
+    this.audio.activeText?.onTextChanged(position, type, text);
+  }
 
   triggerSelection(file: TFile | null, editor: Editor) {
     this.setActiveEditor();
@@ -126,17 +128,19 @@ async function triggerSelection(
       ch: 0,
     };
   }
+  const start = editor.getRange({ line: 0, ch: 0 }, from).length;
 
   const selection = editor.getRange(from, to);
 
+  console.log({ start });
   if (selection) {
     try {
       await player.startPlayer({
         text: selection,
         filename:
           [file?.path, file?.name].filter((x) => x).join("/") || "Untitled",
-        start: from,
-        end: to,
+        start,
+        end: start + selection.length,
       });
     } catch (ex) {
       console.error("Couldn't start player!", ex);

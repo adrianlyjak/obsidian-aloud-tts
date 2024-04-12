@@ -52,20 +52,17 @@ function playerPanel(
       if (update.docChanged) {
         // Loop through each change in the transaction
         update.changes.iterChanges((fromA, toA, fromB, toB, inserted) => {
-          const startPos = update.state.doc.lineAt(fromA);
-          const endPos = update.state.doc.lineAt(toA);
           const addedText = inserted.toString();
           const removedText = update.startState.doc.sliceString(fromA, toA);
 
-          const range = `from ${startPos.number}:${startPos.from + 1} to ${
-            endPos.number
-          }:${endPos.to + 1}`;
-          console.log(update);
-          console.log(
-            `uuid:${unique} ${addedText ? "Added" : "Removed"} text: '${
-              addedText || removedText
-            }' ${range}`,
-          );
+          // this is fugly. Can't make an update in an update
+          setTimeout(() => {
+            player.activeText?.onTextChanged(
+              fromA,
+              addedText ? "add" : "remove",
+              addedText || removedText,
+            );
+          }, 0);
         });
       }
       // TODO - handle selection change, fuzzy match
@@ -92,7 +89,7 @@ function playerToCodeMirrorState(player: AudioStore): TTSCodeMirrorState {
       playerState: {
         isPlaying: player.activeText.isPlaying && !!currentTrack,
         playingTrack: currentTrack || undefined,
-        tracks: player.activeText.audio.tracks,
+        tracks: mobx.toJS(player.activeText.audio.tracks) || [],
       },
     };
   } else {
@@ -121,24 +118,18 @@ const field = StateField.define<TTSCodeMirrorState>({
     let textPosition: { from: number; to: number } | undefined;
 
     if (currentState.playerState?.playingTrack) {
-      const doc = tr.state.doc.toString();
-      const index = doc.indexOf(currentState.playerState.playingTrack?.rawText);
-      if (index > -1) {
-        currentTextPosition = {
-          from: index,
-          to: index + currentState.playerState.playingTrack!.rawText.length,
+      const tracks = currentState.playerState.tracks;
+      if (tracks?.length) {
+        textPosition = {
+          from: tracks.at(0)!.start,
+          to: tracks.at(-1)!.end,
         };
       }
-
-      const fullText = (currentState.playerState?.tracks || [])
-        .map((x) => x.rawText)
-        .join("");
-      const fullIndex = doc.indexOf(fullText);
-
-      if (fullIndex > -1) {
-        textPosition = {
-          from: fullIndex,
-          to: fullIndex + fullText.length,
+      const active = currentState.playerState.playingTrack;
+      if (active) {
+        currentTextPosition = {
+          from: active.start,
+          to: active.end,
         };
       }
     }
