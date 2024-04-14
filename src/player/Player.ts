@@ -342,7 +342,7 @@ class ActiveAudioTextImpl implements ActiveAudioText {
                     track.rawText.slice(right - track.start),
                 };
               }
-              const { rawText, ...updates } = update;
+              const { updateType: _, rawText, ...updates } = update;
               // const { updateType, rawText, ...updates } = update;
               // console.log(
               //   `Type: ${updateType} ${rawText ? `'${track.rawText}' -> '${rawText}'` : "[no text change]"}`,
