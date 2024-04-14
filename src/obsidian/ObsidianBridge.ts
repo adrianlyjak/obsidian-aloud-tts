@@ -11,6 +11,7 @@ import {
 import { AudioStore } from "src/player/Player";
 
 export interface ObsidianBridge {
+  /** editor that is currently playing audio */
   activeEditor: EditorView | undefined;
   playSelection: () => void;
   playSelectionIfAny: () => void;
@@ -28,6 +29,7 @@ export interface ObsidianBridge {
 export class ObsidianBridgeImpl implements ObsidianBridge {
   active: MarkdownFileInfo | null = null;
   activeEditorView: MarkdownView | null;
+  activeFilename: string | null = null;
   audio: AudioStore;
   app: App;
 
@@ -44,14 +46,28 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
       active: mobx.observable.ref,
       activeEditor: mobx.computed,
       setActiveEditor: mobx.action,
+      onLayoutChange: mobx.action,
+      onFileOpen: mobx.action,
     });
     this.app.workspace!.on("layout-change", this.onLayoutChange);
+    this.app.workspace!.on("file-open", this.onFileOpen);
   }
 
   setActiveEditor = () => {
     this.active = this.app.workspace?.activeEditor || null;
     this.activeEditorView =
       this.app.workspace.getActiveViewOfType(MarkdownView);
+    this.activeFilename = this.active?.file?.name || null;
+  };
+
+  onFileOpen = () => {
+    const f = this.activeEditorView?.file;
+    if (f && f.name !== this.activeFilename) {
+      // if current window was replaced
+      this.active = null;
+      this.activeEditorView = null;
+      this.activeFilename = null;
+    }
   };
 
   onLayoutChange = () => {
@@ -61,6 +77,9 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
       .some((leaf) => leaf.view === this.activeEditorView);
     if (!didMatch) {
       this.audio.activeText?.pause();
+    } else {
+      // keep the file up to date in case this was triggered by a file rename
+      this.activeFilename = this.active?.file?.name || null;
     }
   };
 

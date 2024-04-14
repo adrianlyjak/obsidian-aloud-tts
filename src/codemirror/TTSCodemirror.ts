@@ -45,13 +45,13 @@ function playerPanel(
     dom,
     top: true,
     update(update) {
-      if (update.docChanged) {
+      if (update.docChanged && obsidian.activeEditor === editor) {
         // Loop through each change in the transaction
         update.changes.iterChanges((fromA, toA, fromB, toB, inserted) => {
           const addedText = inserted.toString();
           const removedText = update.startState.doc.sliceString(fromA, toA);
 
-          // this is fugly. Can't make an update in an update
+          // this is fugly. Can't make an update in an update, so defer it
           setTimeout(() => {
             const updates: TextEdit[] = [];
             if (removedText) {
