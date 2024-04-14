@@ -12,7 +12,7 @@ import {
 } from "@codemirror/view";
 import * as mobx from "mobx";
 import { AudioSink } from "../player/AudioSink";
-import { AudioStore, AudioTextTrack } from "../player/Player";
+import { AudioStore, AudioTextTrack, TextEdit } from "../player/Player";
 
 import * as React from "react";
 import { createRoot } from "react-dom/client";
@@ -22,7 +22,6 @@ import { ObsidianBridge } from "src/obsidian/ObsidianBridge";
 import { PlayerView } from "../components/PlayerView";
 import { TTSPluginSettingsStore } from "../player/TTSPluginSettings";
 
-let id = 0;
 function playerPanel(
   editor: EditorView,
   player: AudioStore,
@@ -42,9 +41,6 @@ function playerPanel(
       sink,
     }),
   );
-  id += 1;
-  const unique = id;
-  console.log("make player " + id);
   return {
     dom,
     top: true,
@@ -57,11 +53,20 @@ function playerPanel(
 
           // this is fugly. Can't make an update in an update
           setTimeout(() => {
-            player.activeText?.onTextChanged(
-              fromA,
-              addedText ? "add" : "remove",
-              addedText || removedText,
-            );
+            const updates: TextEdit[] = [];
+            if (removedText) {
+              updates.push({
+                position: fromA,
+                type: "remove",
+                text: removedText,
+              });
+            }
+            if (addedText) {
+              updates.push({ position: fromA, type: "add", text: addedText });
+            }
+            if (updates.length) {
+              player.activeText?.onMultiTextChanged(updates);
+            }
           }, 0);
         });
       }

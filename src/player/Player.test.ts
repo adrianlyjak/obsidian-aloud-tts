@@ -1,18 +1,19 @@
-import { test, describe, expect, vi } from "vitest";
+import * as mobx from "mobx";
+import { describe, expect, test, vi } from "vitest";
+import { AudioCache, memoryStorage } from "./AudioCache";
+import { AudioSink, TrackStatus } from "./AudioSink";
 import {
   ActiveAudioText,
-  AudioCache,
   AudioStore,
   AudioTextOptions,
   loadAudioStore,
-  memoryStorage,
 } from "./Player";
+import { TTSModel, TTSModelOptions } from "./TTSModel";
 import { DEFAULT_SETTINGS, TTSPluginSettings } from "./TTSPluginSettings";
-import { AudioSink, TrackStatus } from "./AudioSink";
-import * as mobx from "mobx";
 
 vi.mock("obsidian", () => ({
   requestUrl: vi.fn(),
+  debounce: () => vi.fn(),
 }));
 
 describe("AudioStore", () => {
@@ -91,9 +92,11 @@ describe("Active Track", async () => {
 
   test("should load the 4th track when the 2nd starts", async () => {
     const seen: string[] = [];
-    const tts = (settings: TTSPluginSettings, text: string) => {
-      seen.push(text);
-      return fakeTTS();
+    const tts: TTSModel = (text: string, settings: TTSModelOptions) => {
+      if (!seen.includes(text)) {
+        seen.push(text);
+      }
+      return fakeTTS(text, settings);
     };
     const text =
       "First there was one star in the sky. Then there were two stars in the sky. Eventually there were three or more stars in the sky. Penultimately there was four. Finally there was five.";
@@ -107,11 +110,13 @@ describe("Active Track", async () => {
       },
     );
     expect(active.position).toEqual(0);
-    expect(seen).toEqual([
-      "First there was one star in the sky. ",
-      "Then there were two stars in the sky. ",
-      "Eventually there were three or more stars in the sky. ",
-    ]);
+    await waitForPassing(async () => {
+      expect(seen).toEqual([
+        "First there was one star in the sky. ",
+        "Then there were two stars in the sky. ",
+        "Eventually there were three or more stars in the sky. ",
+      ]);
+    });
     active.goToNext();
     await waitForPassing(async () => {
       expect(seen).toHaveLength(4);
@@ -120,10 +125,10 @@ describe("Active Track", async () => {
   });
 
   test("should switch out the queue when the settings change", async () => {
-    const seen: { text: string; settings: TTSPluginSettings }[] = [];
-    const tts = (settings: TTSPluginSettings, text: string) => {
+    const seen: { text: string; settings: TTSModelOptions }[] = [];
+    const tts: TTSModel = (text: string, settings: TTSModelOptions) => {
       seen.push({ text, settings });
-      return fakeTTS();
+      return fakeTTS(text, settings);
     };
     const settings = mobx.observable({ ...DEFAULT_SETTINGS });
     const text =
@@ -142,10 +147,10 @@ describe("Active Track", async () => {
       settings.playbackSpeed = 1.75;
     });
     await waitForPassing(async () => {
-      expect(seen).toHaveLength(6);
+      expect(seen).toHaveLength(5);
     });
     expect(seen.map((x) => x.settings.playbackSpeed)).toEqual([
-      1, 1, 1, 1.75, 1.75, 1.75,
+      1, 1, 1.75, 1.75, 1.75,
     ]);
   });
 
@@ -535,7 +540,7 @@ describe("Active Track", async () => {
   });
 });
 
-const fakeTTS = async () => {
+const fakeTTS: TTSModel = async () => {
   return new ArrayBuffer(0);
 };
 
@@ -592,10 +597,7 @@ class FakeAudioSink implements AudioSink {
 }
 
 interface MaybeStoreDependencies {
-  textToSpeech?: (
-    settings: TTSPluginSettings,
-    text: string,
-  ) => Promise<ArrayBuffer>;
+  textToSpeech?: TTSModel;
   storage?: AudioCache;
   audioSink?: AudioSink;
   ttsSettings?: TTSPluginSettings;
@@ -608,9 +610,10 @@ function createStore({
 }: MaybeStoreDependencies = {}): AudioStore {
   return loadAudioStore({
     settings: ttsSettings,
-    textToSpeech,
+    textToSpeech: textToSpeech,
     storage: storage,
     audioSink,
+    backgroundLoaderIntervalMillis: 10,
   });
 }
 

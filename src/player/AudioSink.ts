@@ -29,6 +29,7 @@ export class WebAudioSink implements AudioSink {
       play: mobx.action,
       pause: mobx.action,
       restart: mobx.action,
+      remove: mobx.action,
       trackStatus: mobx.computed,
       source: mobx.computed,
       context: mobx.computed,

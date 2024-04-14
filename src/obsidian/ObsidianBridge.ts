@@ -132,7 +132,6 @@ async function triggerSelection(
 
   const selection = editor.getRange(from, to);
 
-  console.log({ start });
   if (selection) {
     try {
       await player.startPlayer({
