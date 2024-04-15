@@ -7,8 +7,12 @@ import {
   MarkdownView,
   Notice,
   TFile,
+  setIcon,
 } from "obsidian";
-import { AudioStore } from "src/player/Player";
+import { AudioStore } from "../player/Player";
+import { createRoot } from "react-dom/client";
+import * as React from "react";
+import { IsPlaying } from "../components/IsPlaying";
 
 export interface ObsidianBridge {
   /** editor that is currently playing audio */
@@ -57,7 +61,29 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     this.active = this.app.workspace?.activeEditor || null;
     this.activeEditorView =
       this.app.workspace.getActiveViewOfType(MarkdownView);
+
     this.activeFilename = this.active?.file?.name || null;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tabElement = (this.activeEditorView!.leaf as any).tabHeaderEl;
+
+    if (tabElement) {
+      const inner = tabElement.querySelector(".workspace-tab-header-inner");
+      if (inner) {
+        inner.querySelector(".tts-tab-playing-icon")?.remove();
+        const iconSpan = document.createElement("span");
+        iconSpan.className = "tts-tab-playing-icon";
+        createRoot(iconSpan).render(
+          React.createElement(IsPlaying, {
+            audio: this.audio,
+            bridge: this,
+            editor: this.activeEditor!,
+          }),
+        );
+        setIcon(iconSpan, "volume-2");
+        inner.prepend(iconSpan);
+      }
+    }
   };
 
   onFileOpen = () => {

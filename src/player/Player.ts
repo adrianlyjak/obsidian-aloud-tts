@@ -186,6 +186,7 @@ class ActiveAudioTextImpl implements ActiveAudioText {
   audio: AudioText;
   private settings: TTSPluginSettings;
   private sink: AudioSink;
+  private voiceChangeId: mobx.IReactionDisposer;
   queue: TrackSwitcher;
   loader: TrackLoader;
 
@@ -245,7 +246,7 @@ class ActiveAudioTextImpl implements ActiveAudioText {
       onMultiTextChanged: action,
     });
 
-    mobx.reaction(
+    this.voiceChangeId = mobx.reaction(
       () => voiceHash(toModelOptions(this.settings)),
       this.initializeQueue,
       {
@@ -388,6 +389,7 @@ class ActiveAudioTextImpl implements ActiveAudioText {
     this.sink?.remove();
     this.queue?.destroy();
     this.loader?.destroy();
+    this.voiceChangeId?.();
   }
   goToNext(): void {
     let next = this.position + 1;

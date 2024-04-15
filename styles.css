@@ -75,3 +75,14 @@
   align-items: center;
 }
 
+.tts-tab-playing-icon {
+  --icon-size: var(--icon-xs);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+.tts-tab-playing-icon .tts-toolbar-icon {
+  padding-top: 0.1rem;
+  padding-right: 0.33rem;
+}

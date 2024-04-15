@@ -11,7 +11,9 @@ import { IconButton, IconSpan } from "./IconButton";
 
 export class TTSSettingTab extends PluginSettingTab {
   settings: TTSPluginSettingsStore;
-  player: AudioStore;
+  mainPlayer: AudioStore;
+  miniPlayer: AudioStore;
+  wasPlaying: boolean = false;
 
   constructor(
     app: App,
@@ -21,15 +23,25 @@ export class TTSSettingTab extends PluginSettingTab {
   ) {
     super(app, plugin);
     this.settings = settings;
-    this.player = player;
+    this.mainPlayer = player;
   }
 
   display(): void {
+    this.wasPlaying = this.mainPlayer.activeText?.isPlaying || false;
     const containerEl = this.containerEl;
     containerEl.empty();
     createRoot(containerEl).render(
-      <TTSSettingsTabComponent store={this.settings} player={this.player} />,
+      <TTSSettingsTabComponent
+        store={this.settings}
+        player={this.mainPlayer}
+      />,
     );
+  }
+  hide() {
+    super.hide();
+    if (this.wasPlaying) {
+      this.mainPlayer.activeText?.play();
+    }
   }
 }
 
@@ -37,11 +49,17 @@ const TTSSettingsTabComponent: React.FC<{
   store: TTSPluginSettingsStore;
   player: AudioStore;
 }> = observer(({ store, player }) => {
+  const [isActive, setActive] = React.useState(false);
   return (
     <>
       <h1>Open AI TTS</h1>
       <APIKeyComponent store={store} />
-      <VoiceComponent store={store} player={player} />
+      <VoiceComponent
+        store={store}
+        player={player}
+        isActive={isActive}
+        setActive={setActive}
+      />
       <h1>Advanced</h1>
       <APIBaseURLComponent store={store} />
     </>
@@ -68,7 +86,7 @@ const APIBaseURLComponent: React.FC<{
       <div className="setting-item-control">
         <input
           type="text"
-          placeholder="API Base URL"
+          placeholder={REAL_OPENAI_API_URL}
           value={store.settings.OPENAI_API_URL}
           onChange={onChange}
         />
@@ -131,17 +149,22 @@ const APIKeyComponent: React.FC<{
 const VoiceComponent: React.FC<{
   store: TTSPluginSettingsStore;
   player: AudioStore;
-}> = observer(({ store, player }) => {
-  const isPlaying = player.activeText?.isPlaying;
+  isActive: boolean;
+  setActive: React.Dispatch<React.SetStateAction<boolean>>;
+}> = observer(({ store, player, isActive, setActive }) => {
+  const isPlaying = player.activeText?.isPlaying && isActive;
   const playSample = React.useCallback(() => {
     if (!isPlaying) {
+      const text = `Hi, I'm ${store.settings.ttsVoice}. I'm a virtual text to speech assistant.`;
       player.startPlayer({
-        text:
-          "Hi, I'm " +
-          store.settings.ttsVoice +
-          ". I'm a virtual text to speech assistant",
+        text,
         filename: "sample " + store.settings.ttsVoice,
+        start: 0,
+        end: text.length,
       });
+      if (!isActive) {
+        setActive(true);
+      }
     } else {
       player.activeText?.pause();
     }

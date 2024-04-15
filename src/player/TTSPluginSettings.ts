@@ -17,7 +17,7 @@ export const REAL_OPENAI_API_URL = "https://api.openai.com";
 
 export const DEFAULT_SETTINGS: TTSPluginSettings = {
   OPENAI_API_KEY: "",
-  OPENAI_API_URL: REAL_OPENAI_API_URL,
+  OPENAI_API_URL: "",
   model: "tts-1", // tts-1-hd
   ttsVoice: "shimmer", // alloy, echo, fable, onyx, nova, and shimmer
   chunkType: "sentence",

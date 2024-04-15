@@ -26,9 +26,13 @@ reactRoot.render(
         children: "Click Me",
         onClick: () => {
           // fnetch();
+          const text =
+            "A long time ago, in a galaxy far far away. Luke skywalker is a jedi";
           store.startPlayer({
             filename: "test.md",
-            text: "A long time ago, in a galaxy far far away. Luke skywalker is a jedi",
+            text,
+            start: 0,
+            end: text.length,
           });
         },
       }),

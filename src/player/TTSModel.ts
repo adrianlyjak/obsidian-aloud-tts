@@ -1,5 +1,5 @@
 import { type RequestUrlResponse, requestUrl } from "obsidian";
-import { TTSPluginSettings } from "./TTSPluginSettings";
+import { REAL_OPENAI_API_URL, TTSPluginSettings } from "./TTSPluginSettings";
 
 /**
  * options used by the audio model. Some options are used as a cache key, such that changes to the options
@@ -19,7 +19,7 @@ export function toModelOptions(
   return {
     model: pluginSettings.model,
     voice: pluginSettings.ttsVoice,
-    apiUri: pluginSettings.OPENAI_API_URL,
+    apiUri: pluginSettings.OPENAI_API_URL || REAL_OPENAI_API_URL,
     apiKey: pluginSettings.OPENAI_API_KEY,
     playbackSpeed: pluginSettings.playbackSpeed,
   };
