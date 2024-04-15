@@ -1,28 +1,56 @@
 import { type RequestUrlResponse, requestUrl } from "obsidian";
-import { TTSPluginSettings } from "./TTSPluginSettings";
+import { REAL_OPENAI_API_URL, TTSPluginSettings } from "./TTSPluginSettings";
 
-export async function openAITextToSpeech(
-  settings: TTSPluginSettings,
+/**
+ * options used by the audio model. Some options are used as a cache key, such that changes to the options
+ * will cause audio to reload
+ */
+export interface TTSModelOptions {
+  model: string;
+  voice: string;
+  apiUri: string;
+  apiKey: string;
+  playbackSpeed: number;
+}
+
+export function toModelOptions(
+  pluginSettings: TTSPluginSettings,
+): TTSModelOptions {
+  return {
+    model: pluginSettings.model,
+    voice: pluginSettings.ttsVoice,
+    apiUri: pluginSettings.OPENAI_API_URL || REAL_OPENAI_API_URL,
+    apiKey: pluginSettings.OPENAI_API_KEY,
+    playbackSpeed: pluginSettings.playbackSpeed,
+  };
+}
+
+export interface TTSModel {
+  (text: string, options: TTSModelOptions): Promise<ArrayBuffer>;
+}
+
+export const openAITextToSpeech: TTSModel = async function openAITextToSpeech(
   text: string,
+  options: TTSModelOptions,
 ): Promise<ArrayBuffer> {
   const headers = await requestUrl({
-    url: settings.OPENAI_API_URL + "/v1/audio/speech",
+    url: options.apiUri + "/v1/audio/speech",
     headers: {
-      Authorization: "Bearer " + settings.OPENAI_API_KEY,
+      Authorization: "Bearer " + options.apiKey,
       "Content-Type": "application/json",
     },
     method: "POST",
     body: JSON.stringify({
-      model: settings.model,
-      voice: settings.ttsVoice,
+      model: options.model,
+      voice: options.voice,
       input: text,
-      speed: settings.playbackSpeed,
+      speed: options.playbackSpeed,
     }),
   });
   await validate200(headers);
   const bf = headers.arrayBuffer;
   return bf;
-}
+};
 
 export async function listModels(
   settings: TTSPluginSettings,

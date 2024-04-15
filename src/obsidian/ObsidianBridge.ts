@@ -7,21 +7,33 @@ import {
   MarkdownView,
   Notice,
   TFile,
+  setIcon,
 } from "obsidian";
-import { AudioStore } from "src/player/Player";
+import { AudioStore } from "../player/Player";
+import { createRoot } from "react-dom/client";
+import * as React from "react";
+import { IsPlaying } from "../components/IsPlaying";
 
 export interface ObsidianBridge {
+  /** editor that is currently playing audio */
   activeEditor: EditorView | undefined;
   playSelection: () => void;
   playSelectionIfAny: () => void;
+  onTextChanged: (
+    position: number,
+    type: "add" | "remove",
+    text: string,
+  ) => void;
   triggerSelection: (file: TFile | null, editor: Editor) => void;
   openSettings: () => void;
   destroy: () => void;
 }
 
-export class ObsidianGlue implements ObsidianBridge {
+/** observable class for obsidian related implementation to activate audio */
+export class ObsidianBridgeImpl implements ObsidianBridge {
   active: MarkdownFileInfo | null = null;
   activeEditorView: MarkdownView | null;
+  activeFilename: string | null = null;
   audio: AudioStore;
   app: App;
 
@@ -38,14 +50,50 @@ export class ObsidianGlue implements ObsidianBridge {
       active: mobx.observable.ref,
       activeEditor: mobx.computed,
       setActiveEditor: mobx.action,
+      onLayoutChange: mobx.action,
+      onFileOpen: mobx.action,
     });
     this.app.workspace!.on("layout-change", this.onLayoutChange);
+    this.app.workspace!.on("file-open", this.onFileOpen);
   }
 
   setActiveEditor = () => {
     this.active = this.app.workspace?.activeEditor || null;
     this.activeEditorView =
       this.app.workspace.getActiveViewOfType(MarkdownView);
+
+    this.activeFilename = this.active?.file?.name || null;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tabElement = (this.activeEditorView!.leaf as any).tabHeaderEl;
+
+    if (tabElement) {
+      const inner = tabElement.querySelector(".workspace-tab-header-inner");
+      if (inner) {
+        inner.querySelector(".tts-tab-playing-icon")?.remove();
+        const iconSpan = document.createElement("span");
+        iconSpan.className = "tts-tab-playing-icon";
+        createRoot(iconSpan).render(
+          React.createElement(IsPlaying, {
+            audio: this.audio,
+            bridge: this,
+            editor: this.activeEditor!,
+          }),
+        );
+        setIcon(iconSpan, "volume-2");
+        inner.prepend(iconSpan);
+      }
+    }
+  };
+
+  onFileOpen = () => {
+    const f = this.activeEditorView?.file;
+    if (f && f.name !== this.activeFilename) {
+      // if current window was replaced
+      this.active = null;
+      this.activeEditorView = null;
+      this.activeFilename = null;
+    }
   };
 
   onLayoutChange = () => {
@@ -55,6 +103,9 @@ export class ObsidianGlue implements ObsidianBridge {
       .some((leaf) => leaf.view === this.activeEditorView);
     if (!didMatch) {
       this.audio.activeText?.pause();
+    } else {
+      // keep the file up to date in case this was triggered by a file rename
+      this.activeFilename = this.active?.file?.name || null;
     }
   };
 
@@ -77,6 +128,10 @@ export class ObsidianGlue implements ObsidianBridge {
   playSelection(): void {
     this.setActiveEditor();
     playSelectionIfAny(this.app, this.audio);
+  }
+
+  onTextChanged(position: number, type: "add" | "remove", text: string) {
+    this.audio.activeText?.onTextChanged(position, type, text);
   }
 
   triggerSelection(file: TFile | null, editor: Editor) {
@@ -110,15 +165,17 @@ async function triggerSelection(
   file: TFile | null,
   editor: Editor,
 ): Promise<void> {
-  let selection = editor.getSelection();
-  const maybeCursor = editor.getCursor("head");
-
-  if (!selection && maybeCursor) {
-    selection = editor.getRange(maybeCursor, {
-      line: maybeCursor.line + 4096,
+  const from = editor.getCursor("from");
+  let to = editor.getCursor("to");
+  if (from.ch === to.ch && from.line === to.line) {
+    to = {
+      line: editor.lastLine(),
       ch: 0,
-    });
+    };
   }
+  const start = editor.getRange({ line: 0, ch: 0 }, from).length;
+
+  const selection = editor.getRange(from, to);
 
   if (selection) {
     try {
@@ -126,6 +183,8 @@ async function triggerSelection(
         text: selection,
         filename:
           [file?.path, file?.name].filter((x) => x).join("/") || "Untitled",
+        start,
+        end: start + selection.length,
       });
     } catch (ex) {
       console.error("Couldn't start player!", ex);

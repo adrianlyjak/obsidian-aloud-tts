@@ -7,11 +7,17 @@ export interface TTSPluginSettings {
   playbackSpeed: number;
 }
 
+export function voiceHash(options: TTSModelOptions): string {
+  return hashString(
+    options.apiUri + options.model + options.voice + options.playbackSpeed,
+  ).toString();
+}
+
 export const REAL_OPENAI_API_URL = "https://api.openai.com";
 
 export const DEFAULT_SETTINGS: TTSPluginSettings = {
   OPENAI_API_KEY: "",
-  OPENAI_API_URL: REAL_OPENAI_API_URL,
+  OPENAI_API_URL: "",
   model: "tts-1", // tts-1-hd
   ttsVoice: "shimmer", // alloy, echo, fable, onyx, nova, and shimmer
   chunkType: "sentence",
@@ -31,8 +37,9 @@ export const MARKETING_NAME = "Aloud";
 export const MARKETING_NAME_LONG = "Aloud: text to speech";
 
 import { action, observable } from "mobx";
-import { OpenAIAPIError, listModels } from "./openai";
+import { OpenAIAPIError, TTSModelOptions, listModels } from "./TTSModel";
 import { debounce } from "obsidian";
+import { hashString } from "src/util/Minhash";
 
 export interface TTSPluginSettingsStore {
   settings: TTSPluginSettings;

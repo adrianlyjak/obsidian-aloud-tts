@@ -1,32 +1,17 @@
 import { App, normalizePath } from "obsidian";
-import { hashString } from "../util/Minhash";
-import { AudioCache } from "../player/Player";
-import { TTSPluginSettings } from "../player/TTSPluginSettings";
+import { AudioCache, hashAudioInputs } from "src/player/AudioCache";
+import { TTSModelOptions } from "src/player/TTSModel";
 
 export function obsidianStorage(app: App): AudioCache {
   const vault = app.vault;
   const cachedir = ".tts";
 
-  function toKey(text: string, settings: TTSPluginSettings): string {
-    return (
-      "" +
-      hashString(
-        [
-          settings.model,
-          settings.ttsVoice,
-          `${settings.playbackSpeed}`,
-          text,
-        ].join("/"),
-      )
-    );
-  }
-
   return {
     async getAudio(
       text: string,
-      settings: TTSPluginSettings,
+      settings: TTSModelOptions,
     ): Promise<ArrayBuffer | null> {
-      const str = toKey(text, settings);
+      const str = hashAudioInputs(text, settings);
       const filepath = normalizePath(`/${cachedir}/${str}.mp3`);
       const exists = await vault.adapter.exists(filepath);
       if (!exists) {
@@ -38,10 +23,10 @@ export function obsidianStorage(app: App): AudioCache {
     },
     async saveAudio(
       text: string,
-      settings: TTSPluginSettings,
+      settings: TTSModelOptions,
       audio: ArrayBuffer,
     ): Promise<void> {
-      const str = toKey(text, settings);
+      const str = hashAudioInputs(text, settings);
       const filepath = normalizePath(`/${cachedir}/${str}.mp3`);
 
       const exists = await vault.adapter.exists(normalizePath(`/${cachedir}`));

@@ -1,10 +1,13 @@
 import * as mobx from "mobx";
 import { action, computed, observable } from "mobx";
-import { TTSPluginSettings } from "./TTSPluginSettings";
-import { randomId, splitParagraphs, splitSentences } from "../util/misc";
-import { openAITextToSpeech } from "./openai";
-import { AudioSink, WebAudioSink } from "./AudioSink";
 import cleanMarkdown from "src/util/cleanMarkdown";
+import { randomId, splitParagraphs, splitSentences } from "../util/misc";
+import { AudioCache, memoryStorage } from "./AudioCache";
+import { AudioSink, WebAudioSink } from "./AudioSink";
+import { TTSModel, openAITextToSpeech, toModelOptions } from "./TTSModel";
+import { TTSPluginSettings, voiceHash } from "./TTSPluginSettings";
+import { TrackLoader } from "./TrackLoader";
+import { TrackSwitcher } from "./TrackSwitcher";
 
 /** High level track changer interface */
 export interface AudioStore {
@@ -29,6 +32,12 @@ export interface AudioStore {
 export interface AudioTextOptions {
   filename: string;
   text: string;
+  // character index of the start of the text track
+  start: number;
+  // character index of the end of the text track
+  end: number;
+  // minimum chunk length before merging with the next (e.g. short sentences are added to the next sentence)
+  minChunkLength?: number;
 }
 
 /** Container for lazily loaded TTS that's text has been chunked for faster streaming of output and seeking of position by chunk */
@@ -46,8 +55,18 @@ export interface AudioTextTrack {
   rawText: string;
   /** Text that will be spoken */
   text: string;
+
+  // character index of the start of the text track
+  start: number;
+  // character index of the end of the text track, exclusive
+  end: number;
 }
 
+export interface TextEdit {
+  position: number;
+  type: "add" | "remove";
+  text: string;
+}
 /** Player interface for loading and controlling a track */
 export interface ActiveAudioText {
   audio: AudioText;
@@ -58,6 +77,8 @@ export interface ActiveAudioText {
   currentTrack: AudioTextTrack | null;
   //   position && audio.tracks[position]
   play(): void;
+  onTextChanged(position: number, type: "add" | "remove", text: string): void;
+  onMultiTextChanged(changes: TextEdit[]): void;
   pause(): void;
   destroy(): void;
   goToNext(): void;
@@ -69,13 +90,17 @@ export function loadAudioStore({
   storage = memoryStorage(),
   textToSpeech = openAITextToSpeech,
   audioSink = new WebAudioSink(),
+  backgroundLoaderIntervalMillis,
 }: {
   settings: TTSPluginSettings;
   storage?: AudioCache;
-  textToSpeech?: ConvertTextToSpeech;
+  textToSpeech?: TTSModel;
   audioSink?: AudioSink;
+  backgroundLoaderIntervalMillis?: number;
 }): AudioStore {
-  const store = new AudioStoreImpl(settings, storage, textToSpeech, audioSink);
+  const store = new AudioStoreImpl(settings, storage, textToSpeech, audioSink, {
+    backgroundLoaderIntervalMillis,
+  });
   return store;
 }
 
@@ -83,19 +108,26 @@ class AudioStoreImpl implements AudioStore {
   activeText: ActiveAudioText | null = null;
   settings: TTSPluginSettings;
   storage: AudioCache;
-  textToSpeech: ConvertTextToSpeech;
+  textToSpeech: TTSModel;
   sink: AudioSink;
+  backgroundLoaderIntervalMillis: number;
 
   constructor(
     settings: TTSPluginSettings,
     storage: AudioCache,
-    textToSpeech: ConvertTextToSpeech,
+    textToSpeech: TTSModel,
     sink: AudioSink,
+    {
+      backgroundLoaderIntervalMillis = 1000,
+    }: {
+      backgroundLoaderIntervalMillis?: number;
+    } = {},
   ) {
     this.settings = settings;
     this.storage = storage;
     this.textToSpeech = textToSpeech;
     this.sink = sink;
+    this.backgroundLoaderIntervalMillis = backgroundLoaderIntervalMillis;
     mobx.makeObservable(this, {
       activeText: observable,
       startPlayer: action,
@@ -131,6 +163,9 @@ class AudioStoreImpl implements AudioStore {
       this.storage,
       this.textToSpeech,
       this.sink,
+      {
+        backgroundLoaderIntervalMillis: this.backgroundLoaderIntervalMillis,
+      },
     );
     this.activeText!.play();
     return this.activeText!;
@@ -150,10 +185,10 @@ class AudioStoreImpl implements AudioStore {
 class ActiveAudioTextImpl implements ActiveAudioText {
   audio: AudioText;
   private settings: TTSPluginSettings;
-  private storage: AudioCache;
-  private textToSpeech: ConvertTextToSpeech;
   private sink: AudioSink;
-  queue: PewPewQueue;
+  private voiceChangeId: mobx.IReactionDisposer;
+  queue: TrackSwitcher;
+  loader: TrackLoader;
 
   // goes to -1 once completed
   position = 0;
@@ -177,13 +212,21 @@ class ActiveAudioTextImpl implements ActiveAudioText {
     audio: AudioText,
     settings: TTSPluginSettings,
     storage: AudioCache,
-    textToSpeech: ConvertTextToSpeech,
+    textToSpeech: TTSModel,
     sink: AudioSink,
+    {
+      backgroundLoaderIntervalMillis = 1000,
+    }: {
+      backgroundLoaderIntervalMillis?: number;
+    } = {},
   ) {
     this.audio = audio;
     this.settings = settings;
-    this.storage = storage;
-    this.textToSpeech = textToSpeech;
+    this.loader = new TrackLoader({
+      ttsModel: textToSpeech,
+      audioCache: storage,
+      backgroundLoaderIntervalMillis,
+    });
     this.sink = sink;
     this.initializeQueue();
 
@@ -200,29 +243,135 @@ class ActiveAudioTextImpl implements ActiveAudioText {
       goToNext: action,
       goToPrevious: action,
       initializeQueue: action,
+      onMultiTextChanged: action,
     });
 
-    mobx.reaction(
-      () => ({
-        speed: this.settings.playbackSpeed,
-        voice: this.settings.ttsVoice,
-      }),
+    this.voiceChangeId = mobx.reaction(
+      () => voiceHash(toModelOptions(this.settings)),
       this.initializeQueue,
       {
         fireImmediately: false,
-        equals: mobx.comparer.structural,
       },
     );
   }
+
+  onTextChanged(position: number, type: "add" | "remove", text: string): void {
+    this.onMultiTextChanged([{ position, type, text }]);
+  }
+  onMultiTextChanged(
+    changes: { position: number; type: "add" | "remove"; text: string }[],
+  ) {
+    for (const { position, type, text } of changes) {
+      if (this.audio.tracks.length) {
+        // left-most part of the add or delete
+        const left = position;
+        // right-most part of the add or delete
+        const right = position + text.length;
+        const end = this.audio.tracks.at(-1)!.end;
+
+        if (type == "add") {
+          // this kind of needs to be "smart" about whether the change is inclusive to the range or not
+          const isAffected = position <= end;
+          if (isAffected) {
+            for (const [track, idx] of this.audio.tracks.map(
+              (x, i) => [x, i] as const,
+            )) {
+              const isLast = idx === this.audio.tracks.length - 1;
+              const isAddAtVeryEnd = isLast && position === end;
+              const isTrackAffected = left < track.end || isAddAtVeryEnd;
+
+              if (isTrackAffected) {
+                track.end += text.length;
+                if (position < track.start) {
+                  track.start += text.length;
+                } else {
+                  const split = position - track.start;
+                  track.rawText =
+                    track.text.slice(0, split) + text + track.text.slice(split);
+                  track.text = cleanMarkdown(track.rawText);
+                }
+              }
+            }
+          }
+        } else {
+          // start or end of the deletion are inside the range
+          const isAffected = left < end;
+          // or the whole range has been deleted
+          if (isAffected) {
+            for (const track of this.audio.tracks) {
+              let update: Partial<AudioTextTrack> & {
+                updateType: "after" | "before" | "left" | "right" | "interior";
+              };
+              if (track.end <= left) {
+                // is completely after
+                update = { updateType: "after" };
+              } else if (right < track.start) {
+                // is completely before
+                update = {
+                  updateType: "before",
+                  start: track.start - text.length,
+                  end: track.end - text.length,
+                };
+              } else if (left <= track.start) {
+                // is left side deletion
+                const removedBefore = Math.max(0, track.start - left);
+                const removed = Math.min(
+                  right - Math.max(left, track.start),
+                  track.text.length,
+                );
+                update = {
+                  updateType: "left",
+                  start: track.start - removedBefore,
+                  end: track.end - removed - removedBefore,
+                  rawText: track.rawText.slice(removed),
+                };
+              } else if (left < track.end && track.end <= right) {
+                // is right side deletion
+                const removed = track.end - left;
+                update = {
+                  updateType: "right",
+                  rawText: track.rawText.slice(0, -removed),
+                  end: track.end - removed,
+                };
+              } else {
+                // is interior deletion
+                update = {
+                  updateType: "interior",
+                  end: track.end - (right - left),
+                  rawText:
+                    track.rawText.slice(0, left - track.start) +
+                    track.rawText.slice(right - track.start),
+                };
+              }
+              const { updateType: _, rawText, ...updates } = update;
+              // const { updateType, rawText, ...updates } = update;
+              // console.log(
+              //   `Type: ${updateType} ${rawText ? `'${track.rawText}' -> '${rawText}'` : "[no text change]"}`,
+              //   Object.keys(updates).map((x) => {
+              //     return `${x}: '${(track as any)[x]}' -> '${(updates as any)[x]}'`;
+              //   }),
+              // );
+              if (rawText !== undefined) {
+                track.rawText = rawText;
+                track.text = cleanMarkdown(rawText);
+              }
+              Object.assign(track, updates);
+            }
+          }
+        }
+      }
+    }
+  }
+
   initializeQueue = () => {
     const wasPlaying = this.queue?.isPlaying ?? false;
     this.queue?.destroy();
     this.queue?.pause();
-    this.queue = new PewPewQueue({
+    this.queue = new TrackSwitcher({
       activeAudioText: this,
       sink: this.sink,
-      getTrack: (txt) => this.tryLoadTrack(txt),
       settings: this.settings,
+      trackLoader: this.loader,
     });
     if (wasPlaying) {
       this.queue.play();
@@ -239,6 +388,8 @@ class ActiveAudioTextImpl implements ActiveAudioText {
   destroy(): void {
     this.sink?.remove();
     this.queue?.destroy();
+    this.loader?.destroy();
+    this.voiceChangeId?.();
   }
   goToNext(): void {
     let next = this.position + 1;
@@ -260,53 +411,6 @@ class ActiveAudioTextImpl implements ActiveAudioText {
     }
     this.position = next;
   }
-
-  private onError(error: string): void {
-    this.error = error;
-  }
-
-  /** non-stateful function (barring layers of caching and API calls) */
-  private async loadTrack(track: AudioTextTrack): Promise<ArrayBuffer> {
-    // copy the settings to make sure audio isn't stored under under the wrong key
-    // if the settings are changed while request is in flight
-    const settingsCopy = mobx.toJS(this.settings);
-    const stored: ArrayBuffer | null = await this.storage.getAudio(
-      track.text,
-      settingsCopy,
-    );
-    if (stored) {
-      return stored;
-    } else {
-      let buff: ArrayBuffer;
-      try {
-        buff = await this.textToSpeech(settingsCopy, track.text);
-      } catch (ex) {
-        this.onError(ex.message);
-        throw ex;
-      }
-      await this.storage.saveAudio(track.text, settingsCopy, buff);
-      return buff;
-    }
-  }
-
-  async tryLoadTrack(
-    track: AudioTextTrack,
-    attempt: number = 0,
-    maxAttempts: number = 3,
-  ): Promise<ArrayBuffer> {
-    try {
-      return await this.loadTrack(track);
-    } catch (ex) {
-      if (attempt >= maxAttempts) {
-        throw ex;
-      } else {
-        await new Promise((resolve) =>
-          setTimeout(resolve, 250 * Math.pow(2, attempt)),
-        );
-        return await this.tryLoadTrack(track, attempt + 1, maxAttempts);
-      }
-    }
-  }
 }
 
 export function buildTrack(
@@ -315,8 +419,23 @@ export function buildTrack(
 ): AudioText {
   const splits =
     splitMode === "sentence"
-      ? splitSentences(opts.text, { minLength: 20 })
+      ? splitSentences(opts.text, { minLength: opts.minChunkLength ?? 20 })
       : splitParagraphs(opts.text);
+
+  let start = opts.start;
+  const tracks = [];
+  for (const s of splits) {
+    const end = start + s.length;
+    const track = {
+      rawText: s,
+      text: cleanMarkdown(s),
+      // TODO - fixme
+      start,
+      end,
+    };
+    start = end;
+    tracks.push(track);
+  }
   return observable({
     id: randomId(),
     filename: opts.filename,
@@ -326,212 +445,6 @@ export function buildTrack(
       splits[0].slice(0, 20) +
       (splits[0].length > 20 ? "..." : ""),
     created: new Date().valueOf(),
-    tracks: splits.map((s) => {
-      return {
-        rawText: s,
-        text: cleanMarkdown(s),
-      };
-    }),
+    tracks: tracks,
   });
-}
-
-// external dependencies
-export interface ConvertTextToSpeech {
-  (settings: TTSPluginSettings, text: string): Promise<ArrayBuffer>;
-}
-
-export interface AudioCache {
-  getAudio(
-    text: string,
-    settings: TTSPluginSettings,
-  ): Promise<ArrayBuffer | null>;
-  saveAudio(
-    text: string,
-    settings: TTSPluginSettings,
-    audio: ArrayBuffer,
-  ): Promise<void>;
-  expire(): Promise<void>;
-}
-
-export function memoryStorage(): AudioCache {
-  const audios: Record<string, ArrayBuffer> = {};
-
-  function toKey(text: string, settings: TTSPluginSettings): string {
-    return [
-      settings.model,
-      settings.ttsVoice,
-      settings.playbackSpeed,
-      text,
-    ].join("/");
-  }
-  return {
-    async getAudio(
-      text: string,
-      settings: TTSPluginSettings,
-    ): Promise<ArrayBuffer | null> {
-      return audios[toKey(text, settings)] || null;
-    },
-    async saveAudio(
-      text: string,
-      settings: TTSPluginSettings,
-      audio: ArrayBuffer,
-    ): Promise<void> {
-      audios[toKey(text, settings)] = audio;
-    },
-    async expire(): Promise<void> {
-      // meh
-    },
-  };
-}
-
-interface PewPewTrack {
-  position: number;
-  voice: string;
-  speed: number;
-  audio?: ArrayBuffer;
-  failed?: boolean;
-}
-
-/** Side car to the active audio. plays track after track, exposing activate track and playing status */
-class PewPewQueue {
-  private activeAudioText: ActiveAudioText;
-  private settings: TTSPluginSettings;
-  private sink: AudioSink;
-  isPlaying = false;
-  private cancelMonitor: () => void;
-  private getTrack: (text: AudioTextTrack) => Promise<ArrayBuffer>;
-  active?: PewPewTrack = undefined;
-  upcoming: PewPewTrack[] = [];
-  private isDestroyed = false;
-
-  constructor({
-    activeAudioText,
-    sink,
-    getTrack,
-    settings,
-  }: {
-    activeAudioText: ActiveAudioText;
-    sink: AudioSink;
-    getTrack: (text: AudioTextTrack) => Promise<ArrayBuffer>;
-    settings: TTSPluginSettings;
-  }) {
-    this.activeAudioText = activeAudioText;
-    this.sink = sink;
-    this.getTrack = getTrack;
-    this.settings = settings;
-
-    mobx.makeObservable(this, {
-      active: mobx.observable,
-      upcoming: mobx.observable,
-      isPlaying: mobx.observable,
-      setAudio: mobx.action,
-      activate: mobx.action,
-      populateUpcoming: mobx.action,
-      play: mobx.action,
-      pause: mobx.action,
-    });
-
-    const positionChanger = mobx.reaction(
-      () => this.sink.trackStatus,
-      () => {
-        if (this.sink.trackStatus === "complete") {
-          this.activeAudioText.goToNext();
-          if (this.activeAudioText.position === -1) {
-            this.isPlaying = false;
-          }
-        }
-      },
-    );
-    const trackSwitcher = mobx.reaction(
-      () => this.activeAudioText.position,
-      () => {
-        this.activate();
-      },
-    );
-    this.cancelMonitor = () => {
-      positionChanger();
-      trackSwitcher();
-    };
-  }
-
-  setAudio(item: PewPewTrack, audio: ArrayBuffer) {
-    item.audio = audio;
-  }
-
-  async activate() {
-    this.populateUpcoming();
-    const first = this.upcoming.shift();
-    this.active = first;
-    if (!this.active) {
-      this.isPlaying = false;
-    } else {
-      await mobx.when(() => !!this.active?.audio);
-      if (this.isDestroyed) return;
-      await this.sink.setMedia(this.active!.audio!);
-      if (this.isPlaying && !this.isDestroyed) {
-        this.sink.play();
-      }
-    }
-  }
-
-  populateUpcoming() {
-    // ensure upcoming is populated
-
-    const newUpcoming = this.activeAudioText.audio.tracks
-      .slice(this.activeAudioText.position, this.activeAudioText.position + 3)
-      .map((x, i) => {
-        const position = this.activeAudioText.position + i;
-        const existing = this.upcoming.find(
-          (x) =>
-            x.position === position &&
-            x.voice === this.settings.ttsVoice &&
-            x.speed === this.settings.playbackSpeed,
-        );
-        if (existing && !existing.failed) {
-          return existing;
-        } else {
-          const track: PewPewTrack = mobx.observable({
-            position,
-            voice: this.settings.ttsVoice,
-            speed: this.settings.playbackSpeed,
-          });
-          this.getTrack(x)
-            .then((audio) => {
-              this.setAudio(track, audio);
-            })
-            .catch((ex) => {
-              console.error("failed to get audio", ex);
-              mobx.runInAction(() => (track.failed = true));
-            });
-          return track;
-        }
-      });
-    this.upcoming = newUpcoming;
-  }
-
-  destroy() {
-    this.isDestroyed = true;
-    this.cancelMonitor();
-  }
-
-  play(): void {
-    if (this.isPlaying) {
-      return;
-    }
-    this.isPlaying = true;
-    if (this.active) {
-      // resume
-      this.sink.play();
-    } else {
-      // start the loop
-      this.activate();
-    }
-  }
-
-  pause(): void {
-    if (this.isPlaying) {
-      this.isPlaying = false;
-      this.sink.pause();
-    }
-  }
 }
