@@ -1,6 +1,6 @@
 import * as mobx from "mobx";
 import { AudioCache } from "./AudioCache";
-import { TTSModel, TTSModelOptions } from "./TTSModel";
+import { TTSErrorInfo, TTSModel, TTSModelOptions } from "./TTSModel";
 
 /** manages loading and caching of tracks */
 export class TrackLoader {
@@ -160,7 +160,10 @@ export class TrackLoader {
     try {
       return await this.loadTrack(track, options);
     } catch (ex) {
-      if (attempt >= maxAttempts) {
+      const errorInfo = ex instanceof TTSErrorInfo ? ex : undefined;
+      const canRetry =
+        attempt < maxAttempts && (errorInfo ? errorInfo.isRetryable : true);
+      if (!canRetry) {
         throw ex;
       } else {
         await new Promise((resolve) =>

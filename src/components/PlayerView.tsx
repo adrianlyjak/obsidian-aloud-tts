@@ -5,8 +5,10 @@ import { TTSPluginSettingsStore } from "src/player/TTSPluginSettings";
 import { AudioSink } from "../player/AudioSink";
 import { AudioStore } from "../player/Player";
 import { AudioVisualizer } from "./AudioVisualizer";
-import { IconButton, Spinner } from "./IconButton";
+import { IconButton, IconSpan, Spinner } from "./IconButton";
 import { EditorView } from "@codemirror/view";
+import { TTSErrorInfo } from "src/player/TTSModel";
+import { setTooltip } from "obsidian";
 
 export const PlayerView = observer(
   ({
@@ -102,11 +104,17 @@ const AudioStatusInfoContents: React.FC<{
     return (
       // Extra span container to absorb the align-items: stretch from the container
       <span className="tts-audio-status-error">
+        <IconSpan
+          className="tts-audio-status-error-icon"
+          icon="alert-circle"
+        ></IconSpan>{" "}
         <span className="tts-audio-status-error-text">
           <a onClick={() => obsidian.openSettings()}>{settings.apiKeyError}</a>
         </span>
       </span>
     );
+  } else if (player.activeText?.error) {
+    return <TTSErrorInfoView error={player.activeText.error} />;
   } else if (player.activeText?.isLoading) {
     return <Spinner className="tts-audio-status-loading" />;
   } else if (audio.source && audio.context && player.activeText?.isPlaying) {
@@ -115,3 +123,42 @@ const AudioStatusInfoContents: React.FC<{
     return null;
   }
 });
+
+function TTSErrorInfoView(props: { error: TTSErrorInfo }): React.ReactNode {
+  let moreInfo = "";
+  if (props.error.httpErrorCode === 401) {
+    moreInfo = "Please check your API key.";
+  } else if (props.error.httpErrorCode === 429) {
+    moreInfo =
+      "Make sure your API token has enough credits or you are not exceeding rate limits.";
+  }
+  const textBody = `${props.error.errorDetails}`
+    ? JSON.stringify(props.error.errorDetails, null, 2)
+    : undefined;
+
+  const tooltip = [props.error.message, moreInfo, textBody]
+    .filter((x) => x)
+    .join("\n");
+  const ref = React.useRef<HTMLElement | null>(null);
+
+  React.useEffect(() => {
+    if (ref.current) {
+      setTooltip(ref.current, tooltip);
+    }
+  }, [ref.current, tooltip]);
+
+  return (
+    <span className="tts-audio-status-error">
+      <IconSpan
+        className="tts-audio-status-error-icon"
+        icon="alert-circle"
+      ></IconSpan>{" "}
+      <span
+        className="tts-audio-status-error-text"
+        ref={(x) => (ref.current = x)}
+      >
+        {props.error.message}
+      </span>
+    </span>
+  );
+}

@@ -55,6 +55,9 @@
 .tts-audio-status-error {
   overflow: hidden;
   text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  justify-content: left;
 }
 
 .tts-audio-status-error-text {
@@ -71,6 +74,12 @@
 
 .tts-audio-status-loading {
   display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.tts-audio-status-error-icon {
+  display: inline-flex;
+  padding-right: 0.33rem;
   justify-content: center;
   align-items: center;
 }

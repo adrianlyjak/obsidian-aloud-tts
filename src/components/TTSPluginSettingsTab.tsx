@@ -7,7 +7,7 @@ import {
   REAL_OPENAI_API_URL,
   TTSPluginSettingsStore,
 } from "../player/TTSPluginSettings";
-import { IconButton, IconSpan } from "./IconButton";
+import { IconButton, IconSpan, Spinner } from "./IconButton";
 
 export class TTSSettingTab extends PluginSettingTab {
   settings: TTSPluginSettingsStore;
@@ -130,7 +130,7 @@ const APIKeyComponent: React.FC<{
         </div>
       </div>
       <div className="setting-item-control">
-        <IconSpan icon={validIcon} />
+        {validIcon === "loader" ? <Spinner /> : <IconSpan icon={validIcon} />}
         <input
           type={showPassword ? "text" : "password"}
           placeholder="API Key"

@@ -1,4 +1,4 @@
-import { setIcon, setTooltip } from "obsidian";
+import { TooltipOptions, setIcon, setTooltip } from "obsidian";
 import * as React from "react";
 
 /**
@@ -38,16 +38,23 @@ export function IconButton({
 export function IconSpan({
   icon,
   className,
+  tooltip,
+  tooltipOptions,
 }: {
   icon: string;
   className?: string;
+  tooltip?: string;
+  tooltipOptions?: TooltipOptions;
 }) {
   const ref = React.useRef<HTMLElement | null>(null);
   React.useEffect(() => {
     if (ref.current) {
       setIcon(ref.current, icon);
+      if (tooltip) {
+        setTooltip(ref.current, tooltip, tooltipOptions);
+      }
     }
-  }, [ref.current, icon]);
+  }, [ref.current, icon, tooltip]);
   return (
     <span
       className={["tts-toolbar-icon"]
