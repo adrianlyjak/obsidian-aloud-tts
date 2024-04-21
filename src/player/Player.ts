@@ -4,7 +4,12 @@ import cleanMarkdown from "src/util/cleanMarkdown";
 import { randomId, splitParagraphs, splitSentences } from "../util/misc";
 import { AudioCache, memoryStorage } from "./AudioCache";
 import { AudioSink, WebAudioSink } from "./AudioSink";
-import { TTSModel, openAITextToSpeech, toModelOptions } from "./TTSModel";
+import {
+  TTSErrorInfo,
+  TTSModel,
+  openAITextToSpeech,
+  toModelOptions,
+} from "./TTSModel";
 import { TTSPluginSettings, voiceHash } from "./TTSPluginSettings";
 import { TrackLoader } from "./TrackLoader";
 import { TrackSwitcher } from "./TrackSwitcher";
@@ -72,6 +77,7 @@ export interface ActiveAudioText {
   audio: AudioText;
   readonly isPlaying: boolean;
   readonly isLoading: boolean;
+  readonly error?: TTSErrorInfo;
   position: number | -1; // -1 represents complete
   // should be computed.
   currentTrack: AudioTextTrack | null;
@@ -198,7 +204,6 @@ class ActiveAudioTextImpl implements ActiveAudioText {
     }
     return this.audio.tracks[this.position];
   }
-  error: string | null = null;
 
   get isPlaying(): boolean {
     return this.queue.isPlaying;
@@ -206,6 +211,17 @@ class ActiveAudioTextImpl implements ActiveAudioText {
 
   get isLoading(): boolean {
     return this.queue.active ? !this.queue.active.audio : false;
+  }
+
+  get error(): TTSErrorInfo | undefined {
+    const isFailed = this.queue.active?.failed;
+    if (!isFailed) {
+      return undefined;
+    }
+    const error =
+      this.queue.active?.failureInfo ||
+      new TTSErrorInfo("unknown", { message: "an unknown error occurred" });
+    return error;
   }
 
   constructor(
@@ -235,8 +251,8 @@ class ActiveAudioTextImpl implements ActiveAudioText {
       isLoading: computed,
       position: observable,
       currentTrack: computed,
+      error: computed,
       queue: observable,
-      error: observable,
       play: action,
       pause: action,
       destroy: action,

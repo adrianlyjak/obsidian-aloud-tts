@@ -1,3 +1,8 @@
+import { action, observable } from "mobx";
+import { TTSErrorInfo, TTSModelOptions, listModels } from "./TTSModel";
+import { debounce } from "obsidian";
+import { hashString } from "src/util/Minhash";
+
 export interface TTSPluginSettings {
   OPENAI_API_KEY: string;
   OPENAI_API_URL: string;
@@ -36,11 +41,6 @@ export function nextSpeed(current: number): number {
 export const MARKETING_NAME = "Aloud";
 export const MARKETING_NAME_LONG = "Aloud: text to speech";
 
-import { action, observable } from "mobx";
-import { OpenAIAPIError, TTSModelOptions, listModels } from "./TTSModel";
-import { debounce } from "obsidian";
-import { hashString } from "src/util/Minhash";
-
 export interface TTSPluginSettingsStore {
   settings: TTSPluginSettings;
   apiKeyValid?: boolean;
@@ -67,7 +67,10 @@ export async function pluginSettingsStore(
         this.apiKeyError = error;
       },
       checkApiKey: debounce(async () => {
-        if (store.settings.OPENAI_API_URL !== REAL_OPENAI_API_URL) {
+        if (
+          store.settings.OPENAI_API_URL &&
+          store.settings.OPENAI_API_URL !== REAL_OPENAI_API_URL
+        ) {
           store.setApiKeyValidity(true);
         } else {
           if (!store.settings.OPENAI_API_KEY) {
@@ -83,12 +86,12 @@ export async function pluginSettingsStore(
             } catch (ex: unknown) {
               console.error("Could not validate API key", ex);
               let message = "Cannot connect to OpenAI";
-              if (ex instanceof OpenAIAPIError) {
-                if (ex.errorCode() === "invalid_api_key") {
+              if (ex instanceof TTSErrorInfo) {
+                if (ex.openAIErrorCode() === "invalid_api_key") {
                   message =
                     "Invalid API key! Enter a valid API key in the plugin settings";
                 } else {
-                  const msg = ex.jsonMessage();
+                  const msg = ex.openAIJsonMessage();
                   if (msg) {
                     message = msg;
                   }

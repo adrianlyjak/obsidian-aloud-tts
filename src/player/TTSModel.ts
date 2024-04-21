@@ -1,4 +1,3 @@
-import { type RequestUrlResponse, requestUrl } from "obsidian";
 import { REAL_OPENAI_API_URL, TTSPluginSettings } from "./TTSPluginSettings";
 
 /**
@@ -11,6 +10,38 @@ export interface TTSModelOptions {
   apiUri: string;
   apiKey: string;
   playbackSpeed: number;
+}
+
+export class TTSErrorInfo extends Error {
+  status: string;
+  httpErrorCode?: number;
+  errorDetails: unknown;
+  constructor(
+    status: string,
+    responseDetails: unknown,
+    httpErrorCode?: number,
+  ) {
+    super(`Request failed due to '${httpErrorCode || status}'`);
+    this.name = "TTSErrorInfo";
+    this.message = `Request failed '${status}'`;
+    this.httpErrorCode = httpErrorCode;
+    this.status = status;
+    this.errorDetails = responseDetails;
+  }
+
+  get isRetryable(): boolean {
+    if (this.httpErrorCode === undefined) {
+      return true;
+    }
+    return this.httpErrorCode === 429 || this.httpErrorCode >= 500;
+  }
+
+  openAIJsonMessage(): string | undefined {
+    return (this.errorDetails as ErrorMessage)?.error?.message;
+  }
+  openAIErrorCode(): string | undefined {
+    return (this.errorDetails as ErrorMessage)?.error?.code;
+  }
 }
 
 export function toModelOptions(
@@ -33,50 +64,62 @@ export const openAITextToSpeech: TTSModel = async function openAITextToSpeech(
   text: string,
   options: TTSModelOptions,
 ): Promise<ArrayBuffer> {
-  const headers = await requestUrl({
-    url: options.apiUri + "/v1/audio/speech",
-    headers: {
-      Authorization: "Bearer " + options.apiKey,
-      "Content-Type": "application/json",
+  const headers = await fetch(
+    orDefaultOpenAI(options.apiUri) + "/v1/audio/speech",
+    {
+      headers: {
+        Authorization: "Bearer " + options.apiKey,
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+      body: JSON.stringify({
+        model: options.model,
+        voice: options.voice,
+        input: text,
+        speed: options.playbackSpeed,
+      }),
     },
-    method: "POST",
-    body: JSON.stringify({
-      model: options.model,
-      voice: options.voice,
-      input: text,
-      speed: options.playbackSpeed,
-    }),
-  });
+  );
   await validate200(headers);
-  const bf = headers.arrayBuffer;
+  const bf = await headers.arrayBuffer();
   return bf;
 };
+
+function orDefaultOpenAI(maybeUrl: string): string {
+  return maybeUrl.replace(/\/$/, "") || REAL_OPENAI_API_URL;
+}
 
 export async function listModels(
   settings: TTSPluginSettings,
 ): Promise<string[]> {
-  const headers = await requestUrl({
-    url: settings.OPENAI_API_URL + "/v1/models",
-    method: "GET",
-    headers: {
-      Authorization: "Bearer " + settings.OPENAI_API_KEY,
-      "Content-Type": "application/json",
+  const headers = await fetch(
+    orDefaultOpenAI(settings.OPENAI_API_URL) + "/v1/models",
+    {
+      method: "GET",
+      headers: {
+        Authorization: "Bearer " + settings.OPENAI_API_KEY,
+        "Content-Type": "application/json",
+      },
     },
-  });
+  );
   await validate200(headers);
-  const models = await headers.json;
+  const models = await headers.json();
   return models.data as string[];
 }
 
-async function validate200(response: RequestUrlResponse) {
-  if (response.status !== 200) {
+async function validate200(response: Response) {
+  if (response.status >= 300) {
     let body;
     try {
       body = await response.json();
     } catch (ex) {
       // nothing
     }
-    throw new OpenAIAPIError(response.status, body);
+    throw new TTSErrorInfo(
+      `HTTP ${response.status} error`,
+      body,
+      response.status,
+    );
   }
 }
 

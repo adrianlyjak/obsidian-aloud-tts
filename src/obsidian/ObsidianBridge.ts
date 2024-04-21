@@ -65,7 +65,8 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     this.activeFilename = this.active?.file?.name || null;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tabElement = (this.activeEditorView!.leaf as any).tabHeaderEl;
+    const tabElement = (this.activeEditorView?.leaf as any | undefined)
+      ?.tabHeaderEl;
 
     if (tabElement) {
       const inner = tabElement.querySelector(".workspace-tab-header-inner");

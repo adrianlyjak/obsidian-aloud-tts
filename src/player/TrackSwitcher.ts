@@ -2,7 +2,7 @@ import * as mobx from "mobx";
 import { randomId } from "src/util/misc";
 import { AudioSink } from "./AudioSink";
 import { ActiveAudioText } from "./Player";
-import { toModelOptions } from "./TTSModel";
+import { TTSErrorInfo, toModelOptions } from "./TTSModel";
 import { TTSPluginSettings } from "./TTSPluginSettings";
 import { TrackLoader } from "./TrackLoader";
 
@@ -10,6 +10,7 @@ export interface PlayingTrack {
   position: number;
   audio?: ArrayBuffer;
   failed?: boolean;
+  failureInfo?: TTSErrorInfo;
 }
 
 /** Side car to the active audio. plays track after track, exposing activate track and playing status */
@@ -98,11 +99,22 @@ export class TrackSwitcher {
         audio: undefined,
       });
       this.active = item;
-      const audio = await this.trackLoader.load(
-        track.text,
-        toModelOptions(this.settings),
-        this.readerId,
-      );
+      let audio: ArrayBuffer;
+      try {
+        audio = await this.trackLoader.load(
+          track.text,
+          toModelOptions(this.settings),
+          this.readerId,
+        );
+      } catch (e) {
+        item.failed = true;
+        console.error(`Failed to load track '${track.text}'`, e);
+        if (e instanceof TTSErrorInfo) {
+          mobx.runInAction(() => (item.failureInfo = e));
+        }
+        this.pause();
+        return undefined;
+      }
       if (this.isDestroyed) return;
 
       if (this.active === item) {
@@ -145,8 +157,7 @@ export class TrackSwitcher {
       return;
     }
     this.isPlaying = true;
-    if (this.active) {
-      // resume
+    if (this.active && !this.active.failed) {
       this.sink.play();
     } else {
       // start the loop
