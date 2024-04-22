@@ -1,5 +1,4 @@
 import { TTSCodeMirror } from "../codemirror/TTSCodemirror";
-import { obsidianStorage } from "./ObsidianPlayer";
 
 import { Editor, MarkdownView, Plugin, addIcon } from "obsidian";
 import { TTSSettingTab } from "../components/TTSPluginSettingsTab";
@@ -12,6 +11,7 @@ import {
   pluginSettingsStore,
 } from "../player/TTSPluginSettings";
 import { ObsidianBridge, ObsidianBridgeImpl } from "./ObsidianBridge";
+import { IndexedDBAudioStorage } from "../web/IndexedDBAudioStorage";
 
 // standard lucide.dev icon, but for some reason not working as a ribbon icon without registering it
 // https://lucide.dev/icons/audio-lines
@@ -106,7 +106,7 @@ export default class TTSPlugin extends Plugin {
     this.audio = new WebAudioSink();
     this.player = await loadAudioStore({
       settings: this.settings.settings,
-      storage: obsidianStorage(this.app),
+      storage: new IndexedDBAudioStorage(),
       audioSink: this.audio,
     });
     this.bridge = new ObsidianBridgeImpl(this.app, this.player);
