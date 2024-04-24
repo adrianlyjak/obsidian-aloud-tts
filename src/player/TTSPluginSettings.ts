@@ -11,6 +11,20 @@ export interface TTSPluginSettings {
   chunkType: "sentence" | "paragraph";
   playbackSpeed: number;
   cacheDurationMillis: number;
+  showPlayerView: PlayerViewMode;
+}
+
+export const playViewModes = [
+  "always",
+  "always-mobile",
+  "playing",
+  "never",
+] as const;
+
+export type PlayerViewMode = (typeof playViewModes)[number];
+
+export function isPlayerViewMode(value: unknown): value is PlayerViewMode {
+  return playViewModes.includes(value as PlayerViewMode);
 }
 
 export function voiceHash(options: TTSModelOptions): string {
@@ -28,7 +42,8 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   ttsVoice: "shimmer", // alloy, echo, fable, onyx, nova, and shimmer
   chunkType: "sentence",
   playbackSpeed: 1.0,
-  cacheDurationMillis: 1000 * 60 * 60 * 24 * 7,
+  cacheDurationMillis: 1000 * 60 * 60 * 24 * 7, // 7 days
+  showPlayerView: "always-mobile",
 } as const;
 
 /** interface is easier if its just some canned speeds */

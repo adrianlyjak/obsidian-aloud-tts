@@ -24,8 +24,27 @@ export const PlayerView = observer(
     sink: AudioSink;
     obsidian: ObsidianBridge;
   }): React.ReactNode => {
-    const isActive = !!player.activeText && editor === obsidian.activeEditor;
-    if (!isActive) {
+    const hasText = !!player.activeText;
+    const isActiveEditor = editor === obsidian.activeEditor;
+    const isFocusedEditor = obsidian.focusedEditor === editor;
+    let shouldShow: boolean;
+    switch (settings.settings.showPlayerView) {
+      case "always":
+        shouldShow = isFocusedEditor || isActiveEditor;
+        break;
+      case "never":
+        shouldShow = false;
+        break;
+      case "always-mobile":
+        shouldShow = obsidian.isMobile()
+          ? isFocusedEditor || isActiveEditor // same as "always"
+          : isActiveEditor && hasText; // same as "playing"
+        break;
+      case "playing":
+        shouldShow = isActiveEditor && hasText;
+        break;
+    }
+    if (!shouldShow) {
       return null;
     }
     return (
@@ -44,6 +63,7 @@ export const PlayerView = observer(
             icon="skip-back"
             tooltip="Previous"
             onClick={() => player.activeText?.goToPrevious()}
+            disabled={!player.activeText}
           />
 
           {player.activeText?.isPlaying ? (
@@ -59,12 +79,14 @@ export const PlayerView = observer(
               icon="step-forward"
               tooltip="Resume"
               onClick={() => player.activeText?.play()}
+              disabled={!player.activeText}
             />
           )}
           <IconButton
             icon="skip-forward"
             tooltip="Next"
             onClick={() => player.activeText?.goToNext()}
+            disabled={!player.activeText}
           />
           <div
             className={"clickable-icon tts-toolbar-button"}
@@ -83,11 +105,13 @@ export const PlayerView = observer(
           />
         </div>
         <div className="tts-toolbar-player-button-group">
-          <IconButton
-            tooltip="Cancel playback"
-            icon="x"
-            onClick={() => player.closePlayer()}
-          />
+          {player.activeText && (
+            <IconButton
+              tooltip="Cancel playback"
+              icon="x"
+              onClick={() => player.closePlayer()}
+            />
+          )}
         </div>
       </div>
     );

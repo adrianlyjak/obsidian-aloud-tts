@@ -9,11 +9,13 @@ export function IconButton({
   onClick,
   tooltip,
   className,
+  disabled,
 }: {
   icon: string;
   onClick: () => void;
   tooltip?: string;
   className?: string;
+  disabled?: boolean;
 }) {
   const ref = React.useRef<HTMLElement | null>(null);
   React.useEffect(() => {
@@ -25,13 +27,15 @@ export function IconButton({
     }
   }, [ref.current, icon, tooltip]);
   return (
-    <div
+    <button
       className={(className ? [className] : [])
         .concat(["clickable-icon tts-toolbar-button"])
         .join(" ")}
       ref={(x) => (ref.current = x)}
-      onClick={onClick}
-    ></div>
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      {...(disabled ? { "aria-disabled": "true" } : {})}
+    ></button>
   );
 }
 
