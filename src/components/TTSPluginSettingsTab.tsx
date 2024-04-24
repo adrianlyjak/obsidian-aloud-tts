@@ -1,7 +1,7 @@
 import { observer } from "mobx-react-lite";
 import { App, Plugin, PluginSettingTab } from "obsidian";
 import * as React from "react";
-import { createRoot } from "react-dom/client";
+import { Root, createRoot } from "react-dom/client";
 import { AudioStore } from "src/player/Player";
 import {
   REAL_OPENAI_API_URL,
@@ -14,6 +14,7 @@ export class TTSSettingTab extends PluginSettingTab {
   mainPlayer: AudioStore;
   miniPlayer: AudioStore;
   wasPlaying: boolean = false;
+  containerRoot: Root | null = null;
 
   constructor(
     app: App,
@@ -30,7 +31,8 @@ export class TTSSettingTab extends PluginSettingTab {
     this.wasPlaying = this.mainPlayer.activeText?.isPlaying || false;
     const containerEl = this.containerEl;
     containerEl.empty();
-    createRoot(containerEl).render(
+    this.containerRoot = createRoot(containerEl);
+    this.containerRoot.render(
       <TTSSettingsTabComponent
         store={this.settings}
         player={this.mainPlayer}
@@ -39,6 +41,8 @@ export class TTSSettingTab extends PluginSettingTab {
   }
   hide() {
     super.hide();
+    this.containerRoot?.unmount();
+    this.containerRoot = null;
     if (this.wasPlaying) {
       this.mainPlayer.activeText?.play();
     }
@@ -61,7 +65,90 @@ const TTSSettingsTabComponent: React.FC<{
         setActive={setActive}
       />
       <h1>Advanced</h1>
+      <CacheDuration store={store} player={player} />
       <APIBaseURLComponent store={store} />
+    </>
+  );
+});
+
+function humanFileSize(size: number) {
+  const i = size == 0 ? 0 : Math.floor(Math.log(size) / Math.log(1024));
+  return (
+    +(size / Math.pow(1024, i)).toFixed(2) * 1 +
+    " " +
+    ["B", "kB", "MB", "GB", "TB"][i]
+  );
+}
+
+const CacheDuration: React.FC<{
+  store: TTSPluginSettingsStore;
+  player: AudioStore;
+}> = observer(({ store, player }) => {
+  const onChange: React.ChangeEventHandler<HTMLInputElement> =
+    React.useCallback((v: React.ChangeEvent<HTMLInputElement>) => {
+      store.updateSettings({
+        cacheDurationMillis: +v.target.value * 1000 * 60 * 60,
+      });
+    }, []);
+  const [cacheSize, setCacheSize] = React.useState<{
+    loading: boolean;
+    size: number;
+  }>({ loading: true, size: 0 });
+  React.useEffect(() => {
+    if (cacheSize.loading) {
+      player
+        .getStorageSize()
+        .then((size) => {
+          setCacheSize({ loading: false, size });
+        })
+        .catch((e) => {
+          console.error("error getting cache size", e);
+          setCacheSize({ loading: false, size: 0 });
+        });
+    }
+  }, [cacheSize.loading]);
+  const clearStorage = React.useCallback(() => {
+    player.clearStorage().then(() => {
+      setCacheSize({ loading: false, size: 0 });
+    });
+  }, []);
+  return (
+    <>
+      <div className="setting-item">
+        <div className="setting-item-info">
+          <div className="setting-item-name">Cache duration</div>
+          <div className="setting-item-description">
+            Cache duration in hours. Audio snippets will be purged and
+            re-requested after this duration
+          </div>
+        </div>
+        <div className="setting-item-control">
+          <input
+            type="number"
+            value={Math.round(
+              store.settings.cacheDurationMillis / 1000 / 60 / 60,
+            )}
+            onChange={onChange}
+          />
+          <span className="setting-item-description">hours</span>
+        </div>
+      </div>
+      {/* And a line that shows the current cache usage  as well as a button to clear it */}
+      <div className="setting-item">
+        <div className="setting-item-info">
+          <div className="setting-item-name">Cache Disk Usage</div>
+          <div className="setting-item-description">
+            {cacheSize.loading ? <Spinner /> : humanFileSize(cacheSize.size)}
+          </div>
+        </div>
+        <div className="setting-item-control">
+          <IconButton
+            tooltip="Clear cache"
+            icon="trash"
+            onClick={clearStorage}
+          />
+        </div>
+      </div>
     </>
   );
 });

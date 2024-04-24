@@ -51,5 +51,17 @@ export function obsidianStorage(app: App): AudioCache {
         }
       }
     },
+
+    async getStorageSize(): Promise<number> {
+      const listed = await vault.adapter.list(".tts");
+      let total = 0;
+      for (const file of listed.files) {
+        const stats = await vault.adapter.stat(file);
+        if (stats) {
+          total += stats.size;
+        }
+      }
+      return total;
+    },
   };
 }

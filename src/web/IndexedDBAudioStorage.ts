@@ -7,6 +7,13 @@ interface AudioCacheDB extends DBSchema {
     value: {
       hash: string;
       blob: Blob;
+    };
+    key: string;
+  };
+  audioMetadata: {
+    value: {
+      hash: string;
+      size: number;
       lastread: number;
     };
     key: string;
@@ -31,10 +38,15 @@ export class IndexedDBAudioStorage implements AudioCache {
   }
 
   constructor() {
-    this.dbRequest = openDB<AudioCacheDB>("tts-aloud-db", 1, {
+    this.dbRequest = openDB<AudioCacheDB>("tts-aloud-db", 2, {
       upgrade(db) {
         if (!db.objectStoreNames.contains("audio")) {
-          const audio = db.createObjectStore("audio", {
+          db.createObjectStore("audio", {
+            keyPath: "hash",
+          });
+        }
+        if (!db.objectStoreNames.contains("audioMetadata")) {
+          const audio = db.createObjectStore("audioMetadata", {
             keyPath: "hash",
           });
           audio.createIndex("lastread", "lastread");
@@ -45,6 +57,18 @@ export class IndexedDBAudioStorage implements AudioCache {
       return db;
     });
   }
+  async getStorageSize(): Promise<number> {
+    await this.dbRequest;
+    const cursor = await this.db
+      .transaction("audioMetadata", "readonly")
+      .objectStore("audioMetadata")
+      .iterate();
+    let total = 0;
+    for await (const item of cursor) {
+      total += item.value.size;
+    }
+    return total;
+  }
   async getAudio(
     text: string,
     settings: TTSModelOptions,
@@ -52,8 +76,13 @@ export class IndexedDBAudioStorage implements AudioCache {
     await this.dbRequest;
     const hash = hashAudioInputs(text, settings);
     const got = await this.db.get("audio", hash);
+    const buff = await got?.blob.arrayBuffer();
     if (got) {
-      await this.db.put("audio", { ...got, lastread: Date.now().valueOf() });
+      const now = Date.now().valueOf();
+      const metadata =
+        (await this.db.get("audioMetadata", hash)) ||
+        ({ lastread: now, size: buff?.byteLength ?? 0, hash } as const);
+      await this.db.put("audioMetadata", { ...metadata, lastread: now });
     }
     return (await got?.blob.arrayBuffer()) || null;
   }
@@ -66,18 +95,33 @@ export class IndexedDBAudioStorage implements AudioCache {
     await this.db.put("audio", {
       hash: hashAudioInputs(text, settings),
       blob: new Blob([audio]),
+    });
+    await this.db.put("audioMetadata", {
+      hash: hashAudioInputs(text, settings),
+      size: audio.byteLength,
       lastread: Date.now().valueOf(),
     });
   }
   async expire(ageInMillis: number = 1000 * 60 * 60 * 24 * 30): Promise<void> {
     await this.dbRequest;
-    const toDelete = await this.db.getAllKeysFromIndex(
-      "audio",
-      "lastread",
-      IDBKeyRange.upperBound(Date.now().valueOf() - ageInMillis),
-    );
-    const tx = this.db.transaction("audio", "readwrite");
-    await Promise.all(toDelete.map((k) => tx.store.delete(k)));
+    const tx = this.db.transaction(["audio", "audioMetadata"], "readwrite");
+    const cursor = tx
+      .objectStore("audioMetadata")
+      .index("lastread")
+      .iterate(IDBKeyRange.upperBound(Date.now().valueOf() - ageInMillis));
+
+    const promises = [] as Promise<void>[];
+    for await (const item of cursor) {
+      promises.push(
+        Promise.all([
+          tx.objectStore("audio").delete(item.value.hash),
+          tx.objectStore("audioMetadata").delete(item.value.hash),
+        ]).then(() => {}),
+      );
+    }
+
+    await Promise.all(promises);
+
     await tx.done;
   }
 }

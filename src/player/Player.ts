@@ -31,6 +31,13 @@ export interface AudioStore {
    * with the store may not work after calling this
    */
   destroy(): void;
+
+  /** remove all cached audio */
+  clearStorage(): Promise<void>;
+
+  /** gets the cache disk usage in bytes */
+
+  getStorageSize(): Promise<number>;
 }
 
 /** data to run TTS on */
@@ -142,22 +149,55 @@ class AudioStoreImpl implements AudioStore {
     this.initializeBackgroundProcessors();
     return this;
   }
+  getStorageSize(): Promise<number> {
+    return this.storage.getStorageSize();
+  }
 
   _backgroundProcesses: { shutdown: () => void }[] = [];
   private initializeBackgroundProcessors(): void {
-    // expire storage
-    this.storage.expire();
-    const expireTimer = setInterval(
-      () => {
-        this.storage.expire();
+    // function, in case duration is changed
+    const getExpiryMillis = () => this.settings.cacheDurationMillis;
+
+    // expire on startup
+    this.storage.expire(getExpiryMillis());
+
+    let expireTimer: ReturnType<typeof setInterval> | undefined;
+    const restartInterval = () => {
+      clearInterval(expireTimer);
+      const ageInMillis = getExpiryMillis();
+      const checkFrequency = ageInMillis / 16;
+      // check at most once per minute, and at least once per hour
+      const minCheckFrequency = 1000; //* 60;
+      const maxCheckFrequency = 1000 * 60; //* 60;
+      expireTimer = setInterval(
+        () => {
+          this.storage.expire(ageInMillis);
+        },
+        Math.min(
+          maxCheckFrequency,
+          Math.max(minCheckFrequency, checkFrequency),
+        ),
+      );
+    };
+
+    const cancelReaction = mobx.reaction(
+      () => getExpiryMillis(),
+      () => restartInterval(),
+      {
+        fireImmediately: true,
       },
-      30 * 60 * 1000,
     );
+
     this._backgroundProcesses.push({
       shutdown: () => {
+        cancelReaction();
         clearInterval(expireTimer);
       },
     });
+  }
+
+  clearStorage(): Promise<void> {
+    return this.storage.expire(0);
   }
 
   startPlayer(opts: AudioTextOptions): ActiveAudioText {
