@@ -58,7 +58,7 @@ export default class TTSPlugin extends Plugin {
 
     // ribbon
     this.addRibbonIcon("audio-lines", MARKETING_NAME_LONG, () =>
-      this.bridge.playSelectionIfAny(),
+      this.bridge.playSelection(),
     );
 
     // This adds a simple command that can be triggered anywhere to resume last track
