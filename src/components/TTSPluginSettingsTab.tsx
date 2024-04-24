@@ -4,8 +4,11 @@ import * as React from "react";
 import { Root, createRoot } from "react-dom/client";
 import { AudioStore } from "src/player/Player";
 import {
+  PlayerViewMode,
   REAL_OPENAI_API_URL,
   TTSPluginSettingsStore,
+  isPlayerViewMode,
+  playViewModes,
 } from "../player/TTSPluginSettings";
 import { IconButton, IconSpan, Spinner } from "./IconButton";
 
@@ -56,7 +59,7 @@ const TTSSettingsTabComponent: React.FC<{
   const [isActive, setActive] = React.useState(false);
   return (
     <>
-      <h1>Open AI TTS</h1>
+      <h1>OpenAI TTS</h1>
       <APIKeyComponent store={store} />
       <VoiceComponent
         store={store}
@@ -64,6 +67,8 @@ const TTSSettingsTabComponent: React.FC<{
         isActive={isActive}
         setActive={setActive}
       />
+      <h1>User Interface</h1>
+      <PlayerDisplayMode store={store} />
       <h1>Advanced</h1>
       <CacheDuration store={store} player={player} />
       <APIBaseURLComponent store={store} />
@@ -79,6 +84,52 @@ function humanFileSize(size: number) {
     ["B", "kB", "MB", "GB", "TB"][i]
   );
 }
+
+function describeMode(mode: PlayerViewMode): string {
+  switch (mode) {
+    case "always":
+      return "Always show";
+    case "always-mobile":
+      return "Always show on mobile";
+    case "playing":
+      return "Only while playing";
+    case "never":
+      return "Never show";
+  }
+}
+const PlayerDisplayMode: React.FC<{
+  store: TTSPluginSettingsStore;
+}> = observer(({ store }) => {
+  return (
+    <div className="setting-item">
+      <div className="setting-item-info">
+        <div className="setting-item-name">Show player toolbar</div>
+        <div className="setting-item-description">
+          Show the player toolbar under these conditions
+        </div>
+      </div>
+      <div className="setting-item-control">
+        <select
+          value={store.settings.showPlayerView}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (isPlayerViewMode(value)) {
+              store.updateSettings({ showPlayerView: value });
+            } else {
+              console.error("invalid player view mode", value);
+            }
+          }}
+        >
+          {playViewModes.map((mode) => (
+            <option key={mode} value={mode}>
+              {describeMode(mode)}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+});
 
 const CacheDuration: React.FC<{
   store: TTSPluginSettingsStore;
@@ -163,11 +214,11 @@ const APIBaseURLComponent: React.FC<{
   return (
     <div className="setting-item">
       <div className="setting-item-info">
-        <div className="setting-item-name">OpenAI API base URL</div>
+        <div className="setting-item-name">Custom OpenAI URL</div>
         <div className="setting-item-description">
           Change to use a custom OpenAI compatible API server. Default is{" "}
-          {REAL_OPENAI_API_URL}. Note: Token validation will be disabled if this
-          is set
+          {REAL_OPENAI_API_URL}.<br />
+          Note: Token validation will be disabled if this is set
         </div>
       </div>
       <div className="setting-item-control">

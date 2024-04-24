@@ -17,6 +17,8 @@ import { IsPlaying } from "../components/IsPlaying";
 export interface ObsidianBridge {
   /** editor that is currently playing audio */
   activeEditor: EditorView | undefined;
+  /** editor that has cursor */
+  focusedEditor: EditorView | undefined;
   playSelection: () => void;
   playSelectionIfAny: () => void;
   onTextChanged: (
@@ -27,6 +29,7 @@ export interface ObsidianBridge {
   triggerSelection: (file: TFile | null, editor: Editor) => void;
   openSettings: () => void;
   destroy: () => void;
+  isMobile: () => boolean;
 }
 
 /** observable class for obsidian related implementation to activate audio */
@@ -36,7 +39,13 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
   activeFilename: string | null = null;
   audio: AudioStore;
   app: App;
+  focusedEditorView: MarkdownView | null = null;
 
+  get focusedEditor(): EditorView | undefined {
+    // @ts-expect-error
+    const editor = this.focusedEditorView?.editor?.cm as EditorView | undefined;
+    return editor || undefined;
+  }
   get activeEditor(): EditorView | undefined {
     // @ts-expect-error
     const editor = this.active?.editor?.cm as EditorView | undefined;
@@ -49,13 +58,21 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     mobx.makeObservable(this, {
       active: mobx.observable.ref,
       activeEditor: mobx.computed,
+      focusedEditorView: mobx.observable.ref,
       setActiveEditor: mobx.action,
       onLayoutChange: mobx.action,
       onFileOpen: mobx.action,
     });
+    this.app.workspace!.on("active-leaf-change", this.setActiveLeaf);
+    this.setActiveLeaf();
     this.app.workspace!.on("layout-change", this.onLayoutChange);
     this.app.workspace!.on("file-open", this.onFileOpen);
   }
+  isMobile: () => boolean = () => {
+    // docs show this... types do not https://docs.obsidian.md/Plugins/Getting+started/Mobile+development
+    // @ts-expect-error
+    return this.app.isMobile;
+  };
 
   setActiveEditor = () => {
     this.active = this.app.workspace?.activeEditor || null;
@@ -108,6 +125,11 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
       // keep the file up to date in case this was triggered by a file rename
       this.activeFilename = this.active?.file?.name || null;
     }
+  };
+
+  setActiveLeaf = () => {
+    this.focusedEditorView =
+      this.app.workspace.getActiveViewOfType(MarkdownView);
   };
 
   destroy: () => void = () => {
