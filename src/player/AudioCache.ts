@@ -12,7 +12,10 @@ export interface AudioCache {
     settings: TTSModelOptions,
     audio: ArrayBuffer,
   ): Promise<void>;
-  expire(): Promise<void>;
+  expire(ageInMillis: number): Promise<void>;
+
+  /** Get's the cache's usage in bytes */
+  getStorageSize(): Promise<number>;
 }
 
 export function hashAudioInputs(
@@ -39,8 +42,14 @@ export function memoryStorage(): AudioCache {
     ): Promise<void> {
       audios[hashAudioInputs(text, settings)] = audio;
     },
-    async expire(): Promise<void> {
+    async expire(ageInMillis: number): Promise<void> {
       // meh
+    },
+
+    async getStorageSize(): Promise<number> {
+      return Object.values(audios)
+        .map((x) => x.byteLength)
+        .reduce((a, b) => a + b, 0);
     },
   };
 }

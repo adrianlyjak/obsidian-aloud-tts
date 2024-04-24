@@ -10,6 +10,7 @@ export interface TTSPluginSettings {
   ttsVoice: string;
   chunkType: "sentence" | "paragraph";
   playbackSpeed: number;
+  cacheDurationMillis: number;
 }
 
 export function voiceHash(options: TTSModelOptions): string {
@@ -27,6 +28,7 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   ttsVoice: "shimmer", // alloy, echo, fable, onyx, nova, and shimmer
   chunkType: "sentence",
   playbackSpeed: 1.0,
+  cacheDurationMillis: 1000 * 60 * 60 * 24 * 7,
 } as const;
 
 /** interface is easier if its just some canned speeds */
