@@ -1,5 +1,5 @@
-import * as mobx from "mobx";
 import { EditorView } from "@codemirror/view";
+import * as mobx from "mobx";
 import {
   App,
   Editor,
@@ -7,12 +7,11 @@ import {
   MarkdownView,
   Notice,
   TFile,
-  setIcon,
 } from "obsidian";
-import { AudioStore } from "../player/Player";
-import { createRoot } from "react-dom/client";
 import * as React from "react";
+import { createRoot } from "react-dom/client";
 import { IsPlaying } from "../components/IsPlaying";
+import { AudioStore } from "../player/Player";
 
 export interface ObsidianBridge {
   /** editor that is currently playing audio */
@@ -20,7 +19,6 @@ export interface ObsidianBridge {
   /** editor that has cursor */
   focusedEditor: EditorView | undefined;
   playSelection: () => void;
-  playSelectionIfAny: () => void;
   onTextChanged: (
     position: number,
     type: "add" | "remove",
@@ -34,11 +32,16 @@ export interface ObsidianBridge {
 
 /** observable class for obsidian related implementation to activate audio */
 export class ObsidianBridgeImpl implements ObsidianBridge {
+  // the editor that was last interacted with for playing audio.
+  // I think there's some bugs here. Its not necessarily the playing editor,
+  // but sort of is (not always equal to the last focused editor)
+  // FIXME!
   active: MarkdownFileInfo | null = null;
   activeEditorView: MarkdownView | null;
   activeFilename: string | null = null;
   audio: AudioStore;
   app: App;
+  // the focused editor, or last focused editor if none
   focusedEditorView: MarkdownView | null = null;
 
   get focusedEditor(): EditorView | undefined {
@@ -59,14 +62,14 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
       active: mobx.observable.ref,
       activeEditor: mobx.computed,
       focusedEditorView: mobx.observable.ref,
-      setActiveEditor: mobx.action,
-      onLayoutChange: mobx.action,
-      onFileOpen: mobx.action,
+      _setActiveEditor: mobx.action,
+      _onLayoutChange: mobx.action,
+      _onFileOpen: mobx.action,
     });
-    this.app.workspace!.on("active-leaf-change", this.setActiveLeaf);
-    this.setActiveLeaf();
-    this.app.workspace!.on("layout-change", this.onLayoutChange);
-    this.app.workspace!.on("file-open", this.onFileOpen);
+    this.app.workspace!.on("active-leaf-change", this._setFocusedEditor);
+    this._setFocusedEditor();
+    this.app.workspace!.on("layout-change", this._onLayoutChange);
+    this.app.workspace!.on("file-open", this._onFileOpen);
   }
   isMobile: () => boolean = () => {
     // docs show this... types do not https://docs.obsidian.md/Plugins/Getting+started/Mobile+development
@@ -74,16 +77,19 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     return this.app.isMobile;
   };
 
-  setActiveEditor = () => {
+  _setActiveEditor = () => {
     this.active = this.app.workspace?.activeEditor || null;
     this.activeEditorView =
       this.app.workspace.getActiveViewOfType(MarkdownView);
 
     this.activeFilename = this.active?.file?.name || null;
 
+    this._attachPlayingIconToEditor(this.activeEditorView);
+  };
+
+  _attachPlayingIconToEditor(editor: MarkdownView | null) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tabElement = (this.activeEditorView?.leaf as any | undefined)
-      ?.tabHeaderEl;
+    const tabElement = (editor?.leaf as any | undefined)?.tabHeaderEl;
 
     if (tabElement) {
       const inner = tabElement.querySelector(".workspace-tab-header-inner");
@@ -98,13 +104,12 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
             editor: this.activeEditor!,
           }),
         );
-        setIcon(iconSpan, "volume-2");
         inner.prepend(iconSpan);
       }
     }
-  };
+  }
 
-  onFileOpen = () => {
+  _onFileOpen = () => {
     const f = this.activeEditorView?.file;
     if (f && f.name !== this.activeFilename) {
       // if current window was replaced
@@ -114,7 +119,7 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     }
   };
 
-  onLayoutChange = () => {
+  _onLayoutChange = () => {
     // pause the current editor when its window closes
     const didMatch = this.app.workspace
       .getLeavesOfType("markdown")
@@ -127,30 +132,23 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     }
   };
 
-  setActiveLeaf = () => {
+  _setFocusedEditor = () => {
     this.focusedEditorView =
-      this.app.workspace.getActiveViewOfType(MarkdownView);
+      this.app.workspace.getActiveViewOfType(MarkdownView) ||
+      this.focusedEditorView; // is sticky
   };
 
   destroy: () => void = () => {
-    this.app.workspace?.off("layout-change", this.onLayoutChange);
+    this.app.workspace?.off("layout-change", this._onLayoutChange);
   };
 
-  playSelectionIfAny() {
-    this.setActiveEditor();
-    const activeEditor = this.app.workspace.activeEditor;
-
-    const maybeCursor = activeEditor?.editor?.getCursor("head");
-    if (maybeCursor) {
-      triggerSelection(this.audio, activeEditor!.file, activeEditor!.editor!);
-    } else {
-      new Notice("No text selected to speak");
-    }
-  }
-
   playSelection(): void {
-    this.setActiveEditor();
-    playSelectionIfAny(this.app, this.audio);
+    const focused = this.focusedEditorView;
+    if (focused?.editor) {
+      this.triggerSelection(focused.file, focused.editor);
+    } else {
+      new Notice("Focus a file or select some text first to play");
+    }
   }
 
   onTextChanged(position: number, type: "add" | "remove", text: string) {
@@ -158,8 +156,35 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
   }
 
   triggerSelection(file: TFile | null, editor: Editor) {
-    this.setActiveEditor();
-    triggerSelection(this.audio, file, editor);
+    this._setActiveEditor();
+    const player: AudioStore = this.audio;
+    const from = editor.getCursor("from");
+    let to = editor.getCursor("to");
+    if (from.ch === to.ch && from.line === to.line) {
+      to = {
+        line: editor.lastLine(),
+        ch: 0,
+      };
+    }
+    const start = editor.getRange({ line: 0, ch: 0 }, from).length;
+
+    const selection = editor.getRange(from, to);
+
+    if (selection) {
+      try {
+        player.startPlayer({
+          text: selection,
+          filename:
+            [file?.path, file?.name].filter((x) => x).join("/") || "Untitled",
+          start,
+          end: start + selection.length,
+        });
+      } catch (ex) {
+        console.error("Couldn't start player!", ex);
+      }
+    } else {
+      new Notice("No text selected to speak");
+    }
   }
 
   openSettings(): void {
@@ -170,49 +195,5 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     (this.app as unknown as Commands)?.commands?.commands?.[
       "app:open-settings"
     ]?.callback?.();
-  }
-}
-
-async function playSelectionIfAny(app: App, audio: AudioStore): Promise<void> {
-  const activeEditor = app.workspace.activeEditor;
-  const maybeCursor = activeEditor?.editor?.getCursor("head");
-  if (maybeCursor) {
-    await triggerSelection(audio, activeEditor!.file, activeEditor!.editor!);
-  } else {
-    new Notice("No text selected to speak");
-  }
-}
-
-async function triggerSelection(
-  player: AudioStore,
-  file: TFile | null,
-  editor: Editor,
-): Promise<void> {
-  const from = editor.getCursor("from");
-  let to = editor.getCursor("to");
-  if (from.ch === to.ch && from.line === to.line) {
-    to = {
-      line: editor.lastLine(),
-      ch: 0,
-    };
-  }
-  const start = editor.getRange({ line: 0, ch: 0 }, from).length;
-
-  const selection = editor.getRange(from, to);
-
-  if (selection) {
-    try {
-      await player.startPlayer({
-        text: selection,
-        filename:
-          [file?.path, file?.name].filter((x) => x).join("/") || "Untitled",
-        start,
-        end: start + selection.length,
-      });
-    } catch (ex) {
-      console.error("Couldn't start player!", ex);
-    }
-  } else {
-    new Notice("No text selected to speak");
   }
 }
