@@ -3,11 +3,13 @@
 set -ex
 
 if [ -z "$1" ] ; then
-  echo "Usage: $0 <major|minor|patch|release> [rc]
-where 
-  - <major|minor|patch> increment their corresponding semantic version 
-  - <release> leaves the semantic version alone
-  - [rc] adds the rc suffix, incrementing it by one if necessary
+  echo "Usage: $0 <command> [args] <major|minor|patch|release> [rc]
+commands
+  major [rc] - increments the major version, optionally adding an auto incrementing rc suffix
+  minor [rc] - increments the minor version, optionally adding an auto incrementing rc suffix
+  patch [rc] - increments the patch version, optionally adding an auto incrementing rc suffix
+  release    - releases the current rc suffix version
+  specified <version> - sets the version to the specified version string
 "
   exit 1
 fi
