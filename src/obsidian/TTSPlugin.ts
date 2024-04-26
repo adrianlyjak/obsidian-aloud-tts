@@ -11,7 +11,7 @@ import {
   pluginSettingsStore,
 } from "../player/TTSPluginSettings";
 import { ObsidianBridge, ObsidianBridgeImpl } from "./ObsidianBridge";
-import { IndexedDBAudioStorage } from "../web/IndexedDBAudioStorage";
+import { configurableAudioCache } from "./ObsidianPlayer";
 
 // standard lucide.dev icon, but for some reason not working as a ribbon icon without registering it
 // https://lucide.dev/icons/audio-lines
@@ -26,6 +26,7 @@ export default class TTSPlugin extends Plugin {
   player: AudioStore;
   audio: AudioSink;
   bridge: ObsidianBridge;
+  cache: { destroy: () => void } | undefined;
 
   async onload() {
     await this.loadSettings();
@@ -104,9 +105,11 @@ export default class TTSPlugin extends Plugin {
       (data) => this.saveData(data),
     );
     this.audio = new WebAudioSink();
+    const cache = configurableAudioCache(this.app, this.settings);
+    this.cache = cache;
     this.player = await loadAudioStore({
       settings: this.settings.settings,
-      storage: new IndexedDBAudioStorage(),
+      storage: cache,
       audioSink: this.audio,
     });
     this.bridge = new ObsidianBridgeImpl(this.app, this.player);

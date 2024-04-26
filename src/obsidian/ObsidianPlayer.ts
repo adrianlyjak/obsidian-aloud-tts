@@ -1,8 +1,56 @@
 import { App, normalizePath } from "obsidian";
 import { AudioCache, hashAudioInputs } from "src/player/AudioCache";
 import { TTSModelOptions } from "src/player/TTSModel";
+import { TTSPluginSettingsStore } from "src/player/TTSPluginSettings";
+import { IndexedDBAudioStorage } from "src/web/IndexedDBAudioStorage";
+import * as mobx from "mobx";
 
-export function obsidianStorage(app: App): AudioCache {
+export function configurableAudioCache(
+  app: App,
+  settings: TTSPluginSettingsStore,
+): AudioCache & { destroy(): void } {
+  const createCache = (): AudioCache =>
+    settings.settings.cacheType === "vault"
+      ? obsidianFileVault(app)
+      : new IndexedDBAudioStorage();
+
+  let active: AudioCache = createCache();
+
+  const cancelReaction = mobx.reaction(
+    () => settings.settings.cacheType,
+    () => {
+      active = createCache();
+    },
+  );
+
+  return {
+    async getAudio(
+      text: string,
+      settings: TTSModelOptions,
+    ): Promise<ArrayBuffer | null> {
+      return active.getAudio(text, settings);
+    },
+    async saveAudio(
+      text: string,
+      settings: TTSModelOptions,
+      audio: ArrayBuffer,
+    ): Promise<void> {
+      return active.saveAudio(text, settings, audio);
+    },
+    async expire(ageInMillis = 1000 * 60 * 60 * 8): Promise<void> {
+      return active.expire(ageInMillis);
+    },
+    async getStorageSize(): Promise<number> {
+      return active.getStorageSize();
+    },
+
+    destroy() {
+      cancelReaction();
+    },
+  };
+}
+
+export function obsidianFileVault(app: App): AudioCache {
   const vault = app.vault;
   const cachedir = ".tts";
 

@@ -145,6 +145,9 @@ const CacheDuration: React.FC<{
     loading: boolean;
     size: number;
   }>({ loading: true, size: 0 });
+  const setLoading = React.useCallback(() => {
+    setCacheSize({ loading: true, size: 0 });
+  }, []);
   React.useEffect(() => {
     if (cacheSize.loading) {
       player
@@ -158,13 +161,51 @@ const CacheDuration: React.FC<{
         });
     }
   }, [cacheSize.loading]);
+
+  const [isConfirming, setIsConfirming] = React.useState(false);
+  const confirmClear = React.useCallback(() => {
+    setIsConfirming(false);
+  }, []);
+  const confirm = React.useCallback(() => {
+    setIsConfirming(true);
+  }, []);
   const clearStorage = React.useCallback(() => {
+    confirmClear();
     player.clearStorage().then(() => {
       setCacheSize({ loading: false, size: 0 });
     });
   }, []);
+
+  const setCacheType: React.ChangeEventHandler<HTMLSelectElement> =
+    React.useCallback((event) => {
+      store.updateSettings({
+        cacheType: event.target.value as "local" | "vault",
+      });
+      setCacheSize({ loading: true, size: 0 });
+    }, []);
   return (
     <>
+      <div className="setting-item">
+        <div className="setting-item-info">
+          <div className="setting-item-name">Cache type</div>
+          <div className="setting-item-description">
+            Local device based cache (recommended), or a vault vased cache that
+            is shared across devices.
+            <br />
+            Device local cache is recommended to avoid sync overhead
+          </div>
+        </div>
+        <div className="setting-item-control">
+          <select
+            className="dropdown"
+            value={store.settings.cacheType}
+            onChange={setCacheType}
+          >
+            <option value="local">Local</option>
+            <option value="vault">Vault</option>
+          </select>
+        </div>
+      </div>
       <div className="setting-item">
         <div className="setting-item-info">
           <div className="setting-item-name">Cache duration</div>
@@ -193,11 +234,30 @@ const CacheDuration: React.FC<{
           </div>
         </div>
         <div className="setting-item-control">
-          <IconButton
-            tooltip="Clear cache"
-            icon="trash"
-            onClick={clearStorage}
-          />
+          {isConfirming ? (
+            <>
+              <button onClick={confirmClear}>Cancel</button>
+              <button
+                style={{ backgroundColor: "var(--background-modifier-error)" }}
+                onClick={clearStorage}
+              >
+                Delete
+              </button>
+            </>
+          ) : (
+            <>
+              <IconButton
+                tooltip="Reload"
+                icon="rotate-cw"
+                onClick={setLoading}
+              />
+              <IconButton
+                tooltip="Clear cache"
+                icon="trash"
+                onClick={confirm}
+              />
+            </>
+          )}
         </div>
       </div>
     </>
