@@ -161,15 +161,19 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     const from = editor.getCursor("from");
     let to = editor.getCursor("to");
     if (from.ch === to.ch && from.line === to.line) {
+      console.log("setting to last line", {
+        line: editor.lastLine(),
+        ch: editor.getLine(editor.lastLine()).length,
+      });
       to = {
         line: editor.lastLine(),
-        ch: 0,
+        ch: editor.getLine(editor.lastLine()).length,
       };
     }
     const start = editor.getRange({ line: 0, ch: 0 }, from).length;
 
     const selection = editor.getRange(from, to);
-
+    console.log({ selection, from, to });
     if (selection) {
       try {
         player.startPlayer({
