@@ -10,6 +10,7 @@ export interface TTSPluginSettings {
   ttsVoice: string;
   chunkType: "sentence" | "paragraph";
   playbackSpeed: number;
+  cacheType: "local" | "vault";
   cacheDurationMillis: number;
   showPlayerView: PlayerViewMode;
 }
@@ -43,6 +44,7 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   chunkType: "sentence",
   playbackSpeed: 1.0,
   cacheDurationMillis: 1000 * 60 * 60 * 24 * 7, // 7 days
+  cacheType: "local",
   showPlayerView: "always-mobile",
 } as const;
 
