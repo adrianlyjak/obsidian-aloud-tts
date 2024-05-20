@@ -46,12 +46,13 @@ export default class TTSPlugin extends Plugin {
     );
 
     // Also add an editor command that can perform the same play selection
+    // This will always initiate a new audio
     this.addCommand({
       id: "play-selection",
       name: "Play selection",
       editorCheckCallback: (checking, editor: Editor, view: MarkdownView) => {
         if (checking) {
-          return editor.getSelection().length > 0 || !!editor.getCursor("head");
+          return true;
         }
         this.bridge.triggerSelection(view.file, editor);
       },
@@ -62,25 +63,22 @@ export default class TTSPlugin extends Plugin {
       this.bridge.playSelection(),
     );
 
-    // This adds a simple command that can be triggered anywhere to resume last track
+    // this pause/resumes the current audio, or initiates a new audio if nothing is playing
     this.addCommand({
-      id: "resume",
-      name: "Resume",
+      id: "play-pause",
+      name: "Play/pause",
       checkCallback: (checking) => {
         const active = this.player.activeText;
         if (checking) {
-          return !!active;
+          return true;
         }
-        this.player.activeText?.play();
-      },
-    });
-
-    // This adds an editor command that can perform some operation on the current editor instance
-    this.addCommand({
-      id: "pause",
-      name: "Pause",
-      editorCallback: (editor: Editor, view: MarkdownView) => {
-        this.player.activeText?.pause();
+        if (!active) {
+          this.bridge.playSelection();
+        } else if (this.player.activeText?.isPlaying) {
+          this.player.activeText?.pause();
+        } else {
+          this.player.activeText?.play();
+        }
       },
     });
 
