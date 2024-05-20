@@ -1,6 +1,6 @@
 import * as mobx from "mobx";
 import { action, computed, observable } from "mobx";
-import cleanMarkdown from "src/util/cleanMarkdown";
+import cleanMarkup from "src/util/cleanMarkdown";
 import { randomId, splitParagraphs, splitSentences } from "../util/misc";
 import { AudioCache, memoryStorage } from "./AudioCache";
 import { AudioSink, WebAudioSink } from "./AudioSink";
@@ -344,7 +344,7 @@ class ActiveAudioTextImpl implements ActiveAudioText {
                   const split = position - track.start;
                   track.rawText =
                     track.text.slice(0, split) + text + track.text.slice(split);
-                  track.text = cleanMarkdown(track.rawText);
+                  track.text = cleanMarkup(track.rawText);
                 }
               }
             }
@@ -409,7 +409,7 @@ class ActiveAudioTextImpl implements ActiveAudioText {
               // );
               if (rawText !== undefined) {
                 track.rawText = rawText;
-                track.text = cleanMarkdown(rawText);
+                track.text = cleanMarkup(rawText);
               }
               Object.assign(track, updates);
             }
@@ -484,7 +484,7 @@ export function buildTrack(
     const end = start + s.length;
     const track = {
       rawText: s,
-      text: cleanMarkdown(s),
+      text: cleanMarkup(s),
       // TODO - fixme
       start,
       end,
