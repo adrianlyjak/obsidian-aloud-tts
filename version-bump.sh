@@ -1,13 +1,14 @@
 
 #!/bin/bash
-set -ex
+set -e
 
-if [ -z "$1" ] ; then
-  echo "Usage: $0 <command> [args] <major|minor|patch|release> [rc]
+if [ -z "$1" ] || [ "$1" '==' "--help" ] ; then
+  echo "Usage: $0 <command> [rc]
 commands
   major [rc] - increments the major version, optionally adding an auto incrementing rc suffix
   minor [rc] - increments the minor version, optionally adding an auto incrementing rc suffix
   patch [rc] - increments the patch version, optionally adding an auto incrementing rc suffix
+  rc         - increments the current rc suffix version
   release    - releases the current rc suffix version
   specified <version> - sets the version to the specified version string
 "
