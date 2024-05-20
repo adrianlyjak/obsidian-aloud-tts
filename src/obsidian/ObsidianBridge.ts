@@ -24,7 +24,11 @@ export interface ObsidianBridge {
     type: "add" | "remove",
     text: string,
   ) => void;
-  triggerSelection: (file: TFile | null, editor: Editor) => void;
+  triggerSelection: (
+    file: TFile | null,
+    editor: Editor,
+    options?: { extendShort?: boolean },
+  ) => void;
   openSettings: () => void;
   destroy: () => void;
   isMobile: () => boolean;
@@ -152,12 +156,21 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     this.audio.activeText?.onTextChanged(position, type, text);
   }
 
-  triggerSelection(file: TFile | null, editor: Editor) {
+  triggerSelection(
+    file: TFile | null,
+    editor: Editor,
+    { extendShort }: { extendShort?: boolean } = {},
+  ) {
     this._setActiveEditor();
     const player: AudioStore = this.audio;
     const from = editor.getCursor("from");
     let to = editor.getCursor("to");
-    if (from.ch === to.ch && from.line === to.line) {
+    let isTooShort = false;
+    if (extendShort) {
+      const text = editor.getRange(from, to);
+      isTooShort = !text.trim().match(/\s+/);
+    }
+    if ((from.ch === to.ch && from.line === to.line) || isTooShort) {
       to = {
         line: editor.lastLine(),
         ch: editor.getLine(editor.lastLine()).length,

@@ -39,7 +39,9 @@ export default class TTSPlugin extends Plugin {
             .setTitle(`${MARKETING_NAME}: play selection`)
             .setIcon("play")
             .onClick(async () => {
-              await this.bridge.triggerSelection(view.file, editor);
+              await this.bridge.triggerSelection(view.file, editor, {
+                extendShort: true,
+              });
             });
         });
       }),
