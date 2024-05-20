@@ -1,5 +1,10 @@
-/** Just a bunch of brittle regexes. Loosely based on https://github.com/stiang/remove-markdown */
-export default function cleanMarkdown(md: string) {
+/** Just a bunch of brittle regexes.
+ * Loosely based on https://github.com/stiang/remove-markdown
+ *
+ * Has miscellaneous additions to support weird stuff like Better Bibtex Citekeys
+ *
+ * */
+export default function cleanMarkup(md: string) {
   let output = md || "";
 
   // Remove horizontal rules (stripListHeaders conflict with this rule, which is why it has been moved to the top)
@@ -42,7 +47,11 @@ export default function cleanMarkdown(md: string) {
     // Remove inline code
     .replace(/`(.+?)`/g, "$1")
     // Replace strike through
-    .replace(/~(.*?)~/g, "$1");
+    .replace(/~(.*?)~/g, "$1")
+    // remove better bibtex citekeys
+    .replace(/\[\s*@[\w,\s]+\s*\]/g, "")
+    // remove criticmarkup comments
+    .replace(/\{>>.*?<<\}/g, "");
 
   return output;
 }
