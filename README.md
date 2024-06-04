@@ -1,4 +1,4 @@
-# Aloud Text To Speech Obidian Plugin
+# Aloud Text To Speech Obsidian Plugin
 
 Highlight and speak text from your Obsidian notes. Converts text to audio using lifelike voices from OpenAI.
 
