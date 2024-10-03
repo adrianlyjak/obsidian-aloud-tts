@@ -1,7 +1,10 @@
 import { observer } from "mobx-react-lite";
 import * as React from "react";
 import { ObsidianBridge } from "src/obsidian/ObsidianBridge";
-import { TTSPluginSettingsStore } from "src/player/TTSPluginSettings";
+import {
+  MARKETING_NAME,
+  TTSPluginSettingsStore,
+} from "src/player/TTSPluginSettings";
 import { AudioSink } from "../player/AudioSink";
 import { AudioStore } from "../player/Player";
 import { AudioVisualizer } from "./AudioVisualizer";
@@ -148,19 +151,16 @@ const AudioStatusInfoContents: React.FC<{
   }
 });
 
-function TTSErrorInfoView(props: { error: TTSErrorInfo }): React.ReactNode {
-  let moreInfo = "";
-  if (props.error.httpErrorCode === 401) {
-    moreInfo = "Please check your API key.";
-  } else if (props.error.httpErrorCode === 429) {
-    moreInfo =
-      "Make sure your API token has enough credits or you are not exceeding rate limits.";
-  }
-  const textBody = `${props.error.errorDetails}`
-    ? JSON.stringify(props.error.errorDetails, null, 2)
-    : undefined;
+export function TTSErrorInfoView(props: {
+  error: TTSErrorInfo;
+}): React.ReactNode {
+  const moreInfo = getMoreInfo(props.error);
 
-  const tooltip = [props.error.message, moreInfo, textBody]
+  const tooltip = [
+    props.error.message,
+    moreInfo,
+    `Go to the ${MARKETING_NAME} settings to see more details.`,
+  ]
     .filter((x) => x)
     .join("\n");
   const ref = React.useRef<HTMLElement | null>(null);
@@ -184,5 +184,48 @@ function TTSErrorInfoView(props: { error: TTSErrorInfo }): React.ReactNode {
         {props.error.message}
       </span>
     </span>
+  );
+}
+
+function getMoreInfo(error: TTSErrorInfo): string {
+  if (error.httpErrorCode === 401) {
+    return "Please check your API key.";
+  } else if (error.httpErrorCode === 429) {
+    return "Make sure your API token has enough credits or you are not exceeding rate limits.";
+  }
+  return "";
+}
+
+function getJSONErrorDetails(error: TTSErrorInfo): string | undefined {
+  return error.errorDetails
+    ? JSON.stringify(error.errorDetails, null, 2)
+    : undefined;
+}
+
+export function TTSErrorInfoDetails(props: {
+  error: TTSErrorInfo;
+}): React.ReactNode {
+  const moreInfo = getMoreInfo(props.error);
+  const errorResponse = getJSONErrorDetails(props.error);
+  return (
+    <div className="tts-error-details">
+      {moreInfo && (
+        <div>
+          <strong>More Info:</strong> {moreInfo}
+        </div>
+      )}
+      {errorResponse && (
+        <>
+          <div>
+            <strong>Error Response:</strong>
+          </div>
+          <div style={{ overflow: "auto" }}>
+            <pre>
+              <code>{getJSONErrorDetails(props.error)}</code>
+            </pre>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
