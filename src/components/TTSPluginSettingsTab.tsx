@@ -4,13 +4,16 @@ import * as React from "react";
 import { Root, createRoot } from "react-dom/client";
 import { AudioStore } from "src/player/Player";
 import {
+  ModelProvider,
   PlayerViewMode,
   REAL_OPENAI_API_URL,
   TTSPluginSettingsStore,
   isPlayerViewMode,
+  modelProviders,
   playViewModes,
 } from "../player/TTSPluginSettings";
 import { IconButton, IconSpan, Spinner } from "./IconButton";
+import { TTSErrorInfoDetails, TTSErrorInfoView } from "./PlayerView";
 
 export class TTSSettingTab extends PluginSettingTab {
   settings: TTSPluginSettingsStore;
@@ -59,20 +62,70 @@ const TTSSettingsTabComponent: React.FC<{
   const [isActive, setActive] = React.useState(false);
   return (
     <>
-      <h1>OpenAI TTS</h1>
-      <APIKeyComponent store={store} />
-      <VoiceComponent
-        store={store}
-        player={player}
-        isActive={isActive}
-        setActive={setActive}
-      />
+      <div className="tts-settings-model-header">
+        <h1>OpenAI API</h1>
+        <ModelSwitcher store={store} />
+        <TestVoiceComponent
+          store={store}
+          player={player}
+          isActive={isActive}
+          setActive={setActive}
+        />
+      </div>
+      <div className="tts-settings-error-container">
+        {player.activeText?.error && (
+          <details>
+            <summary>
+              <div className="tts-settings-error-summary">
+                <span className="setting-item-description">
+                  Most Recent Error Details
+                </span>
+                <TTSErrorInfoView error={player.activeText.error} />
+              </div>
+            </summary>
+            <TTSErrorInfoDetails error={player.activeText.error} />
+          </details>
+        )}
+      </div>
+
+      {store.settings.modelProvider === "openai" ? (
+        <>
+          <OpenAIApiKeyComponent store={store} />
+          <OpenAIModelComponent store={store} />
+          <OpenAIVoiceComponent store={store} />
+        </>
+      ) : (
+        <>
+          <OpenAICompatibleApiKeyComponent store={store} />
+          <APIBaseURLComponent store={store} />
+          <CustomVoices store={store} />
+        </>
+      )}
+
       <h1>User Interface</h1>
       <PlayerDisplayMode store={store} />
-      <h1>Advanced</h1>
+      <h1>Cache</h1>
       <CacheDuration store={store} player={player} />
-      <APIBaseURLComponent store={store} />
     </>
+  );
+});
+
+const labels: Record<ModelProvider, string> = {
+  openai: "OpenAI",
+  openaicompat: "OpenAI Compatible (Advanced)",
+};
+
+const ModelSwitcher: React.FC<{
+  store: TTSPluginSettingsStore;
+}> = observer(({ store }) => {
+  return (
+    <OptionSelect
+      options={modelProviders.map((v) => ({ label: labels[v], value: v }))}
+      value={store.settings.modelProvider}
+      onChange={(v) =>
+        store.updateSettings({ modelProvider: v as ModelProvider })
+      }
+    />
   );
 });
 
@@ -293,7 +346,46 @@ const APIBaseURLComponent: React.FC<{
   );
 });
 
-const APIKeyComponent: React.FC<{
+const CustomVoices: React.FC<{
+  store: TTSPluginSettingsStore;
+}> = observer(({ store }) => {
+  return (
+    <>
+      <div className="setting-item">
+        <div className="setting-item-info">
+          <div className="setting-item-name">Model</div>
+          <div className="setting-item-description">The model parameter</div>
+        </div>
+        <div className="setting-item-control">
+          <input
+            type="text"
+            value={store.settings.model}
+            onChange={(evt) =>
+              store.updateSettings({ model: evt.target.value })
+            }
+          />
+        </div>
+      </div>
+      <div className="setting-item">
+        <div className="setting-item-info">
+          <div className="setting-item-name">Custom OpenAI Voice</div>
+          <div className="setting-item-description">The voice parameter</div>
+        </div>
+        <div className="setting-item-control">
+          <input
+            type="text"
+            value={store.settings.ttsVoice}
+            onChange={(evt) =>
+              store.updateSettings({ ttsVoice: evt.target.value })
+            }
+          />
+        </div>
+      </div>
+    </>
+  );
+});
+
+const OpenAIApiKeyComponent: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
   const [showPassword, setShowPassword] = React.useState(false);
@@ -313,7 +405,9 @@ const APIKeyComponent: React.FC<{
 
   const onChange: React.ChangeEventHandler<HTMLInputElement> =
     React.useCallback((v: React.ChangeEvent<HTMLInputElement>) => {
-      store.updateSettings({ OPENAI_API_KEY: v.target.value });
+      store.updateModelSpecificSettings("openai", {
+        openai_apiKey: v.target.value,
+      });
     }, []);
   return (
     <div className="setting-item">
@@ -332,7 +426,7 @@ const APIKeyComponent: React.FC<{
         <input
           type={showPassword ? "text" : "password"}
           placeholder="API Key"
-          value={store.settings.OPENAI_API_KEY}
+          value={store.settings.openai_apiKey}
           onChange={onChange}
         />
         <IconButton
@@ -344,7 +438,104 @@ const APIKeyComponent: React.FC<{
   );
 });
 
-const VoiceComponent: React.FC<{
+const OpenAICompatibleApiKeyComponent: React.FC<{
+  store: TTSPluginSettingsStore;
+}> = observer(({ store }) => {
+  const [showPassword, setShowPassword] = React.useState(false);
+
+  const onChange: React.ChangeEventHandler<HTMLInputElement> =
+    React.useCallback((v: React.ChangeEvent<HTMLInputElement>) => {
+      store.updateSettings({ OPENAI_API_KEY: v.target.value });
+    }, []);
+  return (
+    <div className="setting-item">
+      <div className="setting-item-info">
+        <div className="setting-item-name">API key</div>
+        <div className="setting-item-description">
+          A Bearer token for your API.
+        </div>
+      </div>
+      <div className="setting-item-control">
+        <input
+          type={showPassword ? "text" : "password"}
+          placeholder="API Key"
+          value={store.settings.openaicompat_apiKey}
+          onChange={onChange}
+        />
+        <IconButton
+          icon={showPassword ? "eye-off" : "eye"}
+          onClick={() => setShowPassword(!showPassword)}
+        />
+      </div>
+    </div>
+  );
+});
+
+const DEFAULT_MODELS = [
+  { label: "tts-1", value: "tts-1" },
+  { label: "tts-1-hd", value: "tts-1-hd" },
+] as const;
+
+const DEFAULT_VOICES = [
+  { label: "Alloy", value: "alloy" },
+  { label: "Echo", value: "echo" },
+  { label: "Fable", value: "fable" },
+  { label: "Onyx", value: "onyx" },
+  { label: "Nova", value: "nova" },
+  { label: "Shimmer", value: "shimmer" },
+] as const;
+
+const OpenAIModelComponent: React.FC<{
+  store: TTSPluginSettingsStore;
+}> = observer(({ store }) => {
+  return (
+    <div className="setting-item">
+      <div className="setting-item-info">
+        <div className="setting-item-name">Model</div>
+        <div className="setting-item-description">
+          The OpenAI TTS model to use
+        </div>
+      </div>
+      <div className="setting-item-control">
+        <OptionSelect
+          options={DEFAULT_MODELS}
+          value={store.settings.openai_ttsModel}
+          onChange={(v) =>
+            store.updateModelSpecificSettings("openai", {
+              openai_ttsModel: v,
+            })
+          }
+        />
+      </div>
+    </div>
+  );
+});
+
+const OpenAIVoiceComponent: React.FC<{
+  store: TTSPluginSettingsStore;
+}> = observer(({ store }) => {
+  return (
+    <div className="setting-item">
+      <div className="setting-item-info">
+        <div className="setting-item-name">Voice</div>
+        <div className="setting-item-description">The voice option to use</div>
+      </div>
+      <div className="setting-item-control">
+        <OptionSelect
+          options={DEFAULT_VOICES}
+          value={store.settings.ttsVoice}
+          onChange={(v) =>
+            store.updateModelSpecificSettings("openai", {
+              openai_ttsVoice: v,
+            })
+          }
+        />
+      </div>
+    </div>
+  );
+});
+
+const TestVoiceComponent: React.FC<{
   store: TTSPluginSettingsStore;
   player: AudioStore;
   isActive: boolean;
@@ -367,28 +558,31 @@ const VoiceComponent: React.FC<{
       player.activeText?.pause();
     }
   }, [store.settings.ttsVoice, isPlaying]);
-
   return (
-    <div className="setting-item">
-      <div className="setting-item-info">
-        <div className="setting-item-name">Voice</div>
-        <div className="setting-item-description">The voice option to use</div>
-      </div>
-      <div className="setting-item-control">
-        <select
-          className="dropdown"
-          value={store.settings.ttsVoice}
-          onChange={(v) => store.updateSettings({ ttsVoice: v.target.value })}
-        >
-          <option value="alloy">Alloy</option>
-          <option value="echo">Echo</option>
-          <option value="fable">Fable</option>
-          <option value="onyx">Onyx</option>
-          <option value="nova">Nova</option>
-          <option value="shimmer">Shimmer</option>
-        </select>
-        <IconButton icon={isPlaying ? "pause" : "play"} onClick={playSample} />
-      </div>
-    </div>
+    <IconButton icon={isPlaying ? "pause" : "play"} onClick={playSample} />
   );
 });
+
+const OptionSelect: React.FC<{
+  options: readonly { label: string; value: string }[];
+  value: string;
+  onChange: (v: string) => void;
+}> = ({ options, value, onChange }) => {
+  const isUnknown = options.find((o) => o.value === value) === undefined;
+  const unknownValue = isUnknown && !!value ? [{ label: value, value }] : [];
+  return (
+    <>
+      <select
+        className="dropdown"
+        value={value}
+        onChange={(evt) => onChange(evt.target.value)}
+      >
+        {options.concat(unknownValue).map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </>
+  );
+};

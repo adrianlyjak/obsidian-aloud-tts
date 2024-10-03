@@ -95,3 +95,53 @@
   padding-top: 0.1rem;
   padding-right: 0.33rem;
 }
+
+/**
+ * Settings tab
+ */
+
+.tts-settings-model-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-direction: row;
+}
+
+.tts-settings-model-header h1 {
+  flex: 1 1 auto;
+}
+
+.tts-settings-error-container details {
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-s);
+  background-color: var(--background-primary-alt);
+}
+
+.tts-settings-error-container summary:hover {
+  cursor: pointer;
+}
+
+.tts-settings-error-container summary > div {
+  display: inline-flex;
+  flex-direction: row;
+  float: right;
+  width: calc(100% - 1rem);
+  justify-content: space-between;
+}
+
+details .tts-error-details {
+  opacity: 0;
+}
+
+details[open] .tts-error-details {
+  animation: fadeIn 0.25s linear forwards;
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}

@@ -24,3 +24,5 @@ data.json
 .pnpm-store
 
 dist
+
+.history
