@@ -1,7 +1,7 @@
 import { action, observable } from "mobx";
 import { TTSErrorInfo, TTSModelOptions, listModels } from "./TTSModel";
-import { debounce } from "obsidian";
-import { hashString } from "src/util/Minhash";
+import { debounce } from "../util/misc";
+import { hashString } from "../util/Minhash";
 export type TTSPluginSettings = {
   OPENAI_API_KEY: string;
   OPENAI_API_URL: string;

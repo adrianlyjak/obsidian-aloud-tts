@@ -16,170 +16,91 @@ export interface AudioSink {
   /** observable for the currently playing track status */
   readonly trackStatus: TrackStatus;
   /** Web Audio stuff, for observing the audio state, like visualization */
-  readonly source: AudioNode | undefined;
-  readonly context: AudioContext | undefined;
+  // readonly source: AudioNode | undefined;
+  // readonly context: AudioContext | undefined;
 }
 
 export class WebAudioSink implements AudioSink {
-  current?: AudioSourceManager = undefined;
+  current?: HTMLAudioElement = undefined;
+  _trackStatus: TrackStatus = "none";
 
   constructor() {
     mobx.makeObservable(this, {
       current: mobx.observable,
+      _trackStatus: mobx.observable,
       play: mobx.action,
       pause: mobx.action,
       restart: mobx.action,
       remove: mobx.action,
       trackStatus: mobx.computed,
-      source: mobx.computed,
-      context: mobx.computed,
     });
   }
 
   get trackStatus(): TrackStatus {
-    if (!this.current) {
-      return "none";
-    } else if (this.current.state.state === "playing") {
-      return "playing";
-    } else if (this.current.state.state === "complete") {
-      return "complete";
-    } else {
-      return "paused";
-    }
+    return this._trackStatus;
   }
 
-  get source(): AudioNode | undefined {
-    if (this.current?.state.state === "playing") {
-      return this.current.state.source;
-    }
-  }
-  get context(): AudioContext | undefined {
-    if (this.current?.state.state === "playing") {
-      return this.current.context;
+  private updateTrackStatus() {
+    if (!this.current) {
+      this._trackStatus = "none";
+    } else if (this.current.ended) {
+      this._trackStatus = "complete";
+    } else if (this.current.paused) {
+      this._trackStatus = "paused";
+    } else {
+      this._trackStatus = "playing";
     }
   }
 
   setMedia(data: ArrayBuffer): Promise<void> {
-    this.current?.destroy();
-    return AudioSourceManager.create(data).then((data) => {
-      mobx.runInAction(() => {
-        this.current = data;
-      });
+    this.remove();
+    return new Promise((resolve, reject) => {
+      const blob = new Blob([data], { type: "audio/mpeg" });
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.playbackRate = 2;
+      audio.oncanplaythrough = () => {
+        mobx.runInAction(() => {
+          this.current = audio;
+          this.updateTrackStatus();
+          resolve();
+        });
+      };
+      audio.onerror = reject;
     });
   }
+
   play() {
-    this.current?.play();
+    if (this.current) {
+      this.current.play();
+      this.current.onplay = () =>
+        mobx.runInAction(() => this.updateTrackStatus());
+      this.current.onended = () =>
+        mobx.runInAction(() => this.updateTrackStatus());
+    }
   }
+
   pause() {
-    this.current?.pause();
+    if (this.current) {
+      this.current.pause();
+      this.current.onpause = () =>
+        mobx.runInAction(() => this.updateTrackStatus());
+    }
   }
+
   restart() {
-    this.current?.backToStart();
-  }
-  remove() {
-    this.current?.destroy();
-    this.current = undefined;
-  }
-}
-// 1. initializing audio data
-// 2. prepped, not started
-// 3. playing
-// -> paused (go to 2)
-// 5. complete
-
-type Paused = {
-  state: "paused";
-  startTime: number;
-};
-
-type Playing = {
-  state: "playing";
-  contextStartTime: number;
-  source: AudioBufferSourceNode;
-};
-
-type Complete = {
-  state: "complete";
-};
-
-type AudioState = Paused | Playing | Complete;
-
-class AudioSourceManager {
-  context: AudioContext;
-  audioData: AudioBuffer;
-  state: AudioState;
-
-  static create(data: ArrayBuffer): Promise<AudioSourceManager> {
-    const context = new AudioContext();
-    const audioData = context.decodeAudioData(data);
-    return audioData.then((data) => new AudioSourceManager(context, data));
-  }
-
-  constructor(context: AudioContext, audioData: AudioBuffer) {
-    this.context = context;
-    this.audioData = audioData;
-    this.state = {
-      state: "paused",
-      startTime: 0,
-    };
-    mobx.makeObservable(this, {
-      state: mobx.observable.ref,
-      setState: mobx.action,
-    });
-  }
-
-  setState(state: AudioState) {
-    this.state = state;
-  }
-
-  play() {
-    if (this.state.state === "paused") {
-      const ready = this.state as Paused;
-
-      const source = this.context.createBufferSource();
-      source.buffer = this.audioData;
-      source.connect(this.context.destination);
-      source.onended = () => this.setState({ state: "complete" });
-      source.start(0, ready.startTime);
-
-      this.setState({
-        state: "playing",
-        contextStartTime: this.context.currentTime - ready.startTime,
-        source,
-      });
-    }
-  }
-
-  destroy() {
-    this.pause();
-    this.context.close();
-  }
-
-  pause() {
-    if (this.state.state === "playing") {
-      const playing: Playing = this.state;
-      playing.source.onended = null; // otherwise the completion callback would trigger
-      playing.source.stop();
-      this.setState({
-        state: "paused",
-        startTime: this.context.currentTime - playing.contextStartTime,
-      });
-    }
-  }
-
-  backToStart() {
-    let wasPlaying = false;
-    if (this.state.state === "playing") {
-      wasPlaying = true;
-      this.state.source.onended = null; // otherwise the completion callback would trigger
-      this.state.source.stop();
-    }
-    this.setState({
-      state: "paused",
-      startTime: 0,
-    });
-    if (wasPlaying) {
+    if (this.current) {
+      this.current.currentTime = 0;
       this.play();
+    }
+  }
+
+  remove() {
+    if (this.current) {
+      this.current.pause();
+      URL.revokeObjectURL(this.current.src);
+      this.current = undefined;
+      mobx.runInAction(() => this.updateTrackStatus());
     }
   }
 }

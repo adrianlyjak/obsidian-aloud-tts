@@ -1,6 +1,6 @@
 import * as mobx from "mobx";
 import { action, computed, observable } from "mobx";
-import cleanMarkup from "src/util/cleanMarkdown";
+import cleanMarkup from "../util/cleanMarkdown";
 import { randomId, splitParagraphs, splitSentences } from "../util/misc";
 import { AudioCache, memoryStorage } from "./AudioCache";
 import { AudioSink, WebAudioSink } from "./AudioSink";

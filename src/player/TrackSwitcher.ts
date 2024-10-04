@@ -1,5 +1,5 @@
 import * as mobx from "mobx";
-import { randomId } from "src/util/misc";
+import { randomId } from "../util/misc";
 import { AudioSink } from "./AudioSink";
 import { ActiveAudioText } from "./Player";
 import { TTSErrorInfo, toModelOptions } from "./TTSModel";

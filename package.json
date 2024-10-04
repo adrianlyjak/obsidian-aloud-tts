@@ -11,7 +11,9 @@
     "lint": "eslint src",
     "test": "vitest",
     "format:check": "prettier --check src",
-    "format:write": "prettier --write src"
+    "format:write": "prettier --write src",
+    "web:dev": "vite src/web/",
+    "web:build": "vite build src/web/"
   },
   "keywords": [
     "obsidian",
