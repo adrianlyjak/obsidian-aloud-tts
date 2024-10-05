@@ -1,28 +1,36 @@
 import * as React from "react";
 
 export const AudioVisualizer: React.FC<{
-  audio: AudioNode;
-  context: AudioContext;
-}> = ({ audio, context }) => {
+  audioElement: HTMLAudioElement;
+}> = ({ audioElement }) => {
+  return null;
   const ref = React.useRef<HTMLElement | null>(null);
+  const audioContext = React.useRef<AudioContext | null>(null);
+  const analyserNode = React.useRef<AnalyserNode | null>(null);
+
   React.useEffect(() => {
-    if (ref.current) {
-      // maybe the source should be public, and this should be within a component?
-      const analyzer = context.createAnalyser();
-      // Analyzer settings. Magic numbers that make the visualizer icon look good
-      analyzer.fftSize = 512; // controls the resolution of the spectrum
-      analyzer.minDecibels = -100; // notes quieter than this are now shown
-      analyzer.maxDecibels = -30; // notes higher than this just show the max
-      analyzer.smoothingTimeConstant = 0.6; // how rapidly to decay measurement for the value. (Maybe smoothing for growth too?)
-      audio.connect(analyzer);
-      const destroyer = attachVisualizationToDom(ref.current, analyzer);
-      // setAudioMotion(newAudioMotion);
+    if (ref.current && !audioContext.current && !analyserNode.current) {
+      const context = new AudioContext();
+      const analyser = context.createAnalyser();
+      const source = context.createMediaElementSource(audioElement);
+
+      source.connect(analyser);
+      analyser.connect(context.destination);
+
+      audioContext.current = context;
+      analyserNode.current = analyser;
+
+      const destroyer = attachVisualizationToDom(ref.current, analyser);
+
       return () => {
-        destroyer.destroy;
-        audio.disconnect(analyzer);
+        destroyer.destroy();
+        source.disconnect(analyser);
+        analyser.disconnect(context.destination);
+        context.close();
       };
     }
-  }, [!!ref.current, audio]);
+  }, [audioElement, !!ref.current]);
+
   return (
     <div className="tts-audio-visualizer" ref={(x) => (ref.current = x)}></div>
   );

@@ -124,7 +124,10 @@ export class TrackLoader {
   }
 
   private destroyCachedAudio(audio: CachedAudio): void {
-    this.localCache.remove(audio);
+    const index = this.localCache.indexOf(audio);
+    if (index !== -1) {
+      this.localCache.splice(index, 1);
+    }
   }
 
   // combined with the IntervalDaemon, this has the behavior of adding a request

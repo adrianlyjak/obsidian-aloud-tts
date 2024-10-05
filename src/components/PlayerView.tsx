@@ -144,8 +144,8 @@ const AudioStatusInfoContents: React.FC<{
     return <TTSErrorInfoView error={player.activeText.error} />;
   } else if (player.activeText?.isLoading) {
     return <Spinner className="tts-audio-status-loading" />;
-  } else if (audio.source && audio.context && player.activeText?.isPlaying) {
-    return <AudioVisualizer audio={audio.source} context={audio.context} />;
+  } else if (audio.audio && player.activeText?.isPlaying) {
+    return <AudioVisualizer audioElement={audio.audio} />;
   } else {
     return null;
   }

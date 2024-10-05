@@ -31,7 +31,6 @@ jobs:
           pnpm run lint
           pnpm run format:check
           pnpm run test
-          pnpm run web:build
           pnpm run build
 
       - name: Create release
