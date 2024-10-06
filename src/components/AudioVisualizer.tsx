@@ -1,63 +1,71 @@
+import FFT from "fft.js";
 import * as React from "react";
 
 export const AudioVisualizer: React.FC<{
   audioElement: HTMLAudioElement;
-}> = ({ audioElement }) => {
+  audioBuffer: AudioBuffer;
+}> = ({ audioElement, audioBuffer }) => {
   const ref = React.useRef<HTMLElement | null>(null);
-  const audioContext = React.useMemo(
-    () => getAnalyser(audioElement),
-    [audioElement],
-  );
+  const fft = React.useMemo(() => new FFT(512), [audioBuffer]);
   React.useEffect(() => {
-    console.log("attachVisualizationToDom", ref.current, audioContext);
-    if (ref.current && audioContext) {
+    if (ref.current && audioElement && audioBuffer) {
       console.log("do attach");
       const destroyer = attachVisualizationToDom(
         ref.current,
         audioElement,
-        audioContext.source,
-        audioContext.analyser,
-        audioContext.context,
+        audioBuffer,
+        fft,
       );
       return () => {
         console.log("destroy");
         destroyer.destroy();
       };
     }
-  }, [ref.current, audioContext]);
+  }, [ref.current, audioElement, audioBuffer, fft]);
 
   return (
     <div className="tts-audio-visualizer" ref={(x) => (ref.current = x)}></div>
   );
 };
 
-function attachVisualizationToDom(
+function getFrequencyBins(
+  fft: FFT,
+  audioBuffer: AudioBuffer,
+  audioElement: HTMLAudioElement,
+  magnitudes: Float32Array,
+) {
+  const position = audioElement.currentTime * audioBuffer.sampleRate;
+  const mono = audioBuffer
+    .getChannelData(0)
+    .subarray(position, position + fft.size);
+  const spectrum = fft.createComplexArray();
+  fft.realTransform(spectrum, mono);
+  for (let i = 0; i < fft.size; i++) {
+    const real = mono[i * 2];
+    const imag = mono[i * 2 + 1];
+    magnitudes[i] = Math.sqrt(real * real + imag * imag);
+  }
+  return magnitudes;
+}
+
+export function attachVisualizationToDom(
   container: HTMLElement,
   audioElement: HTMLAudioElement,
-  source: MediaElementAudioSourceNode,
-  analyzer: AnalyserNode,
-  context: AudioContext,
+  audioBuffer: AudioBuffer,
+  fft: FFT,
 ): {
   destroy: () => void;
 } {
-  if (context.state === "suspended") {
-    context.resume();
-  }
-  console.log("draw!", {
-    contextState: context.state,
-    analyzerInputs: analyzer.numberOfInputs,
-    analyzerOutputs: analyzer.numberOfOutputs,
-    bufferLength: analyzer.frequencyBinCount,
-    sourceInputs: source.numberOfInputs,
-    sourceOutputs: source.numberOfOutputs,
-  });
-  const bufferLength = analyzer.frequencyBinCount;
-  const dataArray = new Uint8Array(bufferLength);
+  const bufferLength = fft.size / 2;
+  const dataArray = new Float32Array(bufferLength);
 
   const nSegments = 8;
-  // Create a div and append it to the container
+  const historySize = 10; // Number of frames to average over
+  const barHistory = Array.from({ length: nSegments }, () =>
+    Array(historySize).fill(0),
+  );
+  let historyIndex = 0;
 
-  // Create 8 divs for the bars and append them to the visualizer
   const bars = Array(nSegments)
     .fill(null)
     .map(() => document.createElement("div"));
@@ -69,34 +77,39 @@ function attachVisualizationToDom(
 
   let frameId: undefined | ReturnType<typeof requestAnimationFrame>;
 
-  // Function to update the bars
   function draw() {
-    console.log("draw", context.state);
     frameId = requestAnimationFrame(draw);
 
-    analyzer.getByteFrequencyData(dataArray);
+    getFrequencyBins(fft, audioBuffer, audioElement, dataArray);
 
     const min = Math.floor(bufferLength / 32);
     const max = Math.floor(bufferLength / 6) + min;
     const segmentSize = (max - min) / nSegments;
 
-    // Update the height of each bar
     bars.forEach((bar, i) => {
       const index = Math.floor(min + i * segmentSize);
       const index2 = Math.floor(min + i * segmentSize + segmentSize / 2);
-      const barHeight1 = dataArray[index] / 255.0; // Scale bar height to fit container
-      const barHeight2 = dataArray[index2] / 255.0;
+      const barHeight1 = dataArray[index] * 4;
+      const barHeight2 = dataArray[index2] * 4;
       let barHeight = (barHeight1 + barHeight2) / 2;
-      // round the wave form to penalize lowest and highest segments.
       let factor = Math.cos((i * Math.PI * 2) / nSegments) + 1;
       if (i < 2) {
         factor *= 1.5;
       }
       barHeight = Math.pow(barHeight, 1 + factor);
-      // convert to percentage
       barHeight *= 100;
-      bar.style.height = `${barHeight}%`;
+
+      // Update history
+      barHistory[i][historyIndex] = barHeight;
+
+      // Compute average
+      const averageHeight =
+        barHistory[i].reduce((sum, h) => sum + h, 0) / historySize;
+      bar.style.height = `${averageHeight}%`;
     });
+
+    // Update history index
+    historyIndex = (historyIndex + 1) % historySize;
   }
 
   function resumeAndDraw() {
@@ -120,32 +133,4 @@ function attachVisualizationToDom(
       }
     },
   };
-}
-
-interface ContextAnalyzerSource {
-  context: AudioContext;
-  analyser: AnalyserNode;
-  source: MediaElementAudioSourceNode;
-}
-const _state = new WeakMap<HTMLAudioElement, ContextAnalyzerSource>();
-
-function getAnalyser(audioElement: HTMLAudioElement): ContextAnalyzerSource {
-  function newOne() {
-    const context = new AudioContext();
-    const analyser = context.createAnalyser();
-    const source = context.createMediaElementSource(audioElement);
-
-    source.connect(analyser);
-    analyser.connect(context.destination);
-    context.resume();
-    return { context, analyser, source };
-  }
-  const existing = _state.get(audioElement);
-  if (existing) {
-    return existing;
-  } else {
-    const state = newOne();
-    _state.set(audioElement, state);
-    return state;
-  }
 }

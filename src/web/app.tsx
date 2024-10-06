@@ -9,7 +9,9 @@ import { IndexedDBAudioStorage } from "./IndexedDBAudioStorage";
 import { openAITextToSpeech } from "../player/TTSModel";
 import { WebAudioSink } from "../player/AudioSink";
 import * as React from "react";
-import { useEffect, useState, type FC } from "react";
+import FFT from "fft.js";
+
+import { useEffect, useState, type FC, useCallback, useRef } from "react";
 import { observer } from "mobx-react-lite";
 import {
   attachVisualizationToDom,
@@ -72,7 +74,8 @@ const Container: FC<{
         <hr />
         {/* <SimplePlayer settingsStore={settingsStore} />
         <hr /> */}
-        <SimpleStaticPlayer />
+        {/* <SimpleStaticPlayer /> */}
+        <CustomAudioAnalyzer />
         <hr />
         <Player store={store} sink={sink} />
       </div>
@@ -162,96 +165,136 @@ const SimpleStaticPlayer = () => {
   );
 };
 
-function attachVisualizationToDom(
-  container: HTMLElement,
-  audioElement: HTMLAudioElement,
-  source: MediaElementAudioSourceNode,
-  analyzer: AnalyserNode,
-  context: AudioContext,
-): {
-  destroy: () => void;
-} {
-  if (context.state === "suspended") {
-    context.resume();
-  }
-  console.log("draw!", {
-    contextState: context.state,
-    analyzerInputs: analyzer.numberOfInputs,
-    analyzerOutputs: analyzer.numberOfOutputs,
-    bufferLength: analyzer.frequencyBinCount,
-    sourceInputs: source.numberOfInputs,
-    sourceOutputs: source.numberOfOutputs,
-  });
-  const bufferLength = analyzer.frequencyBinCount;
-  const dataArray = new Uint8Array(bufferLength);
+const CustomAudioAnalyzer = () => {
+  const [audio, setAudio] = useState<HTMLAudioElement | undefined>(undefined);
+  const [audioBuffer, setAudioBuffer] = useState<AudioBuffer | undefined>(
+    undefined,
+  );
+  const [fft, setFFT] = useState<FFT | undefined>(undefined);
+  const rafId = useRef<number | null>(null);
+  const visualizerRef = useRef<HTMLCanvasElement | null>(null);
 
-  const nSegments = 8;
-  // Create a div and append it to the container
+  const fftSize = 8;
+  const analysisSize = fftSize / 2;
+  const play = useCallback(async () => {
+    console.log("Play button clicked");
 
-  // Create 8 divs for the bars and append them to the visualizer
-  const bars = Array(nSegments)
-    .fill(null)
-    .map(() => document.createElement("div"));
-  bars.forEach((bar) => {
-    bar.classList.add("tts-audio-visualizer-bar");
-    bar.style.height = "0";
-    container.appendChild(bar);
-  });
+    // Create and set up the audio element
+    const audioElement = new Audio();
+    const ms = new MediaSource();
+    audioElement.src = URL.createObjectURL(ms);
+    audioElement.play();
 
-  let frameId: undefined | ReturnType<typeof requestAnimationFrame>;
+    await new Promise((r) =>
+      ms.addEventListener("sourceopen", r, { once: true }),
+    );
 
-  // Function to update the bars
-  function draw() {
-    console.log("draw", context.state);
-    frameId = requestAnimationFrame(draw);
+    const source = ms.addSourceBuffer("audio/mpeg");
 
-    analyzer.getByteFrequencyData(dataArray);
+    const audioContext = new (window.AudioContext ||
+      window.webkitAudioContext)();
 
-    const min = Math.floor(bufferLength / 32);
-    const max = Math.floor(bufferLength / 6) + min;
-    const segmentSize = (max - min) / nSegments;
+    // Fetch and decode the audio data
+    const response = await fetch("speech.mp3");
+    const arrayBuffer = await response.arrayBuffer();
+    source.appendBuffer(arrayBuffer);
+    const decodedBuffer = await audioContext.decodeAudioData(arrayBuffer);
+    setAudioBuffer(decodedBuffer);
 
-    // Update the height of each bar
-    bars.forEach((bar, i) => {
-      const index = Math.floor(min + i * segmentSize);
-      const index2 = Math.floor(min + i * segmentSize + segmentSize / 2);
-      const barHeight1 = dataArray[index] / 255.0; // Scale bar height to fit container
-      const barHeight2 = dataArray[index2] / 255.0;
-      let barHeight = (barHeight1 + barHeight2) / 2;
-      // round the wave form to penalize lowest and highest segments.
-      let factor = Math.cos((i * Math.PI * 2) / nSegments) + 1;
-      if (i < 2) {
-        factor *= 1.5;
+    setAudio(audioElement);
+
+    // Create FFT instance
+    const fftInstance = new FFT(fftSize);
+    setFFT(fftInstance);
+  }, []);
+
+  const getByteFrequencyData = useCallback(
+    (audioBuffer: AudioBuffer, position: number) => {
+      if (!fft) return new Uint8Array(analysisSize);
+
+      const channels = [];
+      for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
+        channels.push(audioBuffer.getChannelData(i));
       }
-      barHeight = Math.pow(barHeight, 1 + factor);
-      // convert to percentage
-      barHeight *= 100;
-      bar.style.height = `${barHeight}%`;
-    });
-  }
 
-  function resumeAndDraw() {
-    stopDrawing();
-    draw();
-  }
-  function stopDrawing() {
-    if (frameId !== undefined) {
-      cancelAnimationFrame(frameId);
-      frameId = undefined;
-    }
-  }
+      const mono = channels[0].subarray(position, position + fftSize);
+      const spectrum = fft.createComplexArray();
+      fft.realTransform(spectrum, mono);
 
-  resumeAndDraw();
-
-  return {
-    destroy() {
-      stopDrawing();
-      for (const bar of bars) {
-        container.removeChild(bar);
+      // Convert to magnitude
+      const magnitudes = new Float32Array(analysisSize);
+      for (let i = 0; i < analysisSize; i++) {
+        const real = spectrum[i * 2];
+        const imag = spectrum[i * 2 + 1];
+        magnitudes[i] = Math.sqrt(real * real + imag * imag);
       }
+
+      // Convert to byte frequency data (0-255)
+      const byteFrequencyData = new Uint8Array(analysisSize);
+      for (let i = 0; i < analysisSize; i++) {
+        byteFrequencyData[i] = Math.min(
+          255,
+          Math.max(0, Math.floor(magnitudes[i] * 255)),
+        );
+      }
+
+      return byteFrequencyData;
     },
-  };
-}
+    [fft],
+  );
+
+  const updateVisualization = useCallback(() => {
+    if (!audio || !audioBuffer || !fft) return;
+
+    const currentTime = audio.currentTime;
+    const sampleRate = audioBuffer.sampleRate;
+    const position = Math.floor(currentTime * sampleRate);
+
+    const frequencyData = getByteFrequencyData(audioBuffer, position);
+
+    // Update visualization (simplified for this example)
+    if (visualizerRef.current) {
+      const canvas = visualizerRef.current;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const barWidth = canvas.width / frequencyData.length;
+        for (let i = 0; i < frequencyData.length; i++) {
+          const barHeight = (frequencyData[i] / 255) * canvas.height;
+          ctx.fillStyle = `rgb(${frequencyData[i]}, 50, 50)`;
+          ctx.fillRect(
+            i * barWidth,
+            canvas.height - barHeight,
+            barWidth,
+            barHeight,
+          );
+        }
+      }
+    }
+
+    rafId.current = requestAnimationFrame(updateVisualization);
+  }, [audio, audioBuffer, fft, getByteFrequencyData]);
+
+  useEffect(() => {
+    if (audio && audioBuffer && fft) {
+      updateVisualization();
+    }
+    return () => {
+      if (rafId.current) cancelAnimationFrame(rafId.current);
+    };
+  }, [audio, audioBuffer, fft, updateVisualization]);
+
+  return (
+    <>
+      <button onClick={play}>Play</button>
+      <canvas
+        ref={(x) => (visualizerRef.current = x)}
+        width="800"
+        height="200"
+      />
+    </>
+  );
+};
 
 const SimplePlayer: FC<{ settingsStore: TTSPluginSettingsStore }> = observer(
   ({ settingsStore }) => {

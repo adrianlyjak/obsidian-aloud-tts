@@ -47,6 +47,7 @@
     "@codemirror/view": "^6.34.1",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.0",
+    "fft.js": "^4.0.4",
     "idb": "^8.0.0",
     "mobx": "^6.13.3",
     "mobx-react-lite": "^4.0.7",
