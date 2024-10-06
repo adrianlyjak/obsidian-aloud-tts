@@ -33,9 +33,15 @@ export class WebAudioSink implements AudioSink {
   }
 
   static async create(): Promise<WebAudioSink> {
-    const audioSource = window.ManagedMediaSource
-      ? new window.ManagedMediaSource()
-      : new window.MediaSource();
+    const preferMMS = false;
+    const sources = preferMMS
+      ? [window.ManagedMediaSource, window.MediaSource]
+      : [window.MediaSource, window.ManagedMediaSource];
+    const Source = sources.filter((x) => !!x)[0];
+    if (!Source) {
+      throw new Error("No MediaSource available");
+    }
+    const audioSource = new Source();
     const audio = new Audio();
     // required for ManagedMediaSource to open
     audio.disableRemotePlayback = true;
@@ -45,7 +51,7 @@ export class WebAudioSink implements AudioSink {
     audio.src = URL.createObjectURL(audioSource);
     await once("sourceopen", audioSource!);
 
-    audio.playbackRate = 2;
+    // audio.playbackRate = 2;
     const sourceBuffer = audioSource!.addSourceBuffer("audio/mpeg");
     await onceBuffUpdateEnd(sourceBuffer);
     const sink = new WebAudioSink(audio, audioSource, sourceBuffer);

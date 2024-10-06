@@ -9,12 +9,18 @@ export const AudioVisualizer: React.FC<{
     [audioElement],
   );
   React.useEffect(() => {
+    console.log("attachVisualizationToDom", ref.current, audioContext);
     if (ref.current && audioContext) {
+      console.log("do attach");
       const destroyer = attachVisualizationToDom(
         ref.current,
+        audioElement,
+        audioContext.source,
         audioContext.analyser,
+        audioContext.context,
       );
       return () => {
+        console.log("destroy");
         destroyer.destroy();
       };
     }
@@ -27,10 +33,24 @@ export const AudioVisualizer: React.FC<{
 
 function attachVisualizationToDom(
   container: HTMLElement,
+  audioElement: HTMLAudioElement,
+  source: MediaElementAudioSourceNode,
   analyzer: AnalyserNode,
+  context: AudioContext,
 ): {
   destroy: () => void;
 } {
+  if (context.state === "suspended") {
+    context.resume();
+  }
+  console.log("draw!", {
+    contextState: context.state,
+    analyzerInputs: analyzer.numberOfInputs,
+    analyzerOutputs: analyzer.numberOfOutputs,
+    bufferLength: analyzer.frequencyBinCount,
+    sourceInputs: source.numberOfInputs,
+    sourceOutputs: source.numberOfOutputs,
+  });
   const bufferLength = analyzer.frequencyBinCount;
   const dataArray = new Uint8Array(bufferLength);
 
@@ -51,6 +71,7 @@ function attachVisualizationToDom(
 
   // Function to update the bars
   function draw() {
+    console.log("draw", context.state);
     frameId = requestAnimationFrame(draw);
 
     analyzer.getByteFrequencyData(dataArray);
@@ -113,8 +134,10 @@ function getAnalyser(audioElement: HTMLAudioElement): ContextAnalyzerSource {
     const context = new AudioContext();
     const analyser = context.createAnalyser();
     const source = context.createMediaElementSource(audioElement);
+
     source.connect(analyser);
     analyser.connect(context.destination);
+    context.resume();
     return { context, analyser, source };
   }
   const existing = _state.get(audioElement);

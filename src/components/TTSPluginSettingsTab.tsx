@@ -2,7 +2,7 @@ import { observer } from "mobx-react-lite";
 import { App, Plugin, PluginSettingTab } from "obsidian";
 import * as React from "react";
 import { Root, createRoot } from "react-dom/client";
-import { AudioStore } from "src/player/Player";
+import { AudioStore } from "../player/Player";
 import {
   ModelProvider,
   PlayerViewMode,

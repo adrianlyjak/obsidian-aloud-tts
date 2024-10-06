@@ -1,16 +1,16 @@
 import { observer } from "mobx-react-lite";
 import * as React from "react";
-import { ObsidianBridge } from "src/obsidian/ObsidianBridge";
+import { ObsidianBridge } from "../obsidian/ObsidianBridge";
 import {
   MARKETING_NAME,
   TTSPluginSettingsStore,
-} from "src/player/TTSPluginSettings";
+} from "../player/TTSPluginSettings";
 import { AudioSink } from "../player/AudioSink";
 import { AudioStore } from "../player/Player";
 import { AudioVisualizer } from "./AudioVisualizer";
 import { IconButton, IconSpan, Spinner } from "./IconButton";
 import { EditorView } from "@codemirror/view";
-import { TTSErrorInfo } from "src/player/TTSModel";
+import { TTSErrorInfo } from "../player/TTSModel";
 import { setTooltip } from "obsidian";
 
 export const PlayerView = observer(
