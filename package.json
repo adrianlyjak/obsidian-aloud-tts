@@ -1,6 +1,6 @@
 {
   "name": "obsidian-aloud-tts",
-  "version": "0.5.0-rc1",
+  "version": "0.5.0-rc2",
   "description": "Highlight and speak text from your obsidian notes",
   "main": "main.js",
   "scripts": {
