@@ -91,7 +91,7 @@ export class TrackSwitcher {
       return;
     } else {
       if (this.sink.trackStatus === "playing") {
-        this.sink.remove();
+        this.sink.pause();
       }
       const item: PlayingTrack = mobx.observable({
         position: this.activeAudioText.position,

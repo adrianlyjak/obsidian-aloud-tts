@@ -1,12 +1,16 @@
-import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { AudioStore, loadAudioStore } from "../player/Player";
 import {
   pluginSettingsStore,
+  REAL_OPENAI_API_URL,
   TTSPluginSettingsStore,
 } from "../player/TTSPluginSettings";
-import { observer } from "mobx-react-lite";
 import { IndexedDBAudioStorage } from "./IndexedDBAudioStorage";
+import { openAITextToSpeech } from "../player/TTSModel";
+import { WebAudioSink } from "../player/AudioSink";
+import * as React from "react";
+import { useEffect, useState, type FC } from "react";
+import { observer } from "mobx-react-lite";
 
 /**
  *
@@ -25,9 +29,11 @@ async function main() {
     },
   );
 
+  const audioSink = await WebAudioSink.create();
   const store = loadAudioStore({
     settings: settingsStore.settings,
     storage: new IndexedDBAudioStorage(),
+    audioSink,
   });
 
   const root = document.createElement("div");
@@ -37,13 +43,16 @@ async function main() {
   reactRoot.render(<Container settingsStore={settingsStore} store={store} />);
 }
 
-const Container: React.FC<{
+const Container: FC<{
   settingsStore: TTSPluginSettingsStore;
   store: AudioStore;
 }> = ({ settingsStore, store }) => {
   return (
     <>
       <Settings settingsStore={settingsStore} />
+      <hr />
+      <SimplePlayer settingsStore={settingsStore} />
+      <hr />
       <Player store={store} />
     </>
   );
@@ -70,6 +79,53 @@ const Settings: React.FC<{ settingsStore: TTSPluginSettingsStore }> = observer(
           </label>
         </div>
       </>
+    );
+  },
+);
+const SimplePlayer: FC<{ settingsStore: TTSPluginSettingsStore }> = observer(
+  ({ settingsStore }) => {
+    const [sink, setSink] = useState<WebAudioSink | undefined>(undefined);
+    useEffect(() => {
+      WebAudioSink.create().then(async (sink) => {
+        const text = `Speaking of connections, I think that's another important aspect of embracing uncertainty. When we're open to new experiences and perspectives, we're more likely to form meaningful connections with others. We're more likely to listen, to learn, and to grow together.`;
+        const audio = await openAITextToSpeech(text, {
+          apiKey: settingsStore.settings.openai_apiKey,
+          model: "tts-1",
+          voice: "shimmer",
+          playbackSpeed: 1,
+          apiUri: REAL_OPENAI_API_URL,
+        });
+        await sink.setMedia(audio);
+        setSink(sink);
+      });
+    }, []);
+    async function loadText() {
+      sink?.play();
+    }
+    const hasmms = !!window.ManagedMediaSource;
+    const hasmse = !!window.MediaSource;
+    const isSupported = hasmms
+      ? window.ManagedMediaSource?.isTypeSupported("audio/mpeg")
+      : hasmse
+        ? MediaSource.isTypeSupported("audio/mpeg")
+        : false;
+    return (
+      <div>
+        Hi World
+        <a
+          key="clickme"
+          style={{ cursor: "pointer", display: "block" }}
+          onClick={loadText}
+        >
+          Load Text
+        </a>
+        <div>Has MMS: {hasmms ? "YES" : "NO"}</div>
+        <div>Has MSE: {hasmse ? "YES" : "NO"}</div>
+        <div>
+          <strong>audio/mpeg</strong> is{" "}
+          {isSupported ? "SUPPORTED" : "NOT SUPPORTED"}
+        </div>
+      </div>
     );
   },
 );

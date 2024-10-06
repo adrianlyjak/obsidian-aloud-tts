@@ -565,7 +565,6 @@ class FakeAudioSink implements AudioSink {
     this.isComplete = true;
     this.isPlaying = false;
   }
-  remove(): void {}
   async setMedia(data: ArrayBuffer): Promise<void> {
     this.isComplete = false;
     this.isPlaying = false;
@@ -582,8 +581,6 @@ class FakeAudioSink implements AudioSink {
     const derivedStatus = (): TrackStatus => {
       if (this.isComplete) {
         return "complete";
-      } else if (!this.currentData) {
-        return "none";
       } else if (this.isPlaying) {
         return "playing";
       } else {

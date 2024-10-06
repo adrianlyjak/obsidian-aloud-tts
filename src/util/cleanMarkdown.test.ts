@@ -65,10 +65,10 @@ hello world two`;
 
   it("should retain just the code content", () => {
     const md = `\`\`\`javascript
-console.log("hello");
+alert("hello");
 \`\`\``;
     const cleaned = cleanMarkup(md);
-    expect(cleaned).toEqual('console.log("hello");\n');
+    expect(cleaned).toEqual('alert("hello");\n');
   });
 
   it("should skip Better Bibtex Citekeys", () => {

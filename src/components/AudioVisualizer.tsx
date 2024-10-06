@@ -3,33 +3,22 @@ import * as React from "react";
 export const AudioVisualizer: React.FC<{
   audioElement: HTMLAudioElement;
 }> = ({ audioElement }) => {
-  return null;
   const ref = React.useRef<HTMLElement | null>(null);
-  const audioContext = React.useRef<AudioContext | null>(null);
-  const analyserNode = React.useRef<AnalyserNode | null>(null);
-
+  const audioContext = React.useMemo(
+    () => getAnalyser(audioElement),
+    [audioElement],
+  );
   React.useEffect(() => {
-    if (ref.current && !audioContext.current && !analyserNode.current) {
-      const context = new AudioContext();
-      const analyser = context.createAnalyser();
-      const source = context.createMediaElementSource(audioElement);
-
-      source.connect(analyser);
-      analyser.connect(context.destination);
-
-      audioContext.current = context;
-      analyserNode.current = analyser;
-
-      const destroyer = attachVisualizationToDom(ref.current, analyser);
-
+    if (ref.current && audioContext) {
+      const destroyer = attachVisualizationToDom(
+        ref.current,
+        audioContext.analyser,
+      );
       return () => {
         destroyer.destroy();
-        source.disconnect(analyser);
-        analyser.disconnect(context.destination);
-        context.close();
       };
     }
-  }, [audioElement, !!ref.current]);
+  }, [ref.current, audioContext]);
 
   return (
     <div className="tts-audio-visualizer" ref={(x) => (ref.current = x)}></div>
@@ -110,4 +99,30 @@ function attachVisualizationToDom(
       }
     },
   };
+}
+
+interface ContextAnalyzerSource {
+  context: AudioContext;
+  analyser: AnalyserNode;
+  source: MediaElementAudioSourceNode;
+}
+const _state = new WeakMap<HTMLAudioElement, ContextAnalyzerSource>();
+
+function getAnalyser(audioElement: HTMLAudioElement): ContextAnalyzerSource {
+  function newOne() {
+    const context = new AudioContext();
+    const analyser = context.createAnalyser();
+    const source = context.createMediaElementSource(audioElement);
+    source.connect(analyser);
+    analyser.connect(context.destination);
+    return { context, analyser, source };
+  }
+  const existing = _state.get(audioElement);
+  if (existing) {
+    return existing;
+  } else {
+    const state = newOne();
+    _state.set(audioElement, state);
+    return state;
+  }
 }

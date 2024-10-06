@@ -147,6 +147,7 @@ export class TrackLoader {
       return true;
     }
   }
+
   private processGarbage(): boolean {
     this.localCache = this.localCache.filter(
       (req) => Date.now() - req.requestedTime < this.MAX_LOCAL_TTL_MILLIS,

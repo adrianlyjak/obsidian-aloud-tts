@@ -1,10 +1,8 @@
 import * as mobx from "mobx";
 
-export type TrackStatus = "playing" | "paused" | "complete" | "none";
+export type TrackStatus = "playing" | "paused" | "complete";
 
 export interface AudioSink {
-  /** cancel the current audio and remove references to release resources */
-  remove(): void;
   /** Sets an audio track to play */
   setMedia(data: ArrayBuffer): Promise<void>;
   /** play the current audio */
@@ -22,19 +20,46 @@ export interface AudioSink {
 }
 
 export class WebAudioSink implements AudioSink {
-  _trackStatus: TrackStatus = "none";
-  _audio?: HTMLAudioElement = undefined;
-  _audioSource?: MediaSource = undefined;
-  _sourceBuffer?: SourceBuffer = undefined;
+  _trackStatus: TrackStatus = "paused";
 
   _completionChecker?: ReturnType<typeof setTimeout> = undefined;
   _lastActivePlayPosition = 0;
+  public _audio: HTMLAudioElement;
+  private _audioSource: MediaSource;
+  private _sourceBuffer: SourceBuffer;
 
   get audio(): HTMLAudioElement | undefined {
     return this._audio;
   }
 
-  constructor() {
+  static async create(): Promise<WebAudioSink> {
+    const audioSource = window.ManagedMediaSource
+      ? new window.ManagedMediaSource()
+      : new window.MediaSource();
+    const audio = new Audio();
+    // required for ManagedMediaSource to open
+    audio.disableRemotePlayback = true;
+    audio.controls = true;
+
+    // end required for ManagedMediaSource to open
+    audio.src = URL.createObjectURL(audioSource);
+    await once("sourceopen", audioSource!);
+
+    audio.playbackRate = 2;
+    const sourceBuffer = audioSource!.addSourceBuffer("audio/mpeg");
+    await onceBuffUpdateEnd(sourceBuffer);
+    const sink = new WebAudioSink(audio, audioSource, sourceBuffer);
+    return sink;
+  }
+
+  constructor(
+    _audio: HTMLAudioElement,
+    _audioSource: MediaSource,
+    _sourceBuffer: SourceBuffer,
+  ) {
+    this._audio = _audio;
+    this._audioSource = _audioSource;
+    this._sourceBuffer = _sourceBuffer;
     mobx.makeObservable(this, {
       _trackStatus: mobx.observable,
       _audio: mobx.observable,
@@ -42,7 +67,6 @@ export class WebAudioSink implements AudioSink {
       play: mobx.action,
       pause: mobx.action,
       restart: mobx.action,
-      remove: mobx.action,
       trackStatus: mobx.computed,
       _updateTrackStatus: mobx.action,
     });
@@ -53,26 +77,22 @@ export class WebAudioSink implements AudioSink {
   }
 
   private getTrackStatus() {
-    if (!this._audio) {
-      return "none";
+    const position = this._audio.currentTime;
+    const duration = this._sourceBuffer!.buffered.end(
+      this._sourceBuffer!.buffered.length - 1,
+    );
+    let safemargin = 0;
+    if (this._lastActivePlayPosition === position) {
+      safemargin = 0.5;
     } else {
-      const position = this._audio.currentTime;
-      const duration = this._sourceBuffer!.buffered.end(
-        this._sourceBuffer!.buffered.length - 1,
-      );
-      let safemargin = 0;
-      if (this._lastActivePlayPosition === position) {
-        safemargin = 0.5;
-      } else {
-        this._lastActivePlayPosition = position;
-      }
-      if (position >= duration - safemargin) {
-        return "complete";
-      } else if (this._audio.paused) {
-        return "paused";
-      } else {
-        return "playing";
-      }
+      this._lastActivePlayPosition = position;
+    }
+    if (position >= duration - safemargin) {
+      return "complete";
+    } else if (this._audio.paused) {
+      return "paused";
+    } else {
+      return "playing";
     }
   }
 
@@ -81,42 +101,27 @@ export class WebAudioSink implements AudioSink {
   }
 
   async setMedia(data: ArrayBuffer): Promise<void> {
-    if (!this._audio) {
-      this._audioSource = new MediaSource();
-      this._audio = new Audio(URL.createObjectURL(this._audioSource));
-      this._audio.playbackRate = 2;
-      await once("sourceopen", this._audioSource!);
-      this._sourceBuffer = this._audioSource!.addSourceBuffer("audio/mpeg");
-    }
-    await this.onceBuffUpdateEnd();
+    await onceBuffUpdateEnd(this._sourceBuffer);
     if (this._sourceBuffer!.buffered.length > 0) {
       const end = this._sourceBuffer!.buffered.end(
         this._sourceBuffer!.buffered.length - 1,
       );
       this._sourceBuffer?.remove(0, end);
       this._audio!.currentTime = 0;
-      await this.onceBuffUpdateEnd();
+      await onceBuffUpdateEnd(this._sourceBuffer);
       this._sourceBuffer!.timestampOffset = 0;
-      await this.onceBuffUpdateEnd();
+      await onceBuffUpdateEnd(this._sourceBuffer);
     }
     this._sourceBuffer!.appendBuffer(data);
-    await this.onceBuffUpdateEnd();
+    await onceBuffUpdateEnd(this._sourceBuffer);
     this._updateTrackStatus();
   }
 
-  private async onceBuffUpdateEnd() {
-    if (this._sourceBuffer?.updating) {
-      await once("updateend", this._sourceBuffer);
-    }
-  }
-
   play() {
-    if (this._audio) {
-      this._audio.play();
-      this._updateTrackStatus();
-      this._audio.onplay = () => this._updateTrackStatus();
-      this.loopCheckCompletion();
-    }
+    this._audio.play();
+    this._updateTrackStatus();
+    this._audio.onplay = () => this._updateTrackStatus();
+    this.loopCheckCompletion();
   }
 
   private loopCheckCompletion() {
@@ -153,15 +158,6 @@ export class WebAudioSink implements AudioSink {
       this.play();
     }
   }
-
-  remove() {
-    if (this._audio) {
-      this._audio.pause();
-      URL.revokeObjectURL(this._audio.src);
-      this._audio = undefined;
-      this._updateTrackStatus();
-    }
-  }
 }
 
 function once<S extends string>(
@@ -178,4 +174,10 @@ function once<S extends string>(
     };
     emitter.addEventListener(event, listener);
   });
+}
+
+async function onceBuffUpdateEnd(sb: SourceBuffer) {
+  if (sb.updating) {
+    await once("updateend", sb);
+  }
 }

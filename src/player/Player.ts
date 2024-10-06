@@ -3,7 +3,7 @@ import { action, computed, observable } from "mobx";
 import cleanMarkup from "../util/cleanMarkdown";
 import { randomId, splitParagraphs, splitSentences } from "../util/misc";
 import { AudioCache, memoryStorage } from "./AudioCache";
-import { AudioSink, WebAudioSink } from "./AudioSink";
+import { AudioSink } from "./AudioSink";
 import {
   TTSErrorInfo,
   TTSModel,
@@ -100,15 +100,15 @@ export interface ActiveAudioText {
 
 export function loadAudioStore({
   settings,
+  audioSink,
   storage = memoryStorage(),
   textToSpeech = openAITextToSpeech,
-  audioSink = new WebAudioSink(),
   backgroundLoaderIntervalMillis,
 }: {
   settings: TTSPluginSettings;
   storage?: AudioCache;
   textToSpeech?: TTSModel;
-  audioSink?: AudioSink;
+  audioSink: AudioSink;
   backgroundLoaderIntervalMillis?: number;
 }): AudioStore {
   const store = new AudioStoreImpl(settings, storage, textToSpeech, audioSink, {
@@ -222,7 +222,7 @@ class AudioStoreImpl implements AudioStore {
   }
   destroy(): void {
     this.closePlayer();
-    this.sink.remove();
+    this.sink.pause();
     this._backgroundProcesses.forEach((p) => p.shutdown());
     this._backgroundProcesses = [];
   }
@@ -442,7 +442,7 @@ class ActiveAudioTextImpl implements ActiveAudioText {
   }
 
   destroy(): void {
-    this.sink?.remove();
+    this.sink?.pause();
     this.queue?.destroy();
     this.loader?.destroy();
     this.voiceChangeId?.();
