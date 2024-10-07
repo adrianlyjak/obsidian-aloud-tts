@@ -106,11 +106,6 @@ export class WebAudioSink implements AudioSink {
     return this._trackStatus === "playing";
   }
 
-  // TODO - when audio element pauses from external OS interaction,
-  // notify the upstream controllers to be paused as well
-  // TODO - do rate control here
-  // TODO - stop clipping from the reversion to 0 time
-  // TODO - maintain max-window size history to allow for OS level back/forward
   private getTrackStatus() {
     const position = this._audio.currentTime;
     const buff = this._sourceBuffer.buffered;
@@ -135,6 +130,10 @@ export class WebAudioSink implements AudioSink {
     this._trackStatus = this.getTrackStatus();
   }
 
+  // TODO - stop clipping from the reversion to 0 time
+  // TODO - maintain max-window size history to allow for OS level back/forward
+  // this will take a rather huge overhaul of the TrackSwitcher/TrackLoader and AudioSink's
+  // interactions
   async setMedia(data: ArrayBuffer): Promise<void> {
     await onceBuffUpdateEnd(this._sourceBuffer);
     mobx.runInAction(() => (this._audioBuffer = undefined));
