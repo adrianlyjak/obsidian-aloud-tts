@@ -63,6 +63,7 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
       active: mobx.observable.ref,
       activeEditor: mobx.computed,
       focusedEditorView: mobx.observable.ref,
+      _setFocusedEditor: mobx.action,
       _setActiveEditor: mobx.action,
       _onLayoutChange: mobx.action,
       _onFileOpen: mobx.action,

@@ -9,7 +9,6 @@ export const AudioVisualizer: React.FC<{
   const fft = React.useMemo(() => new FFT(512), [audioBuffer]);
   React.useEffect(() => {
     if (ref.current && audioElement && audioBuffer) {
-      console.log("do attach");
       const destroyer = attachVisualizationToDom(
         ref.current,
         audioElement,
@@ -17,7 +16,6 @@ export const AudioVisualizer: React.FC<{
         fft,
       );
       return () => {
-        console.log("destroy");
         destroyer.destroy();
       };
     }
@@ -60,7 +58,7 @@ export function attachVisualizationToDom(
   const dataArray = new Float32Array(bufferLength);
 
   const nSegments = 8;
-  const historySize = 10; // Number of frames to average over
+  const historySize = 7; // Number of frames to average over
   const barHistory = Array.from({ length: nSegments }, () =>
     Array(historySize).fill(0),
   );
@@ -89,14 +87,12 @@ export function attachVisualizationToDom(
     bars.forEach((bar, i) => {
       const index = Math.floor(min + i * segmentSize);
       const index2 = Math.floor(min + i * segmentSize + segmentSize / 2);
-      const barHeight1 = dataArray[index] * 4;
-      const barHeight2 = dataArray[index2] * 4;
+      const increase = 6;
+      const barHeight1 = dataArray[index] * increase;
+      const barHeight2 = dataArray[index2] * increase;
       let barHeight = (barHeight1 + barHeight2) / 2;
-      let factor = Math.cos((i * Math.PI * 2) / nSegments) + 1;
-      if (i < 2) {
-        factor *= 1.5;
-      }
-      barHeight = Math.pow(barHeight, 1 + factor);
+      const factor = Math.sin(((i + 1) / (nSegments + 2)) * Math.PI);
+      barHeight = barHeight * factor;
       barHeight *= 100;
 
       // Update history

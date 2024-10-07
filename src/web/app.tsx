@@ -13,10 +13,6 @@ import FFT from "fft.js";
 
 import { useEffect, useState, type FC, useCallback, useRef } from "react";
 import { observer } from "mobx-react-lite";
-import {
-  attachVisualizationToDom,
-  AudioVisualizer,
-} from "../components/AudioVisualizer";
 
 /**
  *
@@ -72,9 +68,6 @@ const Container: FC<{
       >
         <Settings settingsStore={settingsStore} />
         <hr />
-        {/* <SimplePlayer settingsStore={settingsStore} />
-        <hr /> */}
-        {/* <SimpleStaticPlayer /> */}
         <CustomAudioAnalyzer />
         <hr />
         <Player store={store} sink={sink} />
@@ -108,63 +101,6 @@ const Settings: React.FC<{ settingsStore: TTSPluginSettingsStore }> = observer(
   },
 );
 
-const SimpleStaticPlayer = () => {
-  const [audio, setAudio] = React.useState<
-    | {
-        audio: HTMLAudioElement;
-        context: AudioContext;
-        analyser: AnalyserNode;
-        source: MediaElementAudioSourceNode;
-      }
-    | undefined
-  >(undefined);
-  const ref = React.useRef<HTMLDivElement | null>(null);
-  const play = React.useCallback(() => {
-    const audio = new Audio();
-    const ms = new MediaSource();
-    audio.src = URL.createObjectURL(ms);
-    audio.play();
-    const context = new AudioContext();
-    const analyser = context.createAnalyser();
-    const source = context.createMediaElementSource(audio);
-
-    source.connect(analyser);
-    analyser.connect(context.destination);
-    context.resume();
-    setAudio({ audio, context, analyser, source });
-    ms.addEventListener(
-      "sourceopen",
-      () => {
-        const source = ms.addSourceBuffer("audio/mpeg");
-
-        fetch("speech.mp3")
-          .then((r) => r.arrayBuffer())
-          .then((blob) => {
-            source.appendBuffer(blob);
-          });
-      },
-      { once: true },
-    );
-  }, []);
-  React.useEffect(() => {
-    if (ref.current && audio) {
-      attachVisualizationToDom(
-        ref.current,
-        audio.audio,
-        audio.source,
-        audio.analyser,
-        audio.context,
-      );
-    }
-  }, [ref.current, audio]);
-  return (
-    <>
-      <button onClick={play}>Play</button>
-      <div className="tts-audio-visualizer" ref={(x) => (ref.current = x)} />
-    </>
-  );
-};
-
 const CustomAudioAnalyzer = () => {
   const [audio, setAudio] = useState<HTMLAudioElement | undefined>(undefined);
   const [audioBuffer, setAudioBuffer] = useState<AudioBuffer | undefined>(
@@ -177,8 +113,6 @@ const CustomAudioAnalyzer = () => {
   const fftSize = 8;
   const analysisSize = fftSize / 2;
   const play = useCallback(async () => {
-    console.log("Play button clicked");
-
     // Create and set up the audio element
     const audioElement = new Audio();
     const ms = new MediaSource();
@@ -191,8 +125,7 @@ const CustomAudioAnalyzer = () => {
 
     const source = ms.addSourceBuffer("audio/mpeg");
 
-    const audioContext = new (window.AudioContext ||
-      window.webkitAudioContext)();
+    const audioContext = new window.AudioContext();
 
     // Fetch and decode the audio data
     const response = await fetch("speech.mp3");
@@ -296,6 +229,7 @@ const CustomAudioAnalyzer = () => {
   );
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const SimplePlayer: FC<{ settingsStore: TTSPluginSettingsStore }> = observer(
   ({ settingsStore }) => {
     const [sink, setSink] = useState<WebAudioSink | undefined>(undefined);
@@ -306,7 +240,6 @@ const SimplePlayer: FC<{ settingsStore: TTSPluginSettingsStore }> = observer(
           apiKey: settingsStore.settings.openai_apiKey,
           model: "tts-1",
           voice: "shimmer",
-          playbackSpeed: 1,
           apiUri: REAL_OPENAI_API_URL,
         });
         await sink.setMedia(audio);
@@ -333,7 +266,6 @@ const SimplePlayer: FC<{ settingsStore: TTSPluginSettingsStore }> = observer(
         >
           Load Text
         </a>
-        {sink && <AudioVisualizer audioElement={sink._audio} />}
         <div>Has MMS: {hasmms ? "YES" : "NO"}</div>
         <div>Has MSE: {hasmse ? "YES" : "NO"}</div>
         <div>
@@ -347,8 +279,6 @@ const SimplePlayer: FC<{ settingsStore: TTSPluginSettingsStore }> = observer(
 
 const Player: React.FC<{ store: AudioStore; sink: WebAudioSink }> = observer(
   ({ store, sink }) => {
-    const [playing, setPlaying] = useState(false);
-    const [active, setActive] = useState(false);
     return (
       <div>
         <a
@@ -364,7 +294,6 @@ Beware the Jabberwock, my son!
 The jaws that bite, the claws that catch!
 Beware the Jubjub bird, and shun
 The frumious Bandersnatch!`;
-            setPlaying(true);
             store.startPlayer({
               filename: "test.md",
               text,
@@ -390,12 +319,6 @@ The frumious Bandersnatch!`;
         >
           Play
         </a>
-        {playing &&
-          (active ? (
-            <AudioVisualizer audioElement={sink._audio} />
-          ) : (
-            <a onClick={() => setActive(true)}>Activate Visual</a>
-          ))}
       </div>
     );
   },

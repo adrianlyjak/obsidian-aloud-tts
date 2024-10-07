@@ -47,8 +47,8 @@ export class TrackSwitcher {
       isPlaying: mobx.observable,
       setAudio: mobx.action,
       _activate: mobx.action,
-      play: mobx.action,
-      pause: mobx.action,
+      _onplay: mobx.action,
+      _onpause: mobx.action,
     });
 
     const positionChanger = mobx.reaction(
@@ -68,9 +68,21 @@ export class TrackSwitcher {
         this._activate();
       },
     );
+    const playpause = mobx.reaction(
+      () => this.sink.isPlaying,
+      (result) => {
+        if (result) {
+          this._onplay();
+        } else {
+          this._onpause();
+        }
+      },
+      { fireImmediately: true },
+    );
     this.cancelMonitor = () => {
       positionChanger();
       trackSwitcher();
+      playpause();
     };
   }
 
@@ -90,9 +102,6 @@ export class TrackSwitcher {
       this.activeAudioText.goToNext();
       return;
     } else {
-      if (this.sink.trackStatus === "playing") {
-        this.sink.pause();
-      }
       const item: PlayingTrack = mobx.observable({
         position: this.activeAudioText.position,
         failed: false,
@@ -112,7 +121,7 @@ export class TrackSwitcher {
         if (e instanceof TTSErrorInfo) {
           mobx.runInAction(() => (item.failureInfo = e));
         }
-        this.pause();
+        this._onpause();
         return undefined;
       }
       if (this.isDestroyed) return;
@@ -120,9 +129,6 @@ export class TrackSwitcher {
       if (this.active === item) {
         this.setAudio(item, audio);
         await this.sink.setMedia(audio);
-        if (this.isPlaying && !this.isDestroyed) {
-          this.sink.play();
-        }
       }
     }
   }
@@ -152,23 +158,18 @@ export class TrackSwitcher {
     this.trackLoader.expire(this.readerId);
   }
 
-  play(): void {
+  _onplay(): void {
     if (this.isPlaying) {
       return;
     }
     this.isPlaying = true;
-    if (this.active && !this.active.failed) {
-      this.sink.play();
-    } else {
+    if (!this.active || this.active.failed) {
       // start the loop
       this._activate();
     }
   }
 
-  pause(): void {
-    if (this.isPlaying) {
-      this.isPlaying = false;
-      this.sink.pause();
-    }
+  _onpause(): void {
+    this.isPlaying = false;
   }
 }

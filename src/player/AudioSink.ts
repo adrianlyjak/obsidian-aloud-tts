@@ -11,8 +11,12 @@ export interface AudioSink {
   pause(): void;
   /** move the audio to the beginning of the track */
   restart(): void;
+  /** remove existing media, to be called before starting a new audio */
+  clearMedia(): void;
   /** change the playback rate of the audio */
   setRate(rate: number): void;
+  /** whether the audio is currently playing (equivalent to trackStatus === "playing") */
+  readonly isPlaying: boolean;
   /** observable for the currently playing track status */
   readonly trackStatus: TrackStatus;
   /** Web Audio stuff, for observing the audio state, like visualization */
@@ -82,8 +86,11 @@ export class WebAudioSink implements AudioSink {
       pause: mobx.action,
       restart: mobx.action,
       trackStatus: mobx.computed,
+      isPlaying: mobx.computed,
       _updateTrackStatus: mobx.action,
     });
+    this._audio.addEventListener("play", this._onplay);
+    this._audio.addEventListener("pause", this._onpause);
   }
 
   setRate(rate: number) {
@@ -94,6 +101,10 @@ export class WebAudioSink implements AudioSink {
     return this._trackStatus;
   }
 
+  get isPlaying(): boolean {
+    return this._trackStatus === "playing";
+  }
+
   // TODO - when audio element pauses from external OS interaction,
   // notify the upstream controllers to be paused as well
   // TODO - do rate control here
@@ -101,16 +112,16 @@ export class WebAudioSink implements AudioSink {
   // TODO - maintain max-window size history to allow for OS level back/forward
   private getTrackStatus() {
     const position = this._audio.currentTime;
-    const duration = this._sourceBuffer!.buffered.end(
-      this._sourceBuffer!.buffered.length - 1,
-    );
+    const buff = this._sourceBuffer.buffered;
+    const lastIndex = buff.length - 1;
+    const duration = buff.length > 0 ? buff.end(lastIndex) : undefined;
     let safemargin = 0;
     if (this._lastActivePlayPosition === position) {
       safemargin = 0.5;
     } else {
       this._lastActivePlayPosition = position;
     }
-    if (position >= duration - safemargin) {
+    if (duration && position >= duration - safemargin) {
       return "complete";
     } else if (this._audio.paused) {
       return "paused";
@@ -124,20 +135,21 @@ export class WebAudioSink implements AudioSink {
   }
 
   async setMedia(data: ArrayBuffer): Promise<void> {
+    console.log("setMedia");
     await onceBuffUpdateEnd(this._sourceBuffer);
     mobx.runInAction(() => (this._audioBuffer = undefined));
-    if (this._sourceBuffer!.buffered.length > 0) {
-      const end = this._sourceBuffer!.buffered.end(
-        this._sourceBuffer!.buffered.length - 1,
-      );
-      this._sourceBuffer?.remove(0, end);
-      this._audio!.currentTime = 0;
+    const buffered = this._sourceBuffer.buffered;
+    if (buffered.length > 0) {
+      const end = buffered.end(buffered.length - 1);
+      this._sourceBuffer.remove(0, end);
+      this._audio.currentTime = 0;
       await onceBuffUpdateEnd(this._sourceBuffer);
-      this._sourceBuffer!.timestampOffset = 0;
+      this._sourceBuffer.timestampOffset = 0;
       await onceBuffUpdateEnd(this._sourceBuffer);
     }
-    this._sourceBuffer!.appendBuffer(data);
+    this._sourceBuffer.appendBuffer(data);
     await onceBuffUpdateEnd(this._sourceBuffer);
+    this.loopCheckCompletion();
     this._updateTrackStatus();
 
     // store decoded audio data for visualization
@@ -146,19 +158,46 @@ export class WebAudioSink implements AudioSink {
     mobx.runInAction(() => (this._audioBuffer = decoded));
   }
 
+  clearMedia() {
+    console.log("clearMedia");
+    this._audio.pause();
+
+    if (this._sourceBuffer.buffered.length > 0) {
+      this._audio.currentTime = 0;
+
+      (async () => {
+        this._sourceBuffer.remove(0, this._sourceBuffer.buffered.end(0));
+        await onceBuffUpdateEnd(this._sourceBuffer);
+        this._sourceBuffer.timestampOffset = 0;
+        await onceBuffUpdateEnd(this._sourceBuffer);
+        this._updateTrackStatus();
+      })();
+    }
+  }
+
   play() {
+    console.log(
+      "play",
+      this._sourceBuffer.buffered.length,
+      this._audio.currentTime,
+      this._sourceBuffer.buffered.length
+        ? this._sourceBuffer.buffered.end(
+            this._sourceBuffer.buffered.length - 1,
+          )
+        : 0,
+    );
     this._audio.play();
-    this._updateTrackStatus();
-    this._audio.onplay = () => this._updateTrackStatus();
-    this.loopCheckCompletion();
   }
 
   private loopCheckCompletion() {
     clearTimeout(this._completionChecker);
-    const sb = this._sourceBuffer!;
-    const audio = this._audio!;
-    const untilDone =
-      sb.buffered.end(sb.buffered.length - 1) - audio.currentTime;
+    const sb = this._sourceBuffer;
+    const audio = this._audio;
+    const buff = sb.buffered;
+    if (buff.length === 0) {
+      return;
+    }
+    const untilDone = buff.end(buff.length - 1) - audio.currentTime;
     const delay =
       (untilDone < 0.5 ? 100 : untilDone * 1000) /
       (this._audio?.playbackRate || 1);
@@ -174,18 +213,22 @@ export class WebAudioSink implements AudioSink {
   }
 
   pause() {
-    if (this._audio) {
-      clearInterval(this._completionChecker);
-      this._audio.pause();
-      this._audio.onpause = () => this._updateTrackStatus();
-    }
+    console.log("pause");
+    this._audio.pause();
   }
 
+  _onplay = () => {
+    this._updateTrackStatus();
+    this.loopCheckCompletion();
+  };
+  _onpause = () => {
+    this._updateTrackStatus();
+    clearInterval(this._completionChecker);
+  };
+
   restart() {
-    if (this._audio) {
-      this._audio.currentTime = 0;
-      this.play();
-    }
+    this._audio.currentTime = 0;
+    this.play();
   }
 }
 

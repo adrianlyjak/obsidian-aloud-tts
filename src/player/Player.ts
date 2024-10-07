@@ -201,6 +201,7 @@ class AudioStoreImpl implements AudioStore {
   }
 
   startPlayer(opts: AudioTextOptions): ActiveAudioText {
+    this.sink.clearMedia();
     const audio: AudioText = buildTrack(opts, this.settings.chunkType);
     this.activeText?.destroy();
     this.activeText = new ActiveAudioTextImpl(
@@ -293,8 +294,6 @@ class ActiveAudioTextImpl implements ActiveAudioText {
       currentTrack: computed,
       error: computed,
       queue: observable,
-      play: action,
-      pause: action,
       destroy: action,
       goToNext: action,
       goToPrevious: action,
@@ -307,6 +306,15 @@ class ActiveAudioTextImpl implements ActiveAudioText {
       this.initializeQueue,
       {
         fireImmediately: false,
+      },
+    );
+    mobx.reaction(
+      () => this.settings.playbackSpeed,
+      (rate) => {
+        this.sink.setRate(rate);
+      },
+      {
+        fireImmediately: true,
       },
     );
   }
@@ -420,25 +428,20 @@ class ActiveAudioTextImpl implements ActiveAudioText {
   }
 
   initializeQueue = () => {
-    const wasPlaying = this.queue?.isPlaying ?? false;
     this.queue?.destroy();
-    this.queue?.pause();
     this.queue = new TrackSwitcher({
       activeAudioText: this,
       sink: this.sink,
       settings: this.settings,
       trackLoader: this.loader,
     });
-    if (wasPlaying) {
-      this.queue.play();
-    }
   };
 
   play() {
-    this.queue.play();
+    this.sink.play();
   }
   pause(): void {
-    this.queue.pause();
+    this.sink.pause();
   }
 
   destroy(): void {

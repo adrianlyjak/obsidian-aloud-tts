@@ -72,21 +72,18 @@ describe("Active Track", async () => {
     );
     expect(active.position).toEqual(0);
     active.play();
-    await waitForPassing(async () => expect(sink.isPlaying).toEqual(true));
+    await waitForPassing(async () => expect(sink.isComplete).toEqual(false));
     sink.setComplete();
+    await waitForPassing(async () => expect(sink.isComplete).toEqual(false));
     expect(active.position).toEqual(1);
-    await waitForPassing(async () => expect(sink.isPlaying).toEqual(false));
-    await waitForPassing(async () => expect(sink.isPlaying).toEqual(true));
     sink.setComplete();
+    await waitForPassing(async () => expect(sink.isComplete).toEqual(false));
     expect(active.position).toEqual(2);
-    await waitForPassing(async () => expect(sink.isPlaying).toEqual(false));
-    await waitForPassing(async () => expect(sink.isPlaying).toEqual(true));
     sink.setComplete();
+    await waitForPassing(async () => expect(sink.isComplete).toEqual(false));
     expect(active.position).toEqual(3);
-    await waitForPassing(async () => expect(sink.isPlaying).toEqual(false));
-    await waitForPassing(async () => expect(sink.isPlaying).toEqual(true));
     sink.setComplete();
-    expect(active.position).toEqual(-1);
+    await waitForPassing(async () => expect(active.position).toEqual(-1));
     expect(active.isPlaying).toEqual(false);
   });
 
@@ -144,13 +141,17 @@ describe("Active Track", async () => {
       },
     );
     mobx.runInAction(() => {
-      settings.playbackSpeed = 1.75;
+      settings.ttsVoice = "onyx";
     });
     await waitForPassing(async () => {
       expect(seen).toHaveLength(5);
     });
-    expect(seen.map((x) => x.settings.playbackSpeed)).toEqual([
-      1, 1, 1.75, 1.75, 1.75,
+    expect(seen.map((x) => x.settings.voice)).toEqual([
+      "shimmer",
+      "shimmer",
+      "onyx",
+      "onyx",
+      "onyx",
     ]);
   });
 
@@ -563,13 +564,16 @@ class FakeAudioSink implements AudioSink {
 
   setComplete(): void {
     this.isComplete = true;
-    this.isPlaying = false;
   }
   async setMedia(data: ArrayBuffer): Promise<void> {
+    const wasComplete = this.isPlaying && this.isComplete;
     this.isComplete = false;
-    this.isPlaying = false;
     this.currentData = data;
+    if (wasComplete) {
+      this.play();
+    }
   }
+  setRate(rate: number): void {}
   play(): void {
     this.isPlaying = true;
   }
@@ -577,6 +581,9 @@ class FakeAudioSink implements AudioSink {
     this.isPlaying = false;
   }
   restart(): void {}
+  clearMedia(): void {
+    this.isPlaying = false;
+  }
   get trackStatus(): TrackStatus {
     const derivedStatus = (): TrackStatus => {
       if (this.isComplete) {

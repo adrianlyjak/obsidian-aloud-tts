@@ -69,7 +69,7 @@ export const PlayerView = observer(
             disabled={!player.activeText}
           />
 
-          {player.activeText?.isPlaying ? (
+          {sink.trackStatus === "playing" ? (
             <IconButton
               key="pause"
               icon="pause"
@@ -143,7 +143,7 @@ const AudioStatusInfoContents: React.FC<{
   } else if (player.activeText?.error) {
     return <TTSErrorInfoView error={player.activeText.error} />;
   } else if (player.activeText?.isLoading) {
-    return <Spinner className="tts-audio-status-loading" />;
+    return <Spinner className="tts-audio-status-loading" delay={500} />;
   } else if (audio.audio && audio.audioBuffer && player.activeText?.isPlaying) {
     return (
       <AudioVisualizer
