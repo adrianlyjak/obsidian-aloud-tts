@@ -118,6 +118,12 @@
   flex-direction: row;
 }
 
+@media (max-width: 1024px) {
+  .tts-settings-model-header {
+    flex-direction: column;
+  }
+}
+
 .tts-settings-model-header h1 {
   flex: 1 1 auto;
 }

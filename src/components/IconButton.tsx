@@ -42,11 +42,13 @@ export function IconButton({
 export function IconSpan({
   icon,
   className,
+  style,
   tooltip,
   tooltipOptions,
 }: {
   icon: string;
   className?: string;
+  style?: React.CSSProperties;
   tooltip?: string;
   tooltipOptions?: TooltipOptions;
 }) {
@@ -61,6 +63,7 @@ export function IconSpan({
   }, [ref.current, icon, tooltip]);
   return (
     <span
+      style={style}
       className={["tts-toolbar-icon"]
         .concat(className ? [className] : [])
         .join(" ")}
@@ -71,9 +74,11 @@ export function IconSpan({
 
 export function Spinner({
   className,
+  style,
   delay = 0,
 }: {
   className?: string;
+  style?: React.CSSProperties;
   delay?: number;
 }) {
   const ref = React.useRef<HTMLElement | null>(null);
@@ -96,6 +101,7 @@ export function Spinner({
     <span
       className={`${className} fade-in ${visible ? "visible" : ""}`}
       ref={(x) => (ref.current = x)}
+      style={style}
     ></span>
   );
 }

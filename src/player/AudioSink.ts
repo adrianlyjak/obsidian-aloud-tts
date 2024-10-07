@@ -91,6 +91,7 @@ export class WebAudioSink implements AudioSink {
     });
     this._audio.addEventListener("play", this._onplay);
     this._audio.addEventListener("pause", this._onpause);
+    this._audio.addEventListener("seeked", this._onseeked);
   }
 
   setRate(rate: number) {
@@ -212,6 +213,16 @@ export class WebAudioSink implements AudioSink {
   _onpause = () => {
     this._updateTrackStatus();
     clearInterval(this._completionChecker);
+  };
+
+  _onseeked = () => {
+    if (!this._sourceBuffer.buffered.length) {
+      this._audio.currentTime = 0;
+    } else if (this.audio.currentTime > this._sourceBuffer.buffered.end(0)) {
+      this._audio.currentTime = this._sourceBuffer.buffered.end(0);
+    }
+    this._updateTrackStatus();
+    this.loopCheckCompletion();
   };
 
   restart() {
