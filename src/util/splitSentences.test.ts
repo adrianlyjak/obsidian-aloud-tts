@@ -98,7 +98,7 @@ List Items:
 **Bold text makes a strong statement.** _italic text does as well._ ~woops, scratch that~
 
 \`\`\`js
-console.log("wow");
+alert("wow");
 \`\`\`
 `;
     const expected = [
@@ -112,7 +112,7 @@ console.log("wow");
       "**Bold text makes a strong statement.** ",
       "_italic text does as well._ ",
       "~woops, scratch that~\n\n",
-      '```js\nconsole.log("wow");\n',
+      '```js\nalert("wow");\n',
       "```\n",
     ] as string[];
     expect(splitSentences(markdown)).toEqual(expected);

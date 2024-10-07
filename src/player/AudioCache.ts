@@ -1,4 +1,4 @@
-import { hashString } from "src/util/Minhash";
+import { hashString } from "../util/Minhash";
 import { TTSModelOptions } from "./TTSModel";
 import { voiceHash } from "./TTSPluginSettings";
 

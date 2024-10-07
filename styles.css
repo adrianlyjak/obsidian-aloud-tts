@@ -1,6 +1,8 @@
 .tts-spin {
   animation: tts-spin 2s linear infinite;
 }
+
+
 @keyframes tts-spin {
   from {
     transform: rotate(0deg);
@@ -8,6 +10,15 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.fade-in {
+  opacity: 0;
+  transition: opacity 500ms ease-in;
+}
+
+.fade-in.visible {
+  opacity: 1;
 }
 
 .tts-toolbar {
@@ -105,6 +116,12 @@
   justify-content: space-between;
   align-items: center;
   flex-direction: row;
+}
+
+@media (max-width: 1024px) {
+  .tts-settings-model-header {
+    flex-direction: column;
+  }
 }
 
 .tts-settings-model-header h1 {

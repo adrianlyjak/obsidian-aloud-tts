@@ -108,3 +108,17 @@ export function createWindows<T>(
 
   return windows;
 }
+
+export function debounce<Args extends any[]>(
+  cb: (...args: Args) => void,
+  wait: number,
+): (...args: Args) => void {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const callable = (...args: Args) => {
+    if (timer) {
+      clearTimeout(timer);
+    }
+    timer = setTimeout(() => cb(...args), wait);
+  };
+  return callable;
+}

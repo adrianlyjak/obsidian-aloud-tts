@@ -18,7 +18,7 @@ import * as React from "react";
 import { createRoot } from "react-dom/client";
 
 import { Panel } from "@codemirror/view";
-import { ObsidianBridge } from "src/obsidian/ObsidianBridge";
+import { ObsidianBridge } from "../obsidian/ObsidianBridge";
 import { PlayerView } from "../components/PlayerView";
 import { TTSPluginSettingsStore } from "../player/TTSPluginSettings";
 

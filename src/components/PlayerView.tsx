@@ -1,16 +1,16 @@
 import { observer } from "mobx-react-lite";
 import * as React from "react";
-import { ObsidianBridge } from "src/obsidian/ObsidianBridge";
+import { ObsidianBridge } from "../obsidian/ObsidianBridge";
 import {
   MARKETING_NAME,
   TTSPluginSettingsStore,
-} from "src/player/TTSPluginSettings";
+} from "../player/TTSPluginSettings";
 import { AudioSink } from "../player/AudioSink";
 import { AudioStore } from "../player/Player";
 import { AudioVisualizer } from "./AudioVisualizer";
 import { IconButton, IconSpan, Spinner } from "./IconButton";
 import { EditorView } from "@codemirror/view";
-import { TTSErrorInfo } from "src/player/TTSModel";
+import { TTSErrorInfo } from "../player/TTSModel";
 import { setTooltip } from "obsidian";
 
 export const PlayerView = observer(
@@ -69,7 +69,7 @@ export const PlayerView = observer(
             disabled={!player.activeText}
           />
 
-          {player.activeText?.isPlaying ? (
+          {sink.trackStatus === "playing" ? (
             <IconButton
               key="pause"
               icon="pause"
@@ -143,9 +143,14 @@ const AudioStatusInfoContents: React.FC<{
   } else if (player.activeText?.error) {
     return <TTSErrorInfoView error={player.activeText.error} />;
   } else if (player.activeText?.isLoading) {
-    return <Spinner className="tts-audio-status-loading" />;
-  } else if (audio.source && audio.context && player.activeText?.isPlaying) {
-    return <AudioVisualizer audio={audio.source} context={audio.context} />;
+    return <Spinner className="tts-audio-status-loading" delay={500} />;
+  } else if (audio.audio && audio.audioBuffer && player.activeText?.isPlaying) {
+    return (
+      <AudioVisualizer
+        audioElement={audio.audio}
+        audioBuffer={audio.audioBuffer}
+      />
+    );
   } else {
     return null;
   }

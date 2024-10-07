@@ -9,21 +9,22 @@
     "plugin:@typescript-eslint/recommended",
   ],
   "parserOptions": {
-    "sourceType": "module"
+    "sourceType": "module",
   },
   "rules": {
     "no-unused-vars": "off",
     "no-constant-condition": "off",
     "no-prototype-builtins": "off",
+    "@typescript-eslint/no-explicit-any": "off",
     "@typescript-eslint/no-unused-vars": [
       "error",
       {
         "args": "none",
         "destructuredArrayIgnorePattern": "^_",
-        "varsIgnorePattern": "^_"
-      }
+        "varsIgnorePattern": "^_",
+      },
     ],
     "@typescript-eslint/ban-ts-comment": "off",
-    "@typescript-eslint/no-empty-function": "off"
-  }
+    "@typescript-eslint/no-empty-function": "off",
+  },
 }

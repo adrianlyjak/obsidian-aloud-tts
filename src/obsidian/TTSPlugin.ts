@@ -104,7 +104,7 @@ export default class TTSPlugin extends Plugin {
       () => this.loadData(),
       (data) => this.saveData(data),
     );
-    this.audio = new WebAudioSink();
+    this.audio = await WebAudioSink.create();
     const cache = configurableAudioCache(this.app, this.settings);
     this.cache = cache;
     this.player = await loadAudioStore({

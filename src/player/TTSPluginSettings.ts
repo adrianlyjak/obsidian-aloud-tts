@@ -1,7 +1,7 @@
 import { action, observable } from "mobx";
 import { TTSErrorInfo, TTSModelOptions, listModels } from "./TTSModel";
-import { debounce } from "obsidian";
-import { hashString } from "src/util/Minhash";
+import { debounce } from "../util/misc";
+import { hashString } from "../util/Minhash";
 export type TTSPluginSettings = {
   OPENAI_API_KEY: string;
   OPENAI_API_URL: string;
@@ -44,9 +44,7 @@ export function isPlayerViewMode(value: unknown): value is PlayerViewMode {
 }
 
 export function voiceHash(options: TTSModelOptions): string {
-  return hashString(
-    options.apiUri + options.model + options.voice + options.playbackSpeed,
-  ).toString();
+  return hashString(options.apiUri + options.model + options.voice).toString();
 }
 
 export const REAL_OPENAI_API_URL = "https://api.openai.com";

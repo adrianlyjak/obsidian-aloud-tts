@@ -1,46 +1,69 @@
+import FFT from "fft.js";
 import * as React from "react";
 
 export const AudioVisualizer: React.FC<{
-  audio: AudioNode;
-  context: AudioContext;
-}> = ({ audio, context }) => {
+  audioElement: HTMLAudioElement;
+  audioBuffer: AudioBuffer;
+}> = ({ audioElement, audioBuffer }) => {
   const ref = React.useRef<HTMLElement | null>(null);
+  const fft = React.useMemo(() => new FFT(512), [audioBuffer]);
   React.useEffect(() => {
-    if (ref.current) {
-      // maybe the source should be public, and this should be within a component?
-      const analyzer = context.createAnalyser();
-      // Analyzer settings. Magic numbers that make the visualizer icon look good
-      analyzer.fftSize = 512; // controls the resolution of the spectrum
-      analyzer.minDecibels = -100; // notes quieter than this are now shown
-      analyzer.maxDecibels = -30; // notes higher than this just show the max
-      analyzer.smoothingTimeConstant = 0.6; // how rapidly to decay measurement for the value. (Maybe smoothing for growth too?)
-      audio.connect(analyzer);
-      const destroyer = attachVisualizationToDom(ref.current, analyzer);
-      // setAudioMotion(newAudioMotion);
+    if (ref.current && audioElement && audioBuffer) {
+      const destroyer = attachVisualizationToDom(
+        ref.current,
+        audioElement,
+        audioBuffer,
+        fft,
+      );
       return () => {
-        destroyer.destroy;
-        audio.disconnect(analyzer);
+        destroyer.destroy();
       };
     }
-  }, [!!ref.current, audio]);
+  }, [ref.current, audioElement, audioBuffer, fft]);
+
   return (
     <div className="tts-audio-visualizer" ref={(x) => (ref.current = x)}></div>
   );
 };
 
-function attachVisualizationToDom(
+function getFrequencyBins(
+  fft: FFT,
+  audioBuffer: AudioBuffer,
+  audioElement: HTMLAudioElement,
+  magnitudes: Float32Array,
+) {
+  const position = audioElement.currentTime * audioBuffer.sampleRate;
+  const mono = audioBuffer
+    .getChannelData(0)
+    .subarray(position, position + fft.size);
+  const spectrum = fft.createComplexArray();
+  fft.realTransform(spectrum, mono);
+  for (let i = 0; i < fft.size; i++) {
+    const real = mono[i * 2];
+    const imag = mono[i * 2 + 1];
+    magnitudes[i] = Math.sqrt(real * real + imag * imag);
+  }
+  return magnitudes;
+}
+
+export function attachVisualizationToDom(
   container: HTMLElement,
-  analyzer: AnalyserNode,
+  audioElement: HTMLAudioElement,
+  audioBuffer: AudioBuffer,
+  fft: FFT,
 ): {
   destroy: () => void;
 } {
-  const bufferLength = analyzer.frequencyBinCount;
-  const dataArray = new Uint8Array(bufferLength);
+  const bufferLength = fft.size / 2;
+  const dataArray = new Float32Array(bufferLength);
 
   const nSegments = 8;
-  // Create a div and append it to the container
+  const historySize = 4; // Number of frames to average over
+  const barHistory = Array.from({ length: nSegments }, () =>
+    Array(historySize).fill(0),
+  );
+  let historyIndex = 0;
 
-  // Create 8 divs for the bars and append them to the visualizer
   const bars = Array(nSegments)
     .fill(null)
     .map(() => document.createElement("div"));
@@ -52,33 +75,37 @@ function attachVisualizationToDom(
 
   let frameId: undefined | ReturnType<typeof requestAnimationFrame>;
 
-  // Function to update the bars
   function draw() {
     frameId = requestAnimationFrame(draw);
 
-    analyzer.getByteFrequencyData(dataArray);
+    getFrequencyBins(fft, audioBuffer, audioElement, dataArray);
 
     const min = Math.floor(bufferLength / 32);
     const max = Math.floor(bufferLength / 6) + min;
     const segmentSize = (max - min) / nSegments;
 
-    // Update the height of each bar
     bars.forEach((bar, i) => {
       const index = Math.floor(min + i * segmentSize);
       const index2 = Math.floor(min + i * segmentSize + segmentSize / 2);
-      const barHeight1 = dataArray[index] / 255.0; // Scale bar height to fit container
-      const barHeight2 = dataArray[index2] / 255.0;
+      const increase = 4;
+      const barHeight1 = dataArray[index] * increase;
+      const barHeight2 = dataArray[index2] * increase;
       let barHeight = (barHeight1 + barHeight2) / 2;
-      // round the wave form to penalize lowest and highest segments.
-      let factor = Math.cos((i * Math.PI * 2) / nSegments) + 1;
-      if (i < 2) {
-        factor *= 1.5;
-      }
-      barHeight = Math.pow(barHeight, 1 + factor);
-      // convert to percentage
+      const factor = Math.sin(((i + 1) / (nSegments + 2)) * Math.PI);
+      barHeight = barHeight * factor;
       barHeight *= 100;
-      bar.style.height = `${barHeight}%`;
+
+      // Update history
+      barHistory[i][historyIndex] = barHeight;
+
+      // Compute average
+      const averageHeight =
+        barHistory[i].reduce((sum, h) => sum + h, 0) / historySize;
+      bar.style.height = `${averageHeight}%`;
     });
+
+    // Update history index
+    historyIndex = (historyIndex + 1) % historySize;
   }
 
   function resumeAndDraw() {

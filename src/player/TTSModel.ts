@@ -9,7 +9,6 @@ export interface TTSModelOptions {
   voice: string;
   apiUri: string;
   apiKey: string;
-  playbackSpeed: number;
 }
 
 export class TTSErrorInfo extends Error {
@@ -52,7 +51,6 @@ export function toModelOptions(
     voice: pluginSettings.ttsVoice,
     apiUri: pluginSettings.OPENAI_API_URL || REAL_OPENAI_API_URL,
     apiKey: pluginSettings.OPENAI_API_KEY,
-    playbackSpeed: pluginSettings.playbackSpeed,
   };
 }
 
@@ -64,6 +62,7 @@ export const openAITextToSpeech: TTSModel = async function openAITextToSpeech(
   text: string,
   options: TTSModelOptions,
 ): Promise<ArrayBuffer> {
+  await new Promise((resolve) => setTimeout(resolve, 3000));
   const headers = await fetch(
     orDefaultOpenAI(options.apiUri) + "/v1/audio/speech",
     {
@@ -76,7 +75,7 @@ export const openAITextToSpeech: TTSModel = async function openAITextToSpeech(
         model: options.model,
         voice: options.voice,
         input: text,
-        speed: options.playbackSpeed,
+        speed: 1,
       }),
     },
   );

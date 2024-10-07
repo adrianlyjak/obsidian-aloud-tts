@@ -2,7 +2,7 @@ import { observer } from "mobx-react-lite";
 import { App, Plugin, PluginSettingTab } from "obsidian";
 import * as React from "react";
 import { Root, createRoot } from "react-dom/client";
-import { AudioStore } from "src/player/Player";
+import { AudioStore } from "../player/Player";
 import {
   ModelProvider,
   PlayerViewMode,
@@ -62,31 +62,15 @@ const TTSSettingsTabComponent: React.FC<{
   const [isActive, setActive] = React.useState(false);
   return (
     <>
-      <div className="tts-settings-model-header">
-        <h1>OpenAI API</h1>
-        <ModelSwitcher store={store} />
-        <TestVoiceComponent
-          store={store}
-          player={player}
-          isActive={isActive}
-          setActive={setActive}
-        />
-      </div>
-      <div className="tts-settings-error-container">
-        {player.activeText?.error && (
-          <details>
-            <summary>
-              <div className="tts-settings-error-summary">
-                <span className="setting-item-description">
-                  Most Recent Error Details
-                </span>
-                <TTSErrorInfoView error={player.activeText.error} />
-              </div>
-            </summary>
-            <TTSErrorInfoDetails error={player.activeText.error} />
-          </details>
-        )}
-      </div>
+      <h1>OpenAI</h1>
+      <ErrorInfoView player={player} />
+      <TestVoiceComponent
+        store={store}
+        player={player}
+        isActive={isActive}
+        setActive={setActive}
+      />
+      <ModelSwitcher store={store} />
 
       {store.settings.modelProvider === "openai" ? (
         <>
@@ -110,6 +94,28 @@ const TTSSettingsTabComponent: React.FC<{
   );
 });
 
+const ErrorInfoView: React.FC<{
+  player: AudioStore;
+}> = observer(({ player }) => {
+  return (
+    <div className="tts-settings-error-container">
+      {player.activeText?.error && (
+        <details>
+          <summary>
+            <div className="tts-settings-error-summary">
+              <span className="setting-item-description">
+                Most Recent Error Details
+              </span>
+              <TTSErrorInfoView error={player.activeText.error} />
+            </div>
+          </summary>
+          <TTSErrorInfoDetails error={player.activeText.error} />
+        </details>
+      )}
+    </div>
+  );
+});
+
 const labels: Record<ModelProvider, string> = {
   openai: "OpenAI",
   openaicompat: "OpenAI Compatible (Advanced)",
@@ -119,13 +125,23 @@ const ModelSwitcher: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
   return (
-    <OptionSelect
-      options={modelProviders.map((v) => ({ label: labels[v], value: v }))}
-      value={store.settings.modelProvider}
-      onChange={(v) =>
-        store.updateSettings({ modelProvider: v as ModelProvider })
-      }
-    />
+    <div className="setting-item">
+      <div className="setting-item-info">
+        <div className="setting-item-name">Model Provider</div>
+        <div className="setting-item-description">
+          The model provider to use
+        </div>
+      </div>
+      <div className="setting-item-control">
+        <OptionSelect
+          options={modelProviders.map((v) => ({ label: labels[v], value: v }))}
+          value={store.settings.modelProvider}
+          onChange={(v) =>
+            store.updateSettings({ modelProvider: v as ModelProvider })
+          }
+        />
+      </div>
+    </div>
   );
 });
 
@@ -327,11 +343,9 @@ const APIBaseURLComponent: React.FC<{
   return (
     <div className="setting-item">
       <div className="setting-item-info">
-        <div className="setting-item-name">Custom OpenAI URL</div>
+        <div className="setting-item-name">API URL</div>
         <div className="setting-item-description">
-          Change to use a custom OpenAI compatible API server. Default is{" "}
-          {REAL_OPENAI_API_URL}.<br />
-          Note: Token validation will be disabled if this is set
+          Base url for openai compatible API
         </div>
       </div>
       <div className="setting-item-control">
@@ -452,7 +466,7 @@ const OpenAICompatibleApiKeyComponent: React.FC<{
       <div className="setting-item-info">
         <div className="setting-item-name">API key</div>
         <div className="setting-item-description">
-          A Bearer token for your API.
+          A Bearer token for your API
         </div>
       </div>
       <div className="setting-item-control">
@@ -542,6 +556,7 @@ const TestVoiceComponent: React.FC<{
   setActive: React.Dispatch<React.SetStateAction<boolean>>;
 }> = observer(({ store, player, isActive, setActive }) => {
   const isPlaying = player.activeText?.isPlaying && isActive;
+  const isLoading = player.activeText?.isLoading;
   const playSample = React.useCallback(() => {
     if (!isPlaying) {
       const text = `Hi, I'm ${store.settings.ttsVoice}. I'm a virtual text to speech assistant.`;
@@ -559,7 +574,27 @@ const TestVoiceComponent: React.FC<{
     }
   }, [store.settings.ttsVoice, isPlaying]);
   return (
-    <IconButton icon={isPlaying ? "pause" : "play"} onClick={playSample} />
+    <div className="setting-item">
+      <div className="setting-item-info">
+        <div className="setting-item-name">Test Voice</div>
+        <div className="setting-item-description">
+          Test the voice to see how it sounds
+        </div>
+      </div>
+      <div className="setting-item-control">
+        <button onClick={playSample}>
+          {isLoading ? (
+            <Spinner style={{ marginRight: "0.5em" }} delay={250} />
+          ) : (
+            <IconSpan
+              style={{ marginRight: "0.5em" }}
+              icon={isPlaying ? "pause" : "play"}
+            />
+          )}{" "}
+          Test Voice
+        </button>
+      </div>
+    </div>
   );
 });
 

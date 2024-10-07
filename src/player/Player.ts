@@ -1,9 +1,9 @@
 import * as mobx from "mobx";
 import { action, computed, observable } from "mobx";
-import cleanMarkup from "src/util/cleanMarkdown";
+import cleanMarkup from "../util/cleanMarkdown";
 import { randomId, splitParagraphs, splitSentences } from "../util/misc";
 import { AudioCache, memoryStorage } from "./AudioCache";
-import { AudioSink, WebAudioSink } from "./AudioSink";
+import { AudioSink } from "./AudioSink";
 import {
   TTSErrorInfo,
   TTSModel,
@@ -100,15 +100,15 @@ export interface ActiveAudioText {
 
 export function loadAudioStore({
   settings,
+  audioSink,
   storage = memoryStorage(),
   textToSpeech = openAITextToSpeech,
-  audioSink = new WebAudioSink(),
   backgroundLoaderIntervalMillis,
 }: {
   settings: TTSPluginSettings;
   storage?: AudioCache;
   textToSpeech?: TTSModel;
-  audioSink?: AudioSink;
+  audioSink: AudioSink;
   backgroundLoaderIntervalMillis?: number;
 }): AudioStore {
   const store = new AudioStoreImpl(settings, storage, textToSpeech, audioSink, {
@@ -201,6 +201,7 @@ class AudioStoreImpl implements AudioStore {
   }
 
   startPlayer(opts: AudioTextOptions): ActiveAudioText {
+    this.sink.clearMedia();
     const audio: AudioText = buildTrack(opts, this.settings.chunkType);
     this.activeText?.destroy();
     this.activeText = new ActiveAudioTextImpl(
@@ -222,7 +223,7 @@ class AudioStoreImpl implements AudioStore {
   }
   destroy(): void {
     this.closePlayer();
-    this.sink.remove();
+    this.sink.pause();
     this._backgroundProcesses.forEach((p) => p.shutdown());
     this._backgroundProcesses = [];
   }
@@ -293,8 +294,6 @@ class ActiveAudioTextImpl implements ActiveAudioText {
       currentTrack: computed,
       error: computed,
       queue: observable,
-      play: action,
-      pause: action,
       destroy: action,
       goToNext: action,
       goToPrevious: action,
@@ -307,6 +306,15 @@ class ActiveAudioTextImpl implements ActiveAudioText {
       this.initializeQueue,
       {
         fireImmediately: false,
+      },
+    );
+    mobx.reaction(
+      () => this.settings.playbackSpeed,
+      (rate) => {
+        this.sink.setRate(rate);
+      },
+      {
+        fireImmediately: true,
       },
     );
   }
@@ -420,29 +428,24 @@ class ActiveAudioTextImpl implements ActiveAudioText {
   }
 
   initializeQueue = () => {
-    const wasPlaying = this.queue?.isPlaying ?? false;
     this.queue?.destroy();
-    this.queue?.pause();
     this.queue = new TrackSwitcher({
       activeAudioText: this,
       sink: this.sink,
       settings: this.settings,
       trackLoader: this.loader,
     });
-    if (wasPlaying) {
-      this.queue.play();
-    }
   };
 
   play() {
-    this.queue.play();
+    this.sink.play();
   }
   pause(): void {
-    this.queue.pause();
+    this.sink.pause();
   }
 
   destroy(): void {
-    this.sink?.remove();
+    this.sink?.pause();
     this.queue?.destroy();
     this.loader?.destroy();
     this.voiceChangeId?.();

@@ -1,8 +1,8 @@
 import { App, normalizePath } from "obsidian";
-import { AudioCache, hashAudioInputs } from "src/player/AudioCache";
-import { TTSModelOptions } from "src/player/TTSModel";
-import { TTSPluginSettingsStore } from "src/player/TTSPluginSettings";
-import { IndexedDBAudioStorage } from "src/web/IndexedDBAudioStorage";
+import { AudioCache, hashAudioInputs } from "../player/AudioCache";
+import { TTSModelOptions } from "../player/TTSModel";
+import { TTSPluginSettingsStore } from "../player/TTSPluginSettings";
+import { IndexedDBAudioStorage } from "../web/IndexedDBAudioStorage";
 import * as mobx from "mobx";
 
 export function configurableAudioCache(

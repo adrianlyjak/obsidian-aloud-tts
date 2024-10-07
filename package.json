@@ -1,6 +1,6 @@
 {
   "name": "obsidian-aloud-tts",
-  "version": "0.4.1",
+  "version": "0.5.0-rc6",
   "description": "Highlight and speak text from your obsidian notes",
   "main": "main.js",
   "scripts": {
@@ -11,7 +11,9 @@
     "lint": "eslint src",
     "test": "vitest",
     "format:check": "prettier --check src",
-    "format:write": "prettier --write src"
+    "format:write": "prettier --write src",
+    "web:dev": "vite src/web/",
+    "web:build": "vite build src/web/"
   },
   "keywords": [
     "obsidian",
@@ -24,32 +26,33 @@
     "url": "https://github.com/adrianlyjak/obsidian-aloud-tts"
   },
   "devDependencies": {
-    "@types/node": "^20.12.5",
+    "@types/node": "^20.16.10",
     "@typescript-eslint/eslint-plugin": "6.13.2",
     "@typescript-eslint/parser": "6.13.2",
     "builtin-modules": "3.3.0",
     "esbuild": "0.17.3",
-    "eslint": "^8.57.0",
+    "eslint": "^8.57.1",
     "node^20.0.0": "link:@types/node^20.0.0",
-    "obsidian": "^1.5.7",
-    "prettier": "^3.2.5",
+    "obsidian": "^1.7.2",
+    "prettier": "^3.3.3",
     "tslib": "2.6.2",
     "typescript": "5.3.2",
-    "vite": "^5.2.8",
+    "vite": "^5.4.8",
     "vite-plugin-node-polyfills": "^0.17.0",
-    "vitest": "^1.4.0"
+    "vitest": "^1.6.0"
   },
   "dependencies": {
-    "@codemirror/language": "^6.10.1",
+    "@codemirror/language": "^6.10.3",
     "@codemirror/state": "^6.4.1",
-    "@codemirror/view": "^6.26.1",
-    "@types/react": "^18.2.74",
-    "@types/react-dom": "^18.2.24",
+    "@codemirror/view": "^6.34.1",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.0",
+    "fft.js": "^4.0.4",
     "idb": "^8.0.0",
-    "mobx": "^6.12.3",
+    "mobx": "^6.13.3",
     "mobx-react-lite": "^4.0.7",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "packageManager": "pnpm@9.0.2+sha1.2a34aeb80bf8e8435815d14f620ec4ba0eff1604"
 }
