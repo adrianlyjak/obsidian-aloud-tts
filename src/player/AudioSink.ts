@@ -135,7 +135,6 @@ export class WebAudioSink implements AudioSink {
   }
 
   async setMedia(data: ArrayBuffer): Promise<void> {
-    console.log("setMedia");
     await onceBuffUpdateEnd(this._sourceBuffer);
     mobx.runInAction(() => (this._audioBuffer = undefined));
     const buffered = this._sourceBuffer.buffered;
@@ -159,7 +158,6 @@ export class WebAudioSink implements AudioSink {
   }
 
   clearMedia() {
-    console.log("clearMedia");
     this._audio.pause();
 
     if (this._sourceBuffer.buffered.length > 0) {
@@ -176,16 +174,6 @@ export class WebAudioSink implements AudioSink {
   }
 
   play() {
-    console.log(
-      "play",
-      this._sourceBuffer.buffered.length,
-      this._audio.currentTime,
-      this._sourceBuffer.buffered.length
-        ? this._sourceBuffer.buffered.end(
-            this._sourceBuffer.buffered.length - 1,
-          )
-        : 0,
-    );
     this._audio.play();
   }
 
@@ -213,7 +201,6 @@ export class WebAudioSink implements AudioSink {
   }
 
   pause() {
-    console.log("pause");
     this._audio.pause();
   }
 

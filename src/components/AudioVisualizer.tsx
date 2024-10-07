@@ -58,7 +58,7 @@ export function attachVisualizationToDom(
   const dataArray = new Float32Array(bufferLength);
 
   const nSegments = 8;
-  const historySize = 7; // Number of frames to average over
+  const historySize = 4; // Number of frames to average over
   const barHistory = Array.from({ length: nSegments }, () =>
     Array(historySize).fill(0),
   );
@@ -87,7 +87,7 @@ export function attachVisualizationToDom(
     bars.forEach((bar, i) => {
       const index = Math.floor(min + i * segmentSize);
       const index2 = Math.floor(min + i * segmentSize + segmentSize / 2);
-      const increase = 6;
+      const increase = 4;
       const barHeight1 = dataArray[index] * increase;
       const barHeight2 = dataArray[index2] * increase;
       let barHeight = (barHeight1 + barHeight2) / 2;
