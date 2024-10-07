@@ -11,6 +11,7 @@ import { WebAudioSink } from "../player/AudioSink";
 import * as React from "react";
 import FFT from "fft.js";
 
+import { AudioVisualizer } from "../components/AudioVisualizer";
 import { useEffect, useState, type FC, useCallback, useRef } from "react";
 import { observer } from "mobx-react-lite";
 
@@ -280,9 +281,8 @@ const SimplePlayer: FC<{ settingsStore: TTSPluginSettingsStore }> = observer(
 const Player: React.FC<{ store: AudioStore; sink: WebAudioSink }> = observer(
   ({ store, sink }) => {
     return (
-      <div>
-        <a
-          key="clickme"
+      <div style={{ display: "flex", flexDirection: "row" }}>
+        <button
           style={{ cursor: "pointer", display: "block" }}
           onClick={() => {
             const text = `Twas brillig, and the slithy toves
@@ -303,22 +303,25 @@ The frumious Bandersnatch!`;
           }}
         >
           Load Text
-        </a>
-        <a
-          key="clickme2"
+        </button>
+        <button
           style={{ cursor: "pointer", display: "block" }}
-          onClick={() => store.activeText!.pause()}
+          onClick={() => {
+            if (store.activeText?.isPlaying) {
+              store.activeText!.pause();
+            } else {
+              store.activeText!.play();
+            }
+          }}
         >
-          Pause
-        </a>
-
-        <a
-          key="clickme3"
-          style={{ cursor: "pointer", display: "block" }}
-          onClick={() => store.activeText!.play()}
-        >
-          Play
-        </a>
+          {store.activeText?.isPlaying ? "Pause" : "Play"}
+        </button>
+        {sink.audioBuffer && (
+          <AudioVisualizer
+            audioElement={sink.audio}
+            audioBuffer={sink.audioBuffer}
+          />
+        )}
       </div>
     );
   },

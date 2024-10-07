@@ -35,7 +35,7 @@ export class WebAudioSink implements AudioSink {
   private _sourceBuffer: SourceBuffer;
   _audioBuffer?: AudioBuffer = undefined;
 
-  get audio(): HTMLAudioElement | undefined {
+  get audio(): HTMLAudioElement {
     return this._audio;
   }
 
@@ -155,6 +155,7 @@ export class WebAudioSink implements AudioSink {
     const context = new AudioContext();
     const decoded = await context.decodeAudioData(data);
     mobx.runInAction(() => (this._audioBuffer = decoded));
+    await context.close();
   }
 
   clearMedia() {
