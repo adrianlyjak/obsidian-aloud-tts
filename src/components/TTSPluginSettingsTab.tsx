@@ -258,7 +258,7 @@ const CacheDuration: React.FC<{
         <div className="setting-item-info">
           <div className="setting-item-name">Cache type</div>
           <div className="setting-item-description">
-            Local device based cache (recommended), or a vault vased cache that
+            Local device based cache (recommended), or a vault based cache that
             is shared across devices.
             <br />
             Device local cache is recommended to avoid sync overhead
