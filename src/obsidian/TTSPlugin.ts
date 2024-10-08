@@ -36,12 +36,30 @@ export default class TTSPlugin extends Plugin {
       this.app.workspace.on("editor-menu", (menu, editor, view) => {
         menu.addItem((item) => {
           item
-            .setTitle(`${MARKETING_NAME}: play selection`)
+            .setTitle(`${MARKETING_NAME}: Play selection`)
             .setIcon("play")
             .onClick(async () => {
               await this.bridge.triggerSelection(view.file, editor, {
                 extendShort: true,
               });
+            });
+        });
+        menu.addItem((item) => {
+          item
+            .setTitle(`${MARKETING_NAME}: Paste text to audio`)
+            .setIcon("clipboard")
+            .onClick(async () => {
+              const text = await navigator.clipboard.readText();
+              this.bridge.exportAudio(text, true);
+            });
+        });
+        menu.addItem((item) => {
+          item
+            .setTitle(`${MARKETING_NAME}: Export selection to audio`)
+            .setIcon("file-audio")
+            .onClick(async () => {
+              const text = editor.getSelection();
+              this.bridge.exportAudio(text, false);
             });
         });
       }),

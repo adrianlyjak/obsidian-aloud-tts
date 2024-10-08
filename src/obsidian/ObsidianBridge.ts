@@ -12,6 +12,7 @@ import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { IsPlaying } from "../components/IsPlaying";
 import { AudioStore } from "../player/Player";
+import { hashString } from "src/util/Minhash";
 
 export interface ObsidianBridge {
   /** editor that is currently playing audio */
@@ -32,6 +33,7 @@ export interface ObsidianBridge {
   openSettings: () => void;
   destroy: () => void;
   isMobile: () => boolean;
+  exportAudio: (text: string, replaceSelection?: boolean) => Promise<void>;
 }
 
 /** observable class for obsidian related implementation to activate audio */
@@ -78,6 +80,48 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     // @ts-expect-error
     return this.app.isMobile;
   };
+
+  exportAudio: (text: string, replaceSelection: boolean) => Promise<void> =
+    async (text, replaceSelection) => {
+      if (!text.trim()) {
+        new Notice("No text to export");
+        return;
+      }
+      const hash = hashString(text).toString(16);
+      const prefix = text
+        .replace(/\s/g, "-")
+        .replace(/[^a-zA-Z0-9_-]/g, "")
+        .slice(0, 20)
+        .replace(/-+$/, "");
+      const filename = `audio/${prefix}-${hash}.mp3`;
+
+      const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+
+      const editor = view?.editor;
+      if (editor) {
+        if (replaceSelection) {
+          editor.replaceSelection(`![[${filename}]]\n`);
+        } else {
+          // insert at the start of the selection
+          editor.replaceRange(
+            `![[${filename}]]\n`,
+            editor.getCursor("from"),
+            editor.getCursor("from"),
+          );
+        }
+      }
+
+      try {
+        new Notice(`Exporting ${filename}, this may take some time`);
+        const contents = await this.audio.exportAudio(text);
+        await this.app.vault.adapter.mkdir("audio");
+        await this.app.vault.adapter.writeBinary(filename, contents);
+        new Notice(`Exported ${filename}`);
+      } catch (ex) {
+        console.error("Couldn't export audio!", ex);
+        new Notice("Failed to export audio");
+      }
+    };
 
   _setActiveEditor = () => {
     this.active = this.app.workspace?.activeEditor || null;
