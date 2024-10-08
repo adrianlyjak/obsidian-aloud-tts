@@ -91,13 +91,7 @@ export const PlayerView = observer(
             onClick={() => player.activeText?.goToNext()}
             disabled={!player.activeText}
           />
-          <div
-            className={"clickable-icon tts-toolbar-button"}
-            style={{ fontSize: "var(--font-ui-smaller)" }}
-            onClick={settings.changeSpeed}
-          >
-            {settings.settings.playbackSpeed}x
-          </div>
+          <EditPlaybackSpeedButton settings={settings} />
         </div>
         <div className="tts-audio-status-container">
           <AudioStatusInfoContents
@@ -120,6 +114,69 @@ export const PlayerView = observer(
     );
   },
 );
+
+const EditPlaybackSpeedButton: React.FC<{
+  settings: TTSPluginSettingsStore;
+}> = observer(({ settings }) => {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const popoverRef = React.useRef<HTMLDivElement | null>(null);
+
+  // close the popover after 15 seconds of inactivity
+  React.useEffect(() => {
+    if (isOpen) {
+      const timeout = setTimeout(() => {
+        setIsOpen(false);
+      }, 8000);
+      return () => clearTimeout(timeout);
+    }
+    // reset the timeout when the playback speed changes
+  }, [isOpen, settings.settings.playbackSpeed]);
+
+  return (
+    <>
+      <div
+        className={"clickable-icon tts-toolbar-button"}
+        style={{
+          fontSize: "var(--font-ui-smaller)",
+          minWidth: "3rem",
+          backgroundColor: isOpen ? "var(--background-secondary)" : undefined,
+        }}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        {settings.settings.playbackSpeed}x
+      </div>
+      <div className="popover-container" style={{ position: "relative" }}>
+        {isOpen && (
+          <div
+            className="popover"
+            style={{
+              top: "-1.5rem",
+              right: "3rem",
+              minHeight: "2rem",
+              padding: "0.25rem",
+              margin: "0.5rem",
+              backgroundColor: "var(--background-primary)",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+            ref={popoverRef}
+          >
+            {/* <div style={{ margin: "0.5rem" }}> */}
+            <input
+              type="range"
+              min="0.5"
+              max="2.5"
+              step="0.05"
+              value={settings.settings.playbackSpeed}
+              onChange={(e) => settings.setSpeed(parseFloat(e.target.value))}
+            />
+            {/* </div> */}
+          </div>
+        )}
+      </div>
+    </>
+  );
+});
 
 const AudioStatusInfoContents: React.FC<{
   audio: AudioSink;

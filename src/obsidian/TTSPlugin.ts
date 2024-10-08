@@ -84,6 +84,28 @@ export default class TTSPlugin extends Plugin {
       },
     });
 
+    this.addCommand({
+      id: "increase-playback-speed",
+      name: "Increase playback speed",
+      checkCallback: (checking) => {
+        if (checking) {
+          return this.settings.settings.playbackSpeed < 2.5;
+        }
+        this.settings.setSpeed(this.settings.settings.playbackSpeed + 0.1);
+      },
+    });
+
+    this.addCommand({
+      id: "decrease-playback-speed",
+      name: "Decrease playback speed",
+      checkCallback: (checking) => {
+        if (checking) {
+          return this.settings.settings.playbackSpeed > 0.5;
+        }
+        this.settings.setSpeed(this.settings.settings.playbackSpeed - 0.1);
+      },
+    });
+
     this.registerEditorExtension(
       TTSCodeMirror(this.player, this.settings, this.audio, this.bridge),
     );
