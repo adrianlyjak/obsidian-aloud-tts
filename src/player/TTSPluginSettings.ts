@@ -75,15 +75,6 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   version: 1,
 } as const;
 
-/** interface is easier if its just some canned speeds */
-export const PLAYBACK_SPEEDS = [0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
-
-export function nextSpeed(current: number): number {
-  return PLAYBACK_SPEEDS[
-    (PLAYBACK_SPEEDS.indexOf(current) + 1) % PLAYBACK_SPEEDS.length
-  ];
-}
-
 export const MARKETING_NAME = "Aloud";
 export const MARKETING_NAME_LONG = "Aloud: text to speech";
 
@@ -97,7 +88,7 @@ export interface TTSPluginSettingsStore {
     provider: ModelProvider,
     settings: Partial<TTSPluginSettings>,
   ) => Promise<void>;
-  changeSpeed(): void;
+  setSpeed(speed: number): void;
 }
 
 export async function pluginSettingsStore(
@@ -191,9 +182,9 @@ export async function pluginSettingsStore(
           modelProvider: provider,
         });
       },
-      changeSpeed: (): void => {
+      setSpeed(speed: number): void {
         store.updateSettings({
-          playbackSpeed: nextSpeed(store.settings.playbackSpeed),
+          playbackSpeed: Math.round(speed * 20) / 20,
         });
       },
     },
