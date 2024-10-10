@@ -12,14 +12,18 @@ import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { IsPlaying } from "../components/IsPlaying";
 import { AudioStore } from "../player/Player";
-import { hashString } from "src/util/Minhash";
+import { hashString } from "../util/Minhash";
+import { TTSPluginSettingsStore } from "../player/TTSPluginSettings";
 
 export interface ObsidianBridge {
   /** editor that is currently playing audio */
   activeEditor: EditorView | undefined;
   /** editor that has cursor */
   focusedEditor: EditorView | undefined;
+  /** set true when playing from the clipboard or other transient audio */
+  detachedAudio: boolean;
   playSelection: () => void;
+  playDetached: (text: string) => void;
   onTextChanged: (
     position: number,
     type: "add" | "remove",
@@ -42,10 +46,13 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
   active: MarkdownFileInfo | null = null;
   activeEditorView: MarkdownView | null;
   activeFilename: string | null = null;
-  audio: AudioStore;
-  app: App;
   // the focused editor, or last focused editor if none
   focusedEditorView: MarkdownView | null = null;
+
+  isDetachedAudio: boolean = false;
+  get detachedAudio(): boolean {
+    return this.isDetachedAudio;
+  }
 
   get focusedEditor(): EditorView | undefined {
     // @ts-expect-error
@@ -58,9 +65,11 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     return editor || undefined;
   }
 
-  constructor(app: App, audio: AudioStore) {
-    this.audio = audio;
-    this.app = app;
+  constructor(
+    private app: App,
+    private audio: AudioStore,
+    private settings: TTSPluginSettingsStore,
+  ) {
     mobx.makeObservable(this, {
       active: mobx.observable.ref,
       activeEditor: mobx.computed,
@@ -93,37 +102,61 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
         .replace(/[^a-zA-Z0-9_-]/g, "")
         .slice(0, 20)
         .replace(/-+$/, "");
-      const filename = `audio/${prefix}-${hash}.mp3`;
+      const filename = `${this.settings.settings.audioFolder}/${prefix}-${hash}.mp3`;
 
       const view = this.app.workspace.getActiveViewOfType(MarkdownView);
 
       const editor = view?.editor;
+      const finalReplacement = `![[${filename}]]\n`;
+      const loadingReplacement = `<loading file="${filename}" />\n`;
       if (editor) {
         if (replaceSelection) {
-          editor.replaceSelection(`![[${filename}]]\n`);
+          editor.replaceSelection(loadingReplacement);
         } else {
           // insert at the start of the selection
           editor.replaceRange(
-            `![[${filename}]]\n`,
+            loadingReplacement,
             editor.getCursor("from"),
             editor.getCursor("from"),
           );
         }
       }
 
+      function removeLoadingState(finalReplacement: string) {
+        if (editor) {
+          const doc = editor.getValue();
+          const escapedLoadingReplacement = loadingReplacement.replace(
+            /[.*+?^${}()|[\]\\]/g,
+            "\\$&",
+          );
+          const match = doc.match(new RegExp(escapedLoadingReplacement));
+          if (match) {
+            const start = doc.indexOf(match[0]);
+            const end = start + match[0].length;
+            editor.replaceRange(
+              finalReplacement,
+              editor.offsetToPos(start),
+              editor.offsetToPos(end),
+            );
+          }
+        }
+      }
       try {
         new Notice(`Exporting ${filename}, this may take some time`);
         const contents = await this.audio.exportAudio(text);
-        await this.app.vault.adapter.mkdir("audio");
+        await this.app.vault.adapter.mkdir(this.settings.settings.audioFolder);
         await this.app.vault.adapter.writeBinary(filename, contents);
+        removeLoadingState(finalReplacement);
         new Notice(`Exported ${filename}`);
       } catch (ex) {
         console.error("Couldn't export audio!", ex);
         new Notice("Failed to export audio");
+        removeLoadingState("");
       }
     };
 
   _setActiveEditor = () => {
+    this.isDetachedAudio = false;
     this.active = this.app.workspace?.activeEditor || null;
     this.activeEditorView =
       this.app.workspace.getActiveViewOfType(MarkdownView);
@@ -187,6 +220,16 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
   destroy: () => void = () => {
     this.app.workspace?.off("layout-change", this._onLayoutChange);
   };
+
+  playDetached(text: string, filename?: string): void {
+    this.isDetachedAudio = true;
+    this.audio.startPlayer({
+      filename: filename || text.slice(0, 20),
+      text,
+      start: 0,
+      end: text.length,
+    });
+  }
 
   playSelection(): void {
     const focused = this.focusedEditorView;

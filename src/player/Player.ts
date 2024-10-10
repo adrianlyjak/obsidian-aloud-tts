@@ -417,7 +417,7 @@ class ActiveAudioTextImpl implements ActiveAudioText {
               }
               const { updateType: _, rawText, ...updates } = update;
               // const { updateType, rawText, ...updates } = update;
-              // console.log(
+              // console.info(
               //   `Type: ${updateType} ${rawText ? `'${track.rawText}' -> '${rawText}'` : "[no text change]"}`,
               //   Object.keys(updates).map((x) => {
               //     return `${x}: '${(track as any)[x]}' -> '${(updates as any)[x]}'`;

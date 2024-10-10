@@ -28,7 +28,8 @@ export const PlayerView = observer(
     obsidian: ObsidianBridge;
   }): React.ReactNode => {
     const hasText = !!player.activeText;
-    const isActiveEditor = editor === obsidian.activeEditor;
+    const isActiveEditor =
+      editor === obsidian.activeEditor || obsidian.detachedAudio;
     const isFocusedEditor = obsidian.focusedEditor === editor;
     let shouldShow: boolean;
     switch (settings.settings.showPlayerView) {

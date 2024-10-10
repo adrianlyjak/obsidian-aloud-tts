@@ -1,6 +1,6 @@
 import { TTSCodeMirror } from "../codemirror/TTSCodemirror";
 
-import { Editor, MarkdownView, Plugin, addIcon } from "obsidian";
+import { Editor, MarkdownView, Notice, Plugin, addIcon } from "obsidian";
 import { TTSSettingTab } from "../components/TTSPluginSettingsTab";
 import { AudioSink, WebAudioSink } from "../player/AudioSink";
 import { AudioStore, loadAudioStore } from "../player/Player";
@@ -75,6 +75,24 @@ export default class TTSPlugin extends Plugin {
           return true;
         }
         this.bridge.triggerSelection(view.file, editor);
+      },
+    });
+    this.addCommand({
+      id: "play-clipboard",
+      name: "Play from clipboard",
+      editorCheckCallback: (checking, editor: Editor, view: MarkdownView) => {
+        if (checking) {
+          return true;
+        }
+        navigator.clipboard
+          .readText()
+          .then((text) => {
+            this.bridge.playDetached(text);
+          })
+          .catch((ex) => {
+            console.error("Failed to play clipboard audio", ex);
+            new Notice("Failed to get data from clipboard");
+          });
       },
     });
 
@@ -152,6 +170,6 @@ export default class TTSPlugin extends Plugin {
       storage: cache,
       audioSink: this.audio,
     });
-    this.bridge = new ObsidianBridgeImpl(this.app, this.player);
+    this.bridge = new ObsidianBridgeImpl(this.app, this.player, this.settings);
   }
 }
