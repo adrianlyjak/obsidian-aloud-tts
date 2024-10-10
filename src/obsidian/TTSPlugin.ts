@@ -1,6 +1,6 @@
 import { TTSCodeMirror } from "../codemirror/TTSCodemirror";
 
-import { Editor, MarkdownView, Plugin, addIcon } from "obsidian";
+import { Editor, MarkdownView, Notice, Plugin, addIcon } from "obsidian";
 import { TTSSettingTab } from "../components/TTSPluginSettingsTab";
 import { AudioSink, WebAudioSink } from "../player/AudioSink";
 import { AudioStore, loadAudioStore } from "../player/Player";
@@ -36,12 +36,30 @@ export default class TTSPlugin extends Plugin {
       this.app.workspace.on("editor-menu", (menu, editor, view) => {
         menu.addItem((item) => {
           item
-            .setTitle(`${MARKETING_NAME}: play selection`)
+            .setTitle(`${MARKETING_NAME}: Play selection`)
             .setIcon("play")
             .onClick(async () => {
               await this.bridge.triggerSelection(view.file, editor, {
                 extendShort: true,
               });
+            });
+        });
+        menu.addItem((item) => {
+          item
+            .setTitle(`${MARKETING_NAME}: Paste text to audio`)
+            .setIcon("clipboard")
+            .onClick(async () => {
+              const text = await navigator.clipboard.readText();
+              this.bridge.exportAudio(text, true);
+            });
+        });
+        menu.addItem((item) => {
+          item
+            .setTitle(`${MARKETING_NAME}: Export selection to audio`)
+            .setIcon("file-audio")
+            .onClick(async () => {
+              const text = editor.getSelection();
+              this.bridge.exportAudio(text, false);
             });
         });
       }),
@@ -57,6 +75,24 @@ export default class TTSPlugin extends Plugin {
           return true;
         }
         this.bridge.triggerSelection(view.file, editor);
+      },
+    });
+    this.addCommand({
+      id: "play-clipboard",
+      name: "Play from clipboard",
+      editorCheckCallback: (checking, editor: Editor, view: MarkdownView) => {
+        if (checking) {
+          return true;
+        }
+        navigator.clipboard
+          .readText()
+          .then((text) => {
+            this.bridge.playDetached(text);
+          })
+          .catch((ex) => {
+            console.error("Failed to play clipboard audio", ex);
+            new Notice("Failed to get data from clipboard");
+          });
       },
     });
 
@@ -134,6 +170,6 @@ export default class TTSPlugin extends Plugin {
       storage: cache,
       audioSink: this.audio,
     });
-    this.bridge = new ObsidianBridgeImpl(this.app, this.player);
+    this.bridge = new ObsidianBridgeImpl(this.app, this.player, this.settings);
   }
 }

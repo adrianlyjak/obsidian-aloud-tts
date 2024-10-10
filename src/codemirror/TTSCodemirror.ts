@@ -8,7 +8,11 @@ import {
   Decoration,
   DecorationSet,
   EditorView,
+  PluginValue,
   showPanel,
+  ViewPlugin,
+  ViewUpdate,
+  WidgetType,
 } from "@codemirror/view";
 import * as mobx from "mobx";
 import { AudioSink } from "../player/AudioSink";
@@ -20,6 +24,7 @@ import { createRoot } from "react-dom/client";
 import { Panel } from "@codemirror/view";
 import { ObsidianBridge } from "../obsidian/ObsidianBridge";
 import { PlayerView } from "../components/PlayerView";
+import { createDOM } from "../components/DownloadProgress";
 import { TTSPluginSettingsStore } from "../player/TTSPluginSettings";
 
 function playerPanel(
@@ -241,5 +246,65 @@ export function TTSCodeMirror(
     showPanel.of((editorView: EditorView) =>
       playerPanel(editorView, player, settings, sink, obsidian),
     ),
+    loadingSpinnerExtension,
   ];
+}
+
+class LoadingSpinnerExtension implements PluginValue {
+  decorations: DecorationSet;
+
+  constructor(view: EditorView) {
+    this.decorations = this.createDecorations(view);
+  }
+
+  update(update: ViewUpdate) {
+    if (update.docChanged || update.viewportChanged) {
+      this.decorations = this.createDecorations(update.view);
+    }
+  }
+
+  createDecorations(view: EditorView): DecorationSet {
+    const builder = new RangeSetBuilder<Decoration>();
+    const { from, to } = view.viewport;
+    const text = view.state.doc.sliceString(from, to);
+    const regex = /<loading file="(.+?)" \/>/g;
+    let match;
+
+    while ((match = regex.exec(text)) !== null) {
+      const start = from + match.index;
+      const end = start + match[0].length;
+      const file = match[1];
+
+      const deco = Decoration.widget({
+        widget: new LoadingSpinnerWidget(file),
+      });
+      builder.add(start, end, deco);
+    }
+
+    const decos = builder.finish();
+    return decos;
+  }
+}
+const loadingSpinnerExtension = ViewPlugin.fromClass(LoadingSpinnerExtension, {
+  decorations: (v: LoadingSpinnerExtension): DecorationSet => v.decorations,
+});
+
+class LoadingSpinnerWidget extends WidgetType {
+  constructor(private file: string) {
+    super();
+  }
+
+  toDOM() {
+    return createDOM({ file: this.file });
+  }
+
+  ignoreEvent() {
+    return true;
+  }
+  eq(that: LoadingSpinnerWidget) {
+    return this.file === that.file;
+  }
+  updateDOM() {
+    return false;
+  }
 }

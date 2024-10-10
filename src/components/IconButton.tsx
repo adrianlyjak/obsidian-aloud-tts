@@ -99,7 +99,7 @@ export function Spinner({
 
   return (
     <span
-      className={`${className} fade-in ${visible ? "visible" : ""}`}
+      className={`${className || ""} fade-in ${visible ? "visible" : ""}`}
       ref={(x) => (ref.current = x)}
       style={style}
     ></span>

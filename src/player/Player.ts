@@ -26,6 +26,9 @@ export interface AudioStore {
 
   closePlayer(): void;
 
+  /** exports an mp3 audio file. TODO make this better */
+  exportAudio(text: string): Promise<ArrayBuffer>;
+
   /**
    * destroys this audio store. Further interaction
    * with the store may not work after calling this
@@ -149,8 +152,13 @@ class AudioStoreImpl implements AudioStore {
     this.initializeBackgroundProcessors();
     return this;
   }
+
   getStorageSize(): Promise<number> {
     return this.storage.getStorageSize();
+  }
+
+  exportAudio(text: string): Promise<ArrayBuffer> {
+    return this.textToSpeech(text, toModelOptions(this.settings));
   }
 
   _backgroundProcesses: { shutdown: () => void }[] = [];
@@ -409,7 +417,7 @@ class ActiveAudioTextImpl implements ActiveAudioText {
               }
               const { updateType: _, rawText, ...updates } = update;
               // const { updateType, rawText, ...updates } = update;
-              // console.log(
+              // console.info(
               //   `Type: ${updateType} ${rawText ? `'${track.rawText}' -> '${rawText}'` : "[no text change]"}`,
               //   Object.keys(updates).map((x) => {
               //     return `${x}: '${(track as any)[x]}' -> '${(updates as any)[x]}'`;

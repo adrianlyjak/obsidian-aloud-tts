@@ -14,6 +14,7 @@ export type TTSPluginSettings = {
   cacheDurationMillis: number;
   showPlayerView: PlayerViewMode;
   version: number;
+  audioFolder: string;
 } & OpenAIModelConfig &
   OpenAICompatibleModelConfig;
 
@@ -73,6 +74,7 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   openaicompat_ttsModel: "",
   openaicompat_ttsVoice: "",
   version: 1,
+  audioFolder: "aloud",
 } as const;
 
 export const MARKETING_NAME = "Aloud";

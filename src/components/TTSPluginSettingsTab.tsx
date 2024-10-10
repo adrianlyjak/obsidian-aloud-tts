@@ -88,8 +88,9 @@ const TTSSettingsTabComponent: React.FC<{
 
       <h1>User Interface</h1>
       <PlayerDisplayMode store={store} />
-      <h1>Cache</h1>
+      <h1>Storage</h1>
       <CacheDuration store={store} player={player} />
+      <AudioFolderComponent store={store} />
     </>
   );
 });
@@ -330,6 +331,55 @@ const CacheDuration: React.FC<{
         </div>
       </div>
     </>
+  );
+});
+
+const AudioFolderComponent: React.FC<{
+  store: TTSPluginSettingsStore;
+}> = observer(({ store }) => {
+  function cleanFolderName(folder: string) {
+    return folder.replace(/\/$/g, "");
+  }
+  const [state, setState] = React.useState({
+    clean: cleanFolderName(store.settings.audioFolder),
+    external: store.settings.audioFolder,
+    raw: store.settings.audioFolder,
+  });
+  React.useEffect(() => {
+    if (state.external !== state.clean) {
+      setState({
+        clean: cleanFolderName(store.settings.audioFolder),
+        external: store.settings.audioFolder,
+        raw: store.settings.audioFolder,
+      });
+    }
+  }, [store.settings.audioFolder]);
+  const onChange: React.ChangeEventHandler<HTMLInputElement> =
+    React.useCallback(
+      (v: React.ChangeEvent<HTMLInputElement>) => {
+        const clean = cleanFolderName(v.target.value).trim();
+        store.updateSettings({ audioFolder: clean });
+        setState({
+          clean,
+          external: state.external,
+          raw: v.target.value,
+        });
+      },
+      [JSON.stringify(state)],
+    );
+
+  return (
+    <div className="setting-item">
+      <div className="setting-item-info">
+        <div className="setting-item-name">Audio Folder</div>
+        <div className="setting-item-description">
+          The folder to store audio files
+        </div>
+      </div>
+      <div className="setting-item-control">
+        <input type="text" value={state.raw} onChange={onChange} />
+      </div>
+    </div>
   );
 });
 

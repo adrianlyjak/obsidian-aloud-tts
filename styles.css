@@ -2,7 +2,6 @@
   animation: tts-spin 2s linear infinite;
 }
 
-
 @keyframes tts-spin {
   from {
     transform: rotate(0deg);
