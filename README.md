@@ -6,7 +6,7 @@ Highlight and speak text from your Obsidian notes. Converts text to audio using 
 
 Just add your OpenAI API key. Choose from 6 voices. OpenAI charges Audio at [$0.015 per 1,000 characters](https://openai.com/pricing). That's around $12 for the ~800,000 character text of A Tale of Two Cities.
 
-<img alt="Settings View" src="./docs/settings-example.png" style="max-width: 400px;" ></img>
+<img alt="Settings View" src="./docs/settings-example.png" width="400p" ></img>
 
 ### Features:
 
@@ -16,19 +16,19 @@ Just add your OpenAI API key. Choose from 6 voices. OpenAI charges Audio at [$0.
 
 **Variable Speeds:** On device playback rate adjustor for improved audio quality.
 
-<img src="docs/variable-speeds.png" style="max-width: 200px;" ></img>
+<img src="docs/variable-speeds.png" width="200" ></img>
 
 **Caching:** Audio is cached in your vault to reduce costs, and automatically removed. Cache duration is configurable. Audio may be cached device local or in a vault directory.
 
-<img src="docs/cache-settings.png" style="max-width: 400px;" ></img>
+<img src="docs/cache-settings.png" width"400" ></img>
 
 **Export and Embed Audio:** Quickly export to audio files: export audio files from selection, or embed audio by pasting text from your clipboard.
 
-<img src="docs/right-click-menu.png" style="max-width: 300px;" ></img>
+<img src="docs/right-click-menu.png" max="300" ></img>
 
 **Play text from anywhere:** Lots of commands. Play text to speech directly from your clipboard.
 
-<img src="docs/commands.png" style="max-width: 300px;" ></img>
+<img src="docs/commands.png" width="300" ></img>
 
 **OS Integration:** Integrates with your mobile phone to play while locked. Pause/Play with OS controls on desktop.
 
