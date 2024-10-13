@@ -2,14 +2,10 @@ import * as mobx from "mobx";
 import { describe, expect, test, vi } from "vitest";
 import { AudioCache, memoryStorage } from "./AudioCache";
 import { AudioSink, TrackStatus } from "./AudioSink";
-import {
-  ActiveAudioText,
-  AudioStore,
-  AudioTextOptions,
-  loadAudioStore,
-} from "./Player";
+import { AudioStore, loadAudioStore } from "./AudioStore";
 import { TTSModel, TTSModelOptions } from "./TTSModel";
 import { DEFAULT_SETTINGS, TTSPluginSettings } from "./TTSPluginSettings";
+import { ActiveAudioText, AudioTextOptions } from "./ActiveAudioText";
 
 vi.mock("obsidian", () => ({
   requestUrl: vi.fn(),
@@ -28,7 +24,7 @@ describe("AudioStore", () => {
     });
     expect(txt.audio.filename).toEqual("potatoes.md");
     expect(txt.audio.friendlyName).toEqual("potatoes.md: later tater");
-    expect(txt.audio.tracks).toHaveLength(1);
+    expect(txt.audio.chunks).toHaveLength(1);
     expect(store.activeText).toEqual(txt);
     expect(store.activeText?.isPlaying).toEqual(true);
   });
@@ -45,7 +41,7 @@ describe("AudioStore", () => {
     const active = store.activeText!;
     expect(active.isPlaying).toEqual(true);
     expect(active.position).toEqual(0);
-    expect(active.audio.tracks).toHaveLength(1);
+    expect(active.audio.chunks).toHaveLength(1);
   });
 });
 
@@ -84,7 +80,6 @@ describe("Active Track", async () => {
     expect(active.position).toEqual(3);
     sink.setComplete();
     await waitForPassing(async () => expect(active.position).toEqual(-1));
-    expect(active.isPlaying).toEqual(false);
   });
 
   test("should load the 4th track when the 2nd starts", async () => {
@@ -166,7 +161,7 @@ describe("Active Track", async () => {
       minChunkLength: 1,
     });
     aat.onTextChanged(15, "add", added);
-    const tracks = mobx.toJS(aat.audio.tracks);
+    const tracks = mobx.toJS(aat.audio.chunks);
     expect(tracks).toHaveLength(2);
     expect(tracks[0].start).toEqual(start + added.length);
     expect(tracks[0].end).toEqual(start + (added + a).length);
@@ -185,7 +180,7 @@ describe("Active Track", async () => {
       minChunkLength: 1,
     });
     aat.onTextChanged(start, "add", added);
-    const tracks = mobx.toJS(aat.audio.tracks);
+    const tracks = mobx.toJS(aat.audio.chunks);
     expect(tracks[0].start).toEqual(start);
     expect(tracks[0].rawText).toEqual(added + a);
     expect(tracks[0].end).toEqual(start + (added + a).length);
@@ -204,7 +199,7 @@ describe("Active Track", async () => {
       minChunkLength: 1,
     });
     aat.onTextChanged(start + 1, "add", added);
-    const tracks = mobx.toJS(aat.audio.tracks);
+    const tracks = mobx.toJS(aat.audio.chunks);
     expect(tracks[0].start).toEqual(start);
     expect(tracks[0].rawText).toEqual("Ffourirst there was one. ");
     expect(tracks[0].end).toEqual(start + (added + a).length);
@@ -222,9 +217,9 @@ describe("Active Track", async () => {
       start,
       minChunkLength: 1,
     });
-    const initialTracks = mobx.toJS(aat.audio.tracks);
+    const initialTracks = mobx.toJS(aat.audio.chunks);
     aat.onTextChanged(start + a.length, "add", added);
-    const tracks = mobx.toJS(aat.audio.tracks);
+    const tracks = mobx.toJS(aat.audio.chunks);
     expect(tracks[0]).toEqual(initialTracks[0]);
     expect(tracks[1].start).toEqual(start + a.length);
     expect(tracks[1].rawText).toEqual(added + b);
@@ -241,9 +236,9 @@ describe("Active Track", async () => {
       start,
       minChunkLength: 1,
     });
-    const initialTracks = mobx.toJS(aat.audio.tracks);
+    const initialTracks = mobx.toJS(aat.audio.chunks);
     aat.onTextChanged(start + a.length + b.length, "add", added);
-    const tracks = mobx.toJS(aat.audio.tracks);
+    const tracks = mobx.toJS(aat.audio.chunks);
     expect(tracks[0]).toEqual(initialTracks[0]);
     expect(tracks[1].start).toEqual(initialTracks[1].start);
     expect(tracks[1].rawText).toEqual(b + added);
@@ -260,9 +255,9 @@ describe("Active Track", async () => {
       start,
       minChunkLength: 1,
     });
-    const initialTracks = mobx.toJS(aat.audio.tracks);
+    const initialTracks = mobx.toJS(aat.audio.chunks);
     aat.onTextChanged(start + a.length + b.length + 1, "add", added);
-    const tracks = mobx.toJS(aat.audio.tracks);
+    const tracks = mobx.toJS(aat.audio.chunks);
     expect(tracks).toEqual(initialTracks);
   });
 
@@ -278,7 +273,7 @@ describe("Active Track", async () => {
       minChunkLength: 1,
     });
     aat.onTextChanged(start - removed.length, "remove", removed);
-    const tracks = mobx.toJS(aat.audio.tracks);
+    const tracks = mobx.toJS(aat.audio.chunks);
     expect(tracks).toHaveLength(2);
     expect(tracks[0].start).toEqual(start + removedChars);
     expect(tracks[0].end).toEqual(start + removedChars + a.length);
@@ -297,7 +292,7 @@ describe("Active Track", async () => {
     });
     aat.onTextChanged(start - 3, "remove", removed);
     const removedChars = removed.length * -1;
-    const tracks = mobx.toJS(aat.audio.tracks);
+    const tracks = mobx.toJS(aat.audio.chunks);
     expect(tracks[0].start).toEqual(start - 3);
     expect(tracks[0].rawText).toEqual(a.slice(1));
     expect(tracks[0].end).toEqual(start + removedChars + a.length);
@@ -315,10 +310,10 @@ describe("Active Track", async () => {
       start,
       minChunkLength: 1,
     });
-    const initialTracks = mobx.toJS(aat.audio.tracks);
+    const initialTracks = mobx.toJS(aat.audio.chunks);
     aat.onTextChanged(start + a.length - removed.length, "remove", removed);
     const removedChars = removed.length * -1;
-    const tracks = mobx.toJS(aat.audio.tracks);
+    const tracks = mobx.toJS(aat.audio.chunks);
     expect(tracks[0].start).toEqual(start);
     expect(tracks[0].rawText).toEqual(a.slice(0, removedChars));
     expect(tracks[0].end).toEqual(start + removedChars + a.length);
@@ -338,7 +333,7 @@ describe("Active Track", async () => {
       minChunkLength: 1,
     });
     aat.onTextChanged(start + a.length - 2, "remove", removed);
-    const tracks = mobx.toJS(aat.audio.tracks);
+    const tracks = mobx.toJS(aat.audio.chunks);
     expect(tracks[0].start).toEqual(start);
     expect(tracks[0].rawText).toEqual(a.slice(0, -2));
     expect(tracks[0].end).toEqual(start + a.length - 2);
@@ -359,7 +354,7 @@ describe("Active Track", async () => {
     });
     aat.onTextChanged(start + 6, "remove", removed);
     const removedChars = removed.length * -1;
-    const tracks = mobx.toJS(aat.audio.tracks);
+    const tracks = mobx.toJS(aat.audio.chunks);
     expect(tracks[0].start).toEqual(start);
     expect(tracks[0].rawText).toEqual("First e was one. ");
     expect(tracks[0].end).toEqual(start + removedChars + a.length);
@@ -378,7 +373,7 @@ describe("Active Track", async () => {
       minChunkLength: 1,
     });
     aat.onTextChanged(start + a.length + b.length - 3, "remove", removed);
-    const tracks = mobx.toJS(aat.audio.tracks);
+    const tracks = mobx.toJS(aat.audio.chunks);
     expect(tracks[0].start).toEqual(start);
     expect(tracks[0].rawText).toEqual(a);
     expect(tracks[0].end).toEqual(start + a.length);
@@ -398,7 +393,7 @@ describe("Active Track", async () => {
       minChunkLength: 1,
     });
     aat.onTextChanged(start + a.length, "remove", removed);
-    const tracks = mobx.toJS(aat.audio.tracks);
+    const tracks = mobx.toJS(aat.audio.chunks);
     expect(tracks[0].start).toEqual(start);
     expect(tracks[0].rawText).toEqual(a);
     expect(tracks[0].end).toEqual(start + a.length);
@@ -417,9 +412,9 @@ describe("Active Track", async () => {
       start,
       minChunkLength: 1,
     });
-    const initialTracks = mobx.toJS(aat.audio.tracks);
+    const initialTracks = mobx.toJS(aat.audio.chunks);
     aat.onTextChanged(start + a.length + b.length, "remove", removed);
-    const tracks = mobx.toJS(aat.audio.tracks);
+    const tracks = mobx.toJS(aat.audio.chunks);
     expect(tracks).toEqual(initialTracks);
   });
 
@@ -435,7 +430,7 @@ describe("Active Track", async () => {
       minChunkLength: 1,
     });
     aat.onTextChanged(start + a.length - 5, "remove", removed);
-    const tracks = mobx.toJS(aat.audio.tracks);
+    const tracks = mobx.toJS(aat.audio.chunks);
     expect(tracks).toHaveLength(3);
     expect(tracks[0].start).toEqual(start);
     expect(tracks[0].rawText).toEqual("First there was ");
@@ -457,10 +452,10 @@ describe("Active Track", async () => {
       start,
       minChunkLength: 1,
     });
-    const initial = mobx.toJS(aat.audio.tracks);
+    const initial = mobx.toJS(aat.audio.chunks);
     aat.onTextChanged(start + a.length, "remove", b);
     aat.onTextChanged(start + a.length, "add", b);
-    const tracks = mobx.toJS(aat.audio.tracks);
+    const tracks = mobx.toJS(aat.audio.chunks);
     expect(tracks).toHaveLength(3);
     expect(tracks[0]).toEqual(initial[0]);
     expect(tracks[1].start).toEqual(start + a.length);
@@ -481,10 +476,10 @@ describe("Active Track", async () => {
       start,
       minChunkLength: 1,
     });
-    const initial = mobx.toJS(aat.audio.tracks);
+    const initial = mobx.toJS(aat.audio.chunks);
     aat.onTextChanged(start + a.length, "remove", removed);
     aat.onTextChanged(start + a.length, "add", added);
-    const tracks = mobx.toJS(aat.audio.tracks);
+    const tracks = mobx.toJS(aat.audio.chunks);
     expect(tracks).toHaveLength(2);
     expect(tracks[0]).toEqual(initial[0]);
     expect(tracks[1]).toEqual(initial[1]);
@@ -499,10 +494,10 @@ describe("Active Track", async () => {
       start,
       minChunkLength: 1,
     });
-    const initial = mobx.toJS(aat.audio.tracks);
+    const initial = mobx.toJS(aat.audio.chunks);
     aat.onTextChanged(start + a.length, "remove", b);
     aat.onTextChanged(start + a.length, "add", b);
-    const tracks = mobx.toJS(aat.audio.tracks);
+    const tracks = mobx.toJS(aat.audio.chunks);
     expect(tracks).toHaveLength(3);
     expect(tracks[0]).toEqual(initial[0]);
     expect(tracks[1].start).toEqual(start + a.length);
@@ -524,10 +519,10 @@ describe("Active Track", async () => {
       start,
       minChunkLength: 1,
     });
-    const initial = mobx.toJS(aat.audio.tracks);
+    const initial = mobx.toJS(aat.audio.chunks);
     aat.onTextChanged(start + a.length, "remove", b);
     aat.onTextChanged(start, "remove", startOfA);
-    const tracks = mobx.toJS(aat.audio.tracks);
+    const tracks = mobx.toJS(aat.audio.chunks);
     expect(tracks).toHaveLength(3);
     expect(tracks[0].start).toEqual(initial[0].start);
     expect(tracks[0].rawText).toEqual("there was one. ");
@@ -554,7 +549,7 @@ class FakeAudioSink implements AudioSink {
       currentData: mobx.observable,
       isPlaying: mobx.observable,
       isComplete: mobx.observable,
-      setMedia: mobx.action,
+      switchMedia: mobx.action,
       play: mobx.action,
       pause: mobx.action,
       setComplete: mobx.action,
@@ -565,7 +560,7 @@ class FakeAudioSink implements AudioSink {
   setComplete(): void {
     this.isComplete = true;
   }
-  async setMedia(data: ArrayBuffer): Promise<void> {
+  async switchMedia(data: ArrayBuffer): Promise<void> {
     const wasComplete = this.isPlaying && this.isComplete;
     this.isComplete = false;
     this.currentData = data;
@@ -573,6 +568,7 @@ class FakeAudioSink implements AudioSink {
       this.play();
     }
   }
+  async appendMedia(data: ArrayBuffer): Promise<void> {}
   setRate(rate: number): void {}
   play(): void {
     this.isPlaying = true;

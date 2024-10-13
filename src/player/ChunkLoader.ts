@@ -3,7 +3,7 @@ import { AudioCache } from "./AudioCache";
 import { TTSErrorInfo, TTSModel, TTSModelOptions } from "./TTSModel";
 
 /** manages loading and caching of tracks */
-export class TrackLoader {
+export class ChunkLoader {
   private MAX_BACKGROUND_REQUESTS = 3;
   private MAX_LOCAL_TTL_MILLIS = 60 * 1000;
 

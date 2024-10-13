@@ -1,10 +1,10 @@
 import * as mobx from "mobx";
 import { randomId } from "../util/misc";
 import { AudioSink } from "./AudioSink";
-import { ActiveAudioText } from "./Player";
+import { ActiveAudioText } from "./ActiveAudioText";
 import { TTSErrorInfo, toModelOptions } from "./TTSModel";
 import { TTSPluginSettings } from "./TTSPluginSettings";
-import { TrackLoader } from "./TrackLoader";
+import { ChunkLoader } from "./ChunkLoader";
 
 export interface PlayingTrack {
   position: number;
@@ -13,14 +13,18 @@ export interface PlayingTrack {
   failureInfo?: TTSErrorInfo;
 }
 
-/** Side car to the active audio. plays track after track, exposing activate track and playing status */
-export class TrackSwitcher {
+/**
+ * Side car to the active audio text. Contains complex state and track management with lots of events
+ * and background tasks. It's convenient to bundle all of this up in a non-public interface, as a means
+ * of easily disposing and recreating the state in order to switch models or model parameters seemlessly
+ */
+export class ChunkSwitcher {
   private activeAudioText: ActiveAudioText;
   private settings: TTSPluginSettings;
   private sink: AudioSink;
-  private trackLoader: TrackLoader;
+  private chunkLoader: ChunkLoader;
   private readerId: string;
-  isPlaying = false;
+  _isPlaying = false;
   private cancelMonitor: () => void;
   active?: PlayingTrack = undefined;
   private isDestroyed = false;
@@ -29,23 +33,23 @@ export class TrackSwitcher {
     activeAudioText,
     sink,
     settings,
-    trackLoader,
+    chunkLoader: trackLoader,
   }: {
     activeAudioText: ActiveAudioText;
     sink: AudioSink;
     settings: TTSPluginSettings;
-    trackLoader: TrackLoader;
+    chunkLoader: ChunkLoader;
   }) {
     this.activeAudioText = activeAudioText;
     this.sink = sink;
     this.settings = settings;
-    this.trackLoader = trackLoader;
+    this.chunkLoader = trackLoader;
     this.readerId = randomId();
 
     mobx.makeObservable(this, {
       active: mobx.observable,
-      isPlaying: mobx.observable,
-      setAudio: mobx.action,
+      _isPlaying: mobx.observable,
+      _setAudio: mobx.action,
       _activate: mobx.action,
       _onplay: mobx.action,
       _onpause: mobx.action,
@@ -57,7 +61,7 @@ export class TrackSwitcher {
         if (this.sink.trackStatus === "complete") {
           this.activeAudioText.goToNext();
           if (this.activeAudioText.position === -1) {
-            this.isPlaying = false;
+            this._isPlaying = false;
           }
         }
       },
@@ -86,19 +90,19 @@ export class TrackSwitcher {
     };
   }
 
-  setAudio(item: PlayingTrack, audio: ArrayBuffer) {
+  _setAudio(item: PlayingTrack, audio: ArrayBuffer) {
     item.audio = audio;
   }
 
   /** should only be called when this.active is undefined or the current track is finished*/
   async _activate() {
     this.populateUpcoming();
-    const track = this.activeAudioText.currentTrack;
-    if (!track) {
-      this.isPlaying = false;
+    const chunk = this.activeAudioText.currentChunk;
+    if (!chunk) {
+      this._isPlaying = false;
       this.active = undefined;
       return;
-    } else if (!track.text.trim()) {
+    } else if (!chunk.text.trim()) {
       this.activeAudioText.goToNext();
       return;
     } else {
@@ -110,14 +114,14 @@ export class TrackSwitcher {
       this.active = item;
       let audio: ArrayBuffer;
       try {
-        audio = await this.trackLoader.load(
-          track.text,
+        audio = await this.chunkLoader.load(
+          chunk.text,
           toModelOptions(this.settings),
           this.readerId,
         );
       } catch (e) {
         item.failed = true;
-        console.error(`Failed to load track '${track.text}'`, e);
+        console.error(`Failed to load track '${chunk.text}'`, e);
         if (e instanceof TTSErrorInfo) {
           mobx.runInAction(() => (item.failureInfo = e));
         }
@@ -127,8 +131,8 @@ export class TrackSwitcher {
       if (this.isDestroyed) return;
 
       if (this.active === item) {
-        this.setAudio(item, audio);
-        await this.sink.setMedia(audio);
+        this._setAudio(item, audio);
+        await this.sink.switchMedia(audio);
       }
     }
   }
@@ -138,12 +142,12 @@ export class TrackSwitcher {
     // somewhat intentional bug-like behavior here. This is non-reactive to user edits on the text.
     // if a user edits some text, this will load the text on demand, rather than upcoming
 
-    this.trackLoader.expireBefore(this.readerId, this.activeAudioText.position);
-    this.activeAudioText.audio.tracks
+    this.chunkLoader.expireBefore(this.readerId, this.activeAudioText.position);
+    this.activeAudioText.audio.chunks
       .filter((x) => !!x.text.trim())
       .slice(this.activeAudioText.position, this.activeAudioText.position + 3)
       .forEach((x, i) => {
-        this.trackLoader.preload(
+        this.chunkLoader.preload(
           x.text,
           toModelOptions(this.settings),
           this.readerId,
@@ -155,14 +159,14 @@ export class TrackSwitcher {
   destroy() {
     this.isDestroyed = true;
     this.cancelMonitor();
-    this.trackLoader.expire(this.readerId);
+    this.chunkLoader.expire(this.readerId);
   }
 
   _onplay(): void {
-    if (this.isPlaying) {
+    if (this._isPlaying) {
       return;
     }
-    this.isPlaying = true;
+    this._isPlaying = true;
     if (!this.active || this.active.failed) {
       // start the loop
       this._activate();
@@ -170,6 +174,6 @@ export class TrackSwitcher {
   }
 
   _onpause(): void {
-    this.isPlaying = false;
+    this._isPlaying = false;
   }
 }

@@ -6,7 +6,7 @@ import {
   TTSPluginSettingsStore,
 } from "../player/TTSPluginSettings";
 import { AudioSink } from "../player/AudioSink";
-import { AudioStore } from "../player/Player";
+import { AudioStore } from "../player/AudioStore";
 import { AudioVisualizer } from "./AudioVisualizer";
 import { IconButton, IconSpan, Spinner } from "./IconButton";
 import { EditorView } from "@codemirror/view";

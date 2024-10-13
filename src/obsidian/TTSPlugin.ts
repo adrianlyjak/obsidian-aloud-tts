@@ -3,7 +3,7 @@ import { TTSCodeMirror } from "../codemirror/TTSCodemirror";
 import { Editor, MarkdownView, Notice, Plugin, addIcon } from "obsidian";
 import { TTSSettingTab } from "../components/TTSPluginSettingsTab";
 import { AudioSink, WebAudioSink } from "../player/AudioSink";
-import { AudioStore, loadAudioStore } from "../player/Player";
+import { AudioStore, loadAudioStore } from "../player/AudioStore";
 import {
   MARKETING_NAME,
   MARKETING_NAME_LONG,

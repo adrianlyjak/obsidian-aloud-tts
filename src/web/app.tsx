@@ -1,5 +1,5 @@
 import { createRoot } from "react-dom/client";
-import { AudioStore, loadAudioStore } from "../player/Player";
+import { AudioStore, loadAudioStore } from "../player/AudioStore";
 import {
   pluginSettingsStore,
   REAL_OPENAI_API_URL,
@@ -243,7 +243,7 @@ const SimplePlayer: FC<{ settingsStore: TTSPluginSettingsStore }> = observer(
           voice: "shimmer",
           apiUri: REAL_OPENAI_API_URL,
         });
-        await sink.setMedia(audio);
+        await sink.switchMedia(audio);
         setSink(sink);
       });
     }, []);
