@@ -1,35 +1,32 @@
 import * as mobx from "mobx";
 import { AudioCache } from "./AudioCache";
 import { TTSErrorInfo, TTSModel, TTSModelOptions } from "./TTSModel";
+import { AudioSystem } from "./AudioSystem";
 
 /** manages loading and caching of tracks */
 export class ChunkLoader {
   private MAX_BACKGROUND_REQUESTS = 3;
   private MAX_LOCAL_TTL_MILLIS = 60 * 1000;
 
-  private audioCache: AudioCache;
-  private ttsModel: TTSModel;
+  private system: AudioSystem;
+  private get audioCache(): AudioCache {
+    return this.system.storage;
+  }
+  private get ttsModel(): TTSModel {
+    return this.system.ttsModel;
+  }
   private backgroundQueue: BackgroundRequest[] = [];
   private backgroundActiveCount = 0;
   private localCache: CachedAudio[] = [];
   private backgroundRequestProcessor: IntervalDaemon;
   private garbageCollector: IntervalDaemon;
 
-  constructor({
-    ttsModel,
-    audioCache,
-    backgroundLoaderIntervalMillis = 1000,
-  }: {
-    ttsModel: TTSModel;
-    audioCache: AudioCache;
-    backgroundLoaderIntervalMillis?: number;
-  }) {
-    this.ttsModel = ttsModel;
-    this.audioCache = audioCache;
+  constructor({ system }: { system: AudioSystem }) {
+    this.system = system;
 
     this.backgroundRequestProcessor = IntervalDaemon(
       this.processBackgroundQueue.bind(this),
-      { interval: backgroundLoaderIntervalMillis },
+      { interval: system.config.backgroundLoaderIntervalMillis },
     );
     this.garbageCollector = IntervalDaemon(this.processGarbage.bind(this), {
       interval: this.MAX_LOCAL_TTL_MILLIS / 2,

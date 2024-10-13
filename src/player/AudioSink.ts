@@ -126,10 +126,6 @@ export class WebAudioSink implements AudioSink {
     this._trackStatus = this.getTrackStatus();
   }
 
-  // TODO - stop clipping from the reversion to 0 time
-  // TODO - maintain max-window size history to allow for OS level back/forward
-  // this will take a rather huge overhaul of the TrackSwitcher/TrackLoader and AudioSink's
-  // interactions
   async switchMedia(data: ArrayBuffer): Promise<void> {
     await onceBuffUpdateEnd(this._sourceBuffer);
     mobx.runInAction(() => (this._audioBuffer = undefined));

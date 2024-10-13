@@ -11,6 +11,7 @@ import {
   AudioTextOptions,
   buildTrack,
 } from "./ActiveAudioText";
+import { AudioSystem } from "./AudioSystem";
 
 /** High level track changer interface */
 export interface AudioStore {
@@ -42,48 +43,32 @@ export interface AudioStore {
 }
 
 export function loadAudioStore({
-  settings,
-  audioSink,
-  storage = memoryStorage(),
-  textToSpeech = openAITextToSpeech,
-  backgroundLoaderIntervalMillis,
+  system,
 }: {
-  settings: TTSPluginSettings;
-  storage?: AudioCache;
-  textToSpeech?: TTSModel;
-  audioSink: AudioSink;
-  backgroundLoaderIntervalMillis?: number;
+  system: AudioSystem;
 }): AudioStore {
-  const store = new AudioStoreImpl(settings, storage, textToSpeech, audioSink, {
-    backgroundLoaderIntervalMillis,
-  });
+  const store = new AudioStoreImpl(system);
   return store;
 }
 
 class AudioStoreImpl implements AudioStore {
   activeText: ActiveAudioText | null = null;
-  settings: TTSPluginSettings;
-  storage: AudioCache;
-  textToSpeech: TTSModel;
-  sink: AudioSink;
-  backgroundLoaderIntervalMillis: number;
+  system: AudioSystem;
+  get settings(): TTSPluginSettings {
+    return this.system.settings;
+  }
+  get storage(): AudioCache {
+    return this.system.storage;
+  }
+  get textToSpeech(): TTSModel {
+    return this.system.ttsModel;
+  }
+  get sink(): AudioSink {
+    return this.system.audioSink;
+  }
 
-  constructor(
-    settings: TTSPluginSettings,
-    storage: AudioCache,
-    textToSpeech: TTSModel,
-    sink: AudioSink,
-    {
-      backgroundLoaderIntervalMillis = 1000,
-    }: {
-      backgroundLoaderIntervalMillis?: number;
-    } = {},
-  ) {
-    this.settings = settings;
-    this.storage = storage;
-    this.textToSpeech = textToSpeech;
-    this.sink = sink;
-    this.backgroundLoaderIntervalMillis = backgroundLoaderIntervalMillis;
+  constructor(system: AudioSystem) {
+    this.system = system;
     mobx.makeObservable(this, {
       activeText: observable,
       startPlayer: action,
@@ -163,16 +148,7 @@ class AudioStoreImpl implements AudioStore {
     this.sink.clearMedia();
     const audio: AudioText = buildTrack(opts, this.settings.chunkType);
     this.activeText?.destroy();
-    this.activeText = new ActiveAudioTextImpl(
-      audio,
-      this.settings,
-      this.storage,
-      this.textToSpeech,
-      this.sink,
-      {
-        backgroundLoaderIntervalMillis: this.backgroundLoaderIntervalMillis,
-      },
-    );
+    this.activeText = new ActiveAudioTextImpl(audio, this.system);
     this.activeText!.play();
     return this.activeText!;
   }

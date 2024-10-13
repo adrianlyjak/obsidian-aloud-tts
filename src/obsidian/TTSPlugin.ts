@@ -4,6 +4,7 @@ import { Editor, MarkdownView, Notice, Plugin, addIcon } from "obsidian";
 import { TTSSettingTab } from "../components/TTSPluginSettingsTab";
 import { AudioSink, WebAudioSink } from "../player/AudioSink";
 import { AudioStore, loadAudioStore } from "../player/AudioStore";
+import { AudioSystem, createAudioSystem } from "../player/AudioSystem";
 import {
   MARKETING_NAME,
   MARKETING_NAME_LONG,
@@ -12,6 +13,7 @@ import {
 } from "../player/TTSPluginSettings";
 import { ObsidianBridge, ObsidianBridgeImpl } from "./ObsidianBridge";
 import { configurableAudioCache } from "./ObsidianPlayer";
+import { openAITextToSpeech } from "src/player/TTSModel";
 
 // standard lucide.dev icon, but for some reason not working as a ribbon icon without registering it
 // https://lucide.dev/icons/audio-lines
@@ -23,10 +25,17 @@ addIcon(
 export default class TTSPlugin extends Plugin {
   settings: TTSPluginSettingsStore;
 
-  player: AudioStore;
-  audio: AudioSink;
+  system: AudioSystem;
   bridge: ObsidianBridge;
   cache: { destroy: () => void } | undefined;
+
+  get player(): AudioStore {
+    return this.system.audioStore;
+  }
+
+  get audio(): AudioSink {
+    return this.system.audioSink;
+  }
 
   async onload() {
     await this.loadSettings();
@@ -162,13 +171,21 @@ export default class TTSPlugin extends Plugin {
       () => this.loadData(),
       (data) => this.saveData(data),
     );
-    this.audio = await WebAudioSink.create();
+    const audio = await WebAudioSink.create();
     const cache = configurableAudioCache(this.app, this.settings);
     this.cache = cache;
-    this.player = await loadAudioStore({
-      settings: this.settings.settings,
-      storage: cache,
-      audioSink: this.audio,
+    this.system = createAudioSystem({
+      settings: () => this.settings.settings,
+      audioSink: () => audio,
+      audioStore: (sys) =>
+        loadAudioStore({
+          system: sys,
+        }),
+      storage: () => cache,
+      ttsModel: () => openAITextToSpeech,
+      config: () => ({
+        backgroundLoaderIntervalMillis: 1000,
+      }),
     });
     this.bridge = new ObsidianBridgeImpl(this.app, this.player, this.settings);
   }

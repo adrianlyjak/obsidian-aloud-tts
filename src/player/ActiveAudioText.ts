@@ -1,14 +1,13 @@
 import * as mobx from "mobx";
-import { computed, observable, action } from "mobx";
-import { AudioSink } from "./AudioSink";
-import { toModelOptions, TTSErrorInfo, TTSModel } from "./TTSModel";
-import { TTSPluginSettings, voiceHash } from "./TTSPluginSettings";
-import { ChunkLoader } from "./ChunkLoader";
-import { ChunkSwitcher } from "./ChunkSwitcher";
-import { AudioCache } from "./AudioCache";
-import { onMultiTextChanged } from "./onMultiTextChanged";
-import { randomId, splitParagraphs, splitSentences } from "../util/misc";
+import { action, computed, observable } from "mobx";
 import cleanMarkup from "../util/cleanMarkdown";
+import { randomId, splitParagraphs, splitSentences } from "../util/misc";
+import { AudioSink } from "./AudioSink";
+import { AudioSystem } from "./AudioSystem";
+import { ChunkSwitcher } from "./ChunkSwitcher";
+import { onMultiTextChanged } from "./onMultiTextChanged";
+import { toModelOptions, TTSErrorInfo } from "./TTSModel";
+import { voiceHash } from "./TTSPluginSettings";
 
 /** data to run TTS on */
 export interface AudioTextOptions {
@@ -75,11 +74,16 @@ export interface ActiveAudioText {
 
 export class ActiveAudioTextImpl implements ActiveAudioText {
   audio: AudioText;
-  private settings: TTSPluginSettings;
-  private sink: AudioSink;
+  private system: AudioSystem;
+  private get settings() {
+    return this.system.settings;
+  }
+
+  private get sink(): AudioSink {
+    return this.system.audioSink;
+  }
   private voiceChangeId: mobx.IReactionDisposer;
   queue: ChunkSwitcher;
-  loader: ChunkLoader;
 
   // goes to -1 once completed
   position = 0;
@@ -109,26 +113,10 @@ export class ActiveAudioTextImpl implements ActiveAudioText {
     return error;
   }
 
-  constructor(
-    audio: AudioText,
-    settings: TTSPluginSettings,
-    storage: AudioCache,
-    textToSpeech: TTSModel,
-    sink: AudioSink,
-    {
-      backgroundLoaderIntervalMillis = 1000,
-    }: {
-      backgroundLoaderIntervalMillis?: number;
-    } = {},
-  ) {
+  constructor(audio: AudioText, system: AudioSystem) {
     this.audio = audio;
-    this.settings = settings;
-    this.loader = new ChunkLoader({
-      ttsModel: textToSpeech,
-      audioCache: storage,
-      backgroundLoaderIntervalMillis,
-    });
-    this.sink = sink;
+    this.system = system;
+
     this.initializeQueue();
 
     mobx.makeObservable(this, {
@@ -167,9 +155,7 @@ export class ActiveAudioTextImpl implements ActiveAudioText {
     this.queue?.destroy();
     this.queue = new ChunkSwitcher({
       activeAudioText: this,
-      sink: this.sink,
-      settings: this.settings,
-      chunkLoader: this.loader,
+      system: this.system,
     });
   };
 
@@ -183,7 +169,6 @@ export class ActiveAudioTextImpl implements ActiveAudioText {
   destroy(): void {
     this.sink?.pause();
     this.queue?.destroy();
-    this.loader?.destroy();
     this.voiceChangeId?.();
   }
   goToNext(): void {

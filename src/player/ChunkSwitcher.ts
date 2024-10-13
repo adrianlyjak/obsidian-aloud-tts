@@ -5,6 +5,7 @@ import { ActiveAudioText } from "./ActiveAudioText";
 import { TTSErrorInfo, toModelOptions } from "./TTSModel";
 import { TTSPluginSettings } from "./TTSPluginSettings";
 import { ChunkLoader } from "./ChunkLoader";
+import { AudioSystem } from "./AudioSystem";
 
 export interface PlayingTrack {
   position: number;
@@ -20,8 +21,13 @@ export interface PlayingTrack {
  */
 export class ChunkSwitcher {
   private activeAudioText: ActiveAudioText;
-  private settings: TTSPluginSettings;
-  private sink: AudioSink;
+  private system: AudioSystem;
+  private get settings(): TTSPluginSettings {
+    return this.system.settings;
+  }
+  private get sink(): AudioSink {
+    return this.system.audioSink;
+  }
   private chunkLoader: ChunkLoader;
   private readerId: string;
   _isPlaying = false;
@@ -31,21 +37,18 @@ export class ChunkSwitcher {
 
   constructor({
     activeAudioText,
-    sink,
-    settings,
-    chunkLoader: trackLoader,
+    system,
   }: {
     activeAudioText: ActiveAudioText;
-    sink: AudioSink;
-    settings: TTSPluginSettings;
-    chunkLoader: ChunkLoader;
+    system: AudioSystem;
   }) {
     this.activeAudioText = activeAudioText;
-    this.sink = sink;
-    this.settings = settings;
-    this.chunkLoader = trackLoader;
+    this.system = system;
     this.readerId = randomId();
 
+    this.chunkLoader = new ChunkLoader({
+      system,
+    });
     mobx.makeObservable(this, {
       active: mobx.observable,
       _isPlaying: mobx.observable,
@@ -160,6 +163,7 @@ export class ChunkSwitcher {
     this.isDestroyed = true;
     this.cancelMonitor();
     this.chunkLoader.expire(this.readerId);
+    this.chunkLoader.destroy();
   }
 
   _onplay(): void {
