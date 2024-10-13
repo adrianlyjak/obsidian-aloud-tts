@@ -14,6 +14,7 @@ import FFT from "fft.js";
 import { AudioVisualizer } from "../components/AudioVisualizer";
 import { useEffect, useState, type FC, useCallback, useRef } from "react";
 import { observer } from "mobx-react-lite";
+import { createAudioSystem } from "src/player/AudioSystem";
 
 /**
  *
@@ -33,11 +34,19 @@ async function main() {
   );
 
   const audioSink = await WebAudioSink.create();
-  const store = loadAudioStore({
-    settings: settingsStore.settings,
-    storage: new IndexedDBAudioStorage(),
-    audioSink,
+
+  const system = createAudioSystem({
+    settings: () => settingsStore.settings,
+    ttsModel: () => openAITextToSpeech,
+    storage: () => new IndexedDBAudioStorage(),
+    audioSink: () => audioSink,
+    audioStore: (sys) => loadAudioStore({ system: sys }),
+    config: () => ({
+      backgroundLoaderIntervalMillis: 1000,
+    }),
   });
+
+  const store = system.audioStore;
 
   const root = document.createElement("div");
   root.id = "root";

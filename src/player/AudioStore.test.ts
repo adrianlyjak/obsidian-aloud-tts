@@ -140,11 +140,12 @@ describe("Active Track", async () => {
       settings.ttsVoice = "onyx";
     });
     await waitForPassing(async () => {
-      expect(seen).toHaveLength(5);
+      expect(seen).toHaveLength(6);
     });
     expect(seen.map((x) => x.settings.voice)).toEqual([
       "shimmer",
       "shimmer",
+      "onyx",
       "onyx",
       "onyx",
       "onyx",
@@ -558,6 +559,10 @@ class FakeAudioSink implements AudioSink {
     });
   }
 
+  async getAudioBuffer(audio: ArrayBuffer): Promise<AudioBuffer> {
+    // fake it
+    return {} as AudioBuffer;
+  }
   setComplete(): void {
     this.isComplete = true;
   }

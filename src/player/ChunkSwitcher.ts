@@ -1,14 +1,19 @@
 import * as mobx from "mobx";
 import { randomId } from "../util/misc";
 import { ActiveAudioText } from "./ActiveAudioText";
-import { TTSErrorInfo, toModelOptions } from "./TTSModel";
-import { ChunkLoader } from "./ChunkLoader";
 import { AudioSystem } from "./AudioSystem";
+import { ChunkLoader } from "./ChunkLoader";
+import { toModelOptions } from "./TTSModel";
 
 /**
- * Side car to the active audio text. Contains complex state and track management with lots of events
- * and background tasks. It's convenient to bundle all of this up in a non-public interface, as a means
- * of easily disposing and recreating the state in order to switch models or model parameters seemlessly
+ * Effectively the inner loop for the audio text.
+ *
+ * Is loaded with a track: a piece of observable text chunks from the ActiveAudioText.
+ *
+ * Once created, it listens for play/pause events from the audio sink. Once playing,
+ * it starts a process of pre-loading chunks and acting as a data source for the
+ * audio sink.
+ *
  */
 export class ChunkSwitcher {
   private activeAudioText: ActiveAudioText;
@@ -93,9 +98,7 @@ export class ChunkSwitcher {
         return;
       }
       try {
-        mobx.runInAction(() => {
-          currentChunk.loading = true;
-        });
+        currentChunk.setLoading();
         audio = await this.chunkLoader.load(
           chunk.text,
           toModelOptions(this.system.settings),
@@ -103,30 +106,32 @@ export class ChunkSwitcher {
         );
       } catch (e) {
         console.error(`Failed to load track '${chunk.text}'`, e);
-        mobx.runInAction(() => {
-          currentChunk.failed = true;
-          if (e instanceof TTSErrorInfo) {
-            mobx.runInAction(() => (currentChunk.failureInfo = e));
-          }
-          currentChunk.loading = false;
-        });
+        currentChunk.setFailed(e);
 
         this._onpause();
-        return undefined;
+        return;
       }
-      if (this.isDestroyed) return;
+      if (
+        this.isDestroyed ||
+        this.activeAudioText.currentChunk !== currentChunk
+      )
+        return;
 
-      if (this.activeAudioText.currentChunk === currentChunk) {
-        mobx.runInAction(() => {
-          currentChunk.audio = audio;
-          currentChunk.loading = false;
+      currentChunk.setLoaded(audio);
+
+      await this.system.audioSink.switchMedia(audio);
+      // store decoded audio data for visualization
+      this.system.audioSink
+        .getAudioBuffer(audio)
+        .then((decoded) => {
+          currentChunk.setAudioBuffer(decoded);
+        })
+        .catch((e) => {
+          console.error(
+            `Failed to decode audio for chunk '${chunk.text}', Visualizations will not work`,
+            e,
+          );
         });
-        await this.system.audioSink.switchMedia(audio);
-      } else {
-        mobx.runInAction(() => {
-          currentChunk.loading = false;
-        });
-      }
     }
   }
 
@@ -154,6 +159,15 @@ export class ChunkSwitcher {
     this.cancelMonitor();
     this.chunkLoader.expire(this.readerId);
     this.chunkLoader.destroy();
+    mobx.runInAction(() => {
+      for (const chunk of this.activeAudioText.audio.chunks) {
+        chunk.audioBuffer = undefined;
+        chunk.loading = false;
+        chunk.audio = undefined;
+        chunk.failureInfo = undefined;
+        chunk.duration = undefined;
+      }
+    });
   }
 
   _onplay(): void {

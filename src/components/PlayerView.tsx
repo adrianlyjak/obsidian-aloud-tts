@@ -202,11 +202,15 @@ const AudioStatusInfoContents: React.FC<{
     return <TTSErrorInfoView error={player.activeText.error} />;
   } else if (player.activeText?.isLoading) {
     return <Spinner className="tts-audio-status-loading" delay={500} />;
-  } else if (audio.audio && audio.audioBuffer && player.activeText?.isPlaying) {
+  } else if (
+    audio.audio &&
+    player.activeText?.isPlaying &&
+    player.activeText.currentChunk?.audioBuffer
+  ) {
     return (
       <AudioVisualizer
         audioElement={audio.audio}
-        audioBuffer={audio.audioBuffer}
+        audioBuffer={player.activeText.currentChunk?.audioBuffer}
       />
     );
   } else {

@@ -3,11 +3,11 @@ import { action, observable } from "mobx";
 import {
   ActiveAudioText,
   ActiveAudioTextImpl,
-  AudioText,
-  AudioTextOptions,
   buildTrack,
 } from "./ActiveAudioText";
 import { AudioSystem } from "./AudioSystem";
+import { toModelOptions } from "./TTSModel";
+import { AudioText, AudioTextOptions } from "./AudioTextChunk";
 
 /** High level track changer interface */
 export interface AudioStore {
@@ -55,7 +55,6 @@ class AudioStoreImpl implements AudioStore {
     this.system = system;
     mobx.makeObservable(this, {
       activeText: observable,
-      startPlayer: action,
       closePlayer: action,
     });
     this.initializeBackgroundProcessors();
@@ -132,7 +131,9 @@ class AudioStoreImpl implements AudioStore {
     this.system.audioSink.clearMedia();
     const audio: AudioText = buildTrack(opts, this.system.settings.chunkType);
     this.activeText?.destroy();
-    this.activeText = new ActiveAudioTextImpl(audio, this.system);
+    this.activeText = mobx.runInAction(
+      () => new ActiveAudioTextImpl(audio, this.system),
+    );
     this.activeText!.play();
     return this.activeText!;
   }

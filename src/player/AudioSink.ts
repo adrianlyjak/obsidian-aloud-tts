@@ -3,12 +3,20 @@ import * as mobx from "mobx";
 export type TrackStatus = "playing" | "paused" | "complete";
 
 export interface AudioSink {
-  /** replaces the current audio track with the new one */
-  switchMedia(data: ArrayBuffer): Promise<void>;
-  /** appends audio data to the current playing track */
-  appendMedia(data: ArrayBuffer): Promise<void>;
-  /** remove existing media, to be called before starting a new audio */
-  clearMedia(): void;
+  /**
+   * indicates whether the audio is currently in a playing state
+   *
+   * note: this is NOT equivalent to trackStatus === "playing". This signals whether the audio _should_ be playing.
+   * So this will be true in the case where a track is "stalled" due to an upstream loading delay. In that case trackStatus === "complete."
+   *
+   * Additionally, this will be false when the audio has been set to a "complete" state by the data source.
+   */
+  readonly isPlaying: boolean;
+  /** observable for the currently playing track status */
+  readonly trackStatus: TrackStatus;
+  /** Web Audio stuff, for observing the audio state, like visualization */
+  readonly audio?: HTMLAudioElement;
+
   /** play the current audio */
   play(): void;
   /** pause the current audio */
@@ -17,14 +25,17 @@ export interface AudioSink {
   restart(): void;
   /** change the playback rate of the audio */
   setRate(rate: number): void;
-  /** whether the audio is currently playing (equivalent to trackStatus === "playing") */
-  readonly isPlaying: boolean;
-  /** observable for the currently playing track status */
-  readonly trackStatus: TrackStatus;
-  /** Web Audio stuff, for observing the audio state, like visualization */
-  readonly audio?: HTMLAudioElement;
-  /** */
-  readonly audioBuffer?: AudioBuffer;
+
+  /** remove existing media, must be called before starting a new audio */
+  clearMedia(): void;
+  /** utility to decode arbitrary audio data to a wave form audio buffer*/
+  getAudioBuffer(audio: ArrayBuffer): Promise<AudioBuffer>;
+  /** called by the data source to replace the current audio track with the new one */
+  switchMedia(data: ArrayBuffer): Promise<void>;
+  /** called by the data source to append audio data to the current playing track */
+  appendMedia(data: ArrayBuffer): Promise<void>;
+  /** called by the data source when the audio is complete */
+  mediaComplete(): void;
 }
 
 export class WebAudioSink implements AudioSink {
@@ -34,14 +45,19 @@ export class WebAudioSink implements AudioSink {
   _lastActivePlayPosition = 0;
   _audio: HTMLAudioElement;
   private _sourceBuffer: SourceBuffer;
-  _audioBuffer?: AudioBuffer = undefined;
+  _isPlaying = false;
 
   get audio(): HTMLAudioElement {
     return this._audio;
   }
 
-  get audioBuffer(): AudioBuffer | undefined {
-    return this._audioBuffer;
+  async getAudioBuffer(audio: ArrayBuffer): Promise<AudioBuffer> {
+    const context = new AudioContext();
+    try {
+      return await context.decodeAudioData(audio);
+    } finally {
+      await context.close();
+    }
   }
 
   static async create(): Promise<WebAudioSink> {
@@ -76,7 +92,6 @@ export class WebAudioSink implements AudioSink {
     mobx.makeObservable(this, {
       _trackStatus: mobx.observable,
       _audio: mobx.observable.ref,
-      _audioBuffer: mobx.observable.ref,
       audio: mobx.computed,
       play: mobx.action,
       pause: mobx.action,
@@ -128,7 +143,6 @@ export class WebAudioSink implements AudioSink {
 
   async switchMedia(data: ArrayBuffer): Promise<void> {
     await onceBuffUpdateEnd(this._sourceBuffer);
-    mobx.runInAction(() => (this._audioBuffer = undefined));
     const buffered = this._sourceBuffer.buffered;
     if (buffered.length > 0) {
       const end = buffered.end(buffered.length - 1);
@@ -142,17 +156,10 @@ export class WebAudioSink implements AudioSink {
     await onceBuffUpdateEnd(this._sourceBuffer);
     this.loopCheckCompletion();
     this._updateTrackStatus();
-
-    // store decoded audio data for visualization
-    const context = new AudioContext();
-    const decoded = await context.decodeAudioData(data);
-    mobx.runInAction(() => (this._audioBuffer = decoded));
-    await context.close();
   }
 
   async appendMedia(data: ArrayBuffer): Promise<void> {
     await onceBuffUpdateEnd(this._sourceBuffer);
-    mobx.runInAction(() => (this._audioBuffer = undefined));
     const buffered = this._sourceBuffer.buffered;
     if (buffered.length > 0) {
       this._sourceBuffer.timestampOffset = buffered.end(buffered.length - 1);
@@ -162,12 +169,11 @@ export class WebAudioSink implements AudioSink {
     await onceBuffUpdateEnd(this._sourceBuffer);
     this.loopCheckCompletion();
     this._updateTrackStatus();
+  }
 
-    // store decoded audio data for visualization
-    const context = new AudioContext();
-    const decoded = await context.decodeAudioData(data);
-    mobx.runInAction(() => (this._audioBuffer = decoded));
-    await context.close();
+  mediaComplete() {
+    this._isPlaying = false;
+    this._audio.pause();
   }
 
   clearMedia() {
@@ -220,10 +226,12 @@ export class WebAudioSink implements AudioSink {
   _onplay = () => {
     this._updateTrackStatus();
     this.loopCheckCompletion();
+    this._isPlaying = true;
   };
   _onpause = () => {
     this._updateTrackStatus();
     clearInterval(this._completionChecker);
+    this._isPlaying = false;
   };
 
   _onseeked = () => {

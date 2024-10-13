@@ -1,55 +1,12 @@
 import * as mobx from "mobx";
 import { action, computed, observable } from "mobx";
-import cleanMarkup from "../util/cleanMarkdown";
 import { randomId, splitParagraphs, splitSentences } from "../util/misc";
-import { AudioSink } from "./AudioSink";
 import { AudioSystem } from "./AudioSystem";
 import { ChunkSwitcher } from "./ChunkSwitcher";
 import { onMultiTextChanged } from "./onMultiTextChanged";
 import { toModelOptions, TTSErrorInfo } from "./TTSModel";
 import { voiceHash } from "./TTSPluginSettings";
-
-/** data to run TTS on */
-export interface AudioTextOptions {
-  filename: string;
-  text: string;
-  // character index of the start of the text track
-  start: number;
-  // character index of the end of the text track
-  end: number;
-  // minimum chunk length before merging with the next (e.g. short sentences are added to the next sentence)
-  minChunkLength?: number;
-}
-
-/** Container for lazily loaded TTS that's text has been chunked for faster streaming of output and seeking of position by chunk */
-export interface AudioText {
-  id: string;
-  filename: string;
-  friendlyName: string;
-  created: number;
-  chunks: AudioTextChunk[];
-}
-
-/** A chunk of the text to be played */
-export interface AudioTextChunk {
-  /** Text as it appears in the source */
-  rawText: string;
-  /** Text that will be spoken */
-  text: string;
-
-  /** Character index of the start of the text track */
-  start: number;
-  /** Character index of the end of the text track, exclusive */
-  end: number;
-  /** The audio for this chunk, if it's been loaded. */
-  audio?: ArrayBuffer;
-  /** Whether the chunk is currently loading */
-  loading?: boolean;
-  /** Whether the chunk failed to load */
-  failed?: boolean;
-  /** Information about why the chunk failed to load */
-  failureInfo?: TTSErrorInfo;
-}
+import { AudioText, AudioTextChunk, AudioTextOptions } from "./AudioTextChunk";
 
 export interface TextEdit {
   position: number;
@@ -202,13 +159,11 @@ export function buildTrack(
   const chunks = [];
   for (const s of splits) {
     const end = start + s.length;
-    const chunk = {
+    const chunk: AudioTextChunk = new AudioTextChunk({
       rawText: s,
-      text: cleanMarkup(s),
-      // TODO - fixme
       start,
       end,
-    };
+    });
     start = end;
     chunks.push(chunk);
   }

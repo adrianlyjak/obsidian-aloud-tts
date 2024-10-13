@@ -1,5 +1,5 @@
 import cleanMarkup from "../util/cleanMarkdown";
-import { AudioTextChunk } from "./AudioStore";
+import { AudioTextChunk } from "./ActiveAudioText";
 
 /**
  * mutates the given chunks array in-place. If these are mobx, must be wrapped in an action
@@ -33,9 +33,20 @@ export function onMultiTextChanged(
                 track.start += text.length;
               } else {
                 const split = position - track.start;
-                track.rawText =
+                const updatedText =
                   track.text.slice(0, split) + text + track.text.slice(split);
-                track.text = cleanMarkup(track.rawText);
+                const cleanedText = cleanMarkup(updatedText);
+                if (updatedText != track.rawText) {
+                  track.rawText = updatedText;
+                }
+                if (cleanedText != track.text) {
+                  track.text = cleanedText;
+                  track.duration = undefined;
+                  track.audio = undefined;
+                  track.audioBuffer = undefined;
+                  track.loading = false;
+                  track.failureInfo = undefined;
+                }
               }
             }
           }
@@ -99,8 +110,20 @@ export function onMultiTextChanged(
             //   }),
             // );
             if (rawText !== undefined) {
-              track.rawText = rawText;
-              track.text = cleanMarkup(rawText);
+              const cleanedText = cleanMarkup(rawText);
+
+              if (rawText != track.rawText) {
+                track.rawText = rawText;
+              }
+
+              if (cleanedText != track.text) {
+                track.text = cleanedText;
+                track.duration = undefined;
+                track.audio = undefined;
+                track.audioBuffer = undefined;
+                track.loading = false;
+                track.failureInfo = undefined;
+              }
             }
             Object.assign(track, updates);
           }
