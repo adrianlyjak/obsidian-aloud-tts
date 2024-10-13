@@ -6,6 +6,7 @@ import { AudioStore, loadAudioStore } from "./AudioStore";
 import { TTSModel, TTSModelOptions } from "./TTSModel";
 import { DEFAULT_SETTINGS, TTSPluginSettings } from "./TTSPluginSettings";
 import { ActiveAudioText, AudioTextOptions } from "./ActiveAudioText";
+import { createAudioSystem } from "./AudioSystem";
 
 vi.mock("obsidian", () => ({
   requestUrl: vi.fn(),
@@ -608,13 +609,21 @@ function createStore({
   textToSpeech = fakeTTS,
   ttsSettings = DEFAULT_SETTINGS,
 }: MaybeStoreDependencies = {}): AudioStore {
-  return loadAudioStore({
-    settings: ttsSettings,
-    textToSpeech: textToSpeech,
-    storage: storage,
-    audioSink,
-    backgroundLoaderIntervalMillis: 10,
+  const system = createAudioSystem({
+    storage: () => storage,
+    audioSink: () => audioSink,
+    ttsModel: () => textToSpeech,
+    settings: () => ttsSettings,
+    config: () => ({
+      backgroundLoaderIntervalMillis: 10,
+    }),
+    audioStore: (sys) => {
+      return loadAudioStore({
+        system: sys,
+      });
+    },
   });
+  return system.audioStore;
 }
 
 function createActiveTrack(

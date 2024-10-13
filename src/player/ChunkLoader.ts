@@ -1,7 +1,6 @@
 import * as mobx from "mobx";
-import { AudioCache } from "./AudioCache";
-import { TTSErrorInfo, TTSModel, TTSModelOptions } from "./TTSModel";
 import { AudioSystem } from "./AudioSystem";
+import { TTSErrorInfo, TTSModelOptions } from "./TTSModel";
 
 /** manages loading and caching of tracks */
 export class ChunkLoader {
@@ -9,12 +8,6 @@ export class ChunkLoader {
   private MAX_LOCAL_TTL_MILLIS = 60 * 1000;
 
   private system: AudioSystem;
-  private get audioCache(): AudioCache {
-    return this.system.storage;
-  }
-  private get ttsModel(): TTSModel {
-    return this.system.ttsModel;
-  }
   private backgroundQueue: BackgroundRequest[] = [];
   private backgroundActiveCount = 0;
   private localCache: CachedAudio[] = [];
@@ -187,15 +180,15 @@ export class ChunkLoader {
   ): Promise<ArrayBuffer> {
     // copy the settings to make sure audio isn't stored under under the wrong key
     // if the settings are changed while request is in flight
-    const stored: ArrayBuffer | null = await this.audioCache.getAudio(
+    const stored: ArrayBuffer | null = await this.system.storage.getAudio(
       text,
       options,
     );
     if (stored) {
       return stored;
     } else {
-      const buff = await this.ttsModel(text, options);
-      await this.audioCache.saveAudio(text, options, buff);
+      const buff = await this.system.ttsModel(text, options);
+      await this.system.storage.saveAudio(text, options, buff);
       return buff;
     }
   }

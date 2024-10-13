@@ -1,9 +1,5 @@
 import * as mobx from "mobx";
 import { action, observable } from "mobx";
-import { AudioCache, memoryStorage } from "./AudioCache";
-import { AudioSink } from "./AudioSink";
-import { TTSModel, openAITextToSpeech, toModelOptions } from "./TTSModel";
-import { TTSPluginSettings } from "./TTSPluginSettings";
 import {
   ActiveAudioText,
   ActiveAudioTextImpl,
@@ -54,18 +50,6 @@ export function loadAudioStore({
 class AudioStoreImpl implements AudioStore {
   activeText: ActiveAudioText | null = null;
   system: AudioSystem;
-  get settings(): TTSPluginSettings {
-    return this.system.settings;
-  }
-  get storage(): AudioCache {
-    return this.system.storage;
-  }
-  get textToSpeech(): TTSModel {
-    return this.system.ttsModel;
-  }
-  get sink(): AudioSink {
-    return this.system.audioSink;
-  }
 
   constructor(system: AudioSystem) {
     this.system = system;
@@ -79,20 +63,20 @@ class AudioStoreImpl implements AudioStore {
   }
 
   getStorageSize(): Promise<number> {
-    return this.storage.getStorageSize();
+    return this.system.storage.getStorageSize();
   }
 
   exportAudio(text: string): Promise<ArrayBuffer> {
-    return this.textToSpeech(text, toModelOptions(this.settings));
+    return this.system.ttsModel(text, toModelOptions(this.system.settings));
   }
 
   _backgroundProcesses: { shutdown: () => void }[] = [];
   private initializeBackgroundProcessors(): void {
     // function, in case duration is changed
-    const getExpiryMillis = () => this.settings.cacheDurationMillis;
+    const getExpiryMillis = () => this.system.settings.cacheDurationMillis;
 
     // expire on startup
-    this.storage.expire(getExpiryMillis());
+    this.system.storage.expire(getExpiryMillis());
 
     let expireTimer: ReturnType<typeof setInterval> | undefined;
     const restartInterval = () => {
@@ -104,7 +88,7 @@ class AudioStoreImpl implements AudioStore {
       const maxCheckFrequency = 1000 * 60; //* 60;
       expireTimer = setInterval(
         () => {
-          this.storage.expire(ageInMillis);
+          this.system.storage.expire(ageInMillis);
         },
         Math.min(
           maxCheckFrequency,
@@ -122,9 +106,9 @@ class AudioStoreImpl implements AudioStore {
     );
 
     const cancelRateReaction = mobx.reaction(
-      () => this.settings.playbackSpeed,
+      () => this.system.settings.playbackSpeed,
       (rate) => {
-        this.sink.setRate(rate);
+        this.system.audioSink.setRate(rate);
       },
       {
         fireImmediately: true,
@@ -141,12 +125,12 @@ class AudioStoreImpl implements AudioStore {
   }
 
   clearStorage(): Promise<void> {
-    return this.storage.expire(0);
+    return this.system.storage.expire(0);
   }
 
   startPlayer(opts: AudioTextOptions): ActiveAudioText {
-    this.sink.clearMedia();
-    const audio: AudioText = buildTrack(opts, this.settings.chunkType);
+    this.system.audioSink.clearMedia();
+    const audio: AudioText = buildTrack(opts, this.system.settings.chunkType);
     this.activeText?.destroy();
     this.activeText = new ActiveAudioTextImpl(audio, this.system);
     this.activeText!.play();
@@ -158,7 +142,7 @@ class AudioStoreImpl implements AudioStore {
   }
   destroy(): void {
     this.closePlayer();
-    this.sink.pause();
+    this.system.audioSink.pause();
     this._backgroundProcesses.forEach((p) => p.shutdown());
     this._backgroundProcesses = [];
   }

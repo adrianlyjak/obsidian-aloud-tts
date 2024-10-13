@@ -43,6 +43,8 @@ export interface AudioTextChunk {
   end: number;
   /** The audio for this chunk, if it's been loaded. */
   audio?: ArrayBuffer;
+  /** Whether the chunk is currently loading */
+  loading?: boolean;
   /** Whether the chunk failed to load */
   failed?: boolean;
   /** Information about why the chunk failed to load */
@@ -75,13 +77,7 @@ export interface ActiveAudioText {
 export class ActiveAudioTextImpl implements ActiveAudioText {
   audio: AudioText;
   private system: AudioSystem;
-  private get settings() {
-    return this.system.settings;
-  }
 
-  private get sink(): AudioSink {
-    return this.system.audioSink;
-  }
   private voiceChangeId: mobx.IReactionDisposer;
   queue: ChunkSwitcher;
 
@@ -95,20 +91,20 @@ export class ActiveAudioTextImpl implements ActiveAudioText {
   }
 
   get isPlaying(): boolean {
-    return this.sink.isPlaying;
+    return this.system.audioSink.isPlaying;
   }
 
   get isLoading(): boolean {
-    return this.queue.active ? !this.queue.active.audio : false;
+    return !!this.currentChunk?.loading;
   }
 
   get error(): TTSErrorInfo | undefined {
-    const isFailed = this.queue.active?.failed;
+    const isFailed = this.currentChunk?.failed;
     if (!isFailed) {
       return undefined;
     }
     const error =
-      this.queue.active?.failureInfo ||
+      this.currentChunk.failureInfo ??
       new TTSErrorInfo("unknown", { message: "an unknown error occurred" });
     return error;
   }
@@ -134,7 +130,7 @@ export class ActiveAudioTextImpl implements ActiveAudioText {
     });
 
     this.voiceChangeId = mobx.reaction(
-      () => voiceHash(toModelOptions(this.settings)),
+      () => voiceHash(toModelOptions(this.system.settings)),
       this.initializeQueue,
       {
         fireImmediately: false,
@@ -160,14 +156,14 @@ export class ActiveAudioTextImpl implements ActiveAudioText {
   };
 
   play() {
-    this.sink.play();
+    this.system.audioSink.play();
   }
   pause(): void {
-    this.sink.pause();
+    this.system.audioSink.pause();
   }
 
   destroy(): void {
-    this.sink?.pause();
+    this.system.audioSink?.pause();
     this.queue?.destroy();
     this.voiceChangeId?.();
   }
