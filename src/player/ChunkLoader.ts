@@ -26,32 +26,15 @@ export class ChunkLoader {
     }).startIfNot();
   }
 
-  expireBefore(readerId: string, position: number): void {
+  expireBefore(position: number): void {
     this.backgroundQueue = this.backgroundQueue.filter(
-      (x) => !(x.readerId === readerId && x.position < position),
+      (x) => !(x.position < position),
     );
   }
 
-  expire(readerId: string): void {
-    this.backgroundQueue = this.backgroundQueue.filter(
-      (req) => req.readerId !== readerId,
-    );
-    this.localCache = this.localCache.filter(
-      (req) => req.readerId !== readerId,
-    );
-  }
-
-  preload(
-    text: string,
-    options: TTSModelOptions,
-    readerId: string,
-    position: number,
-  ): void {
+  preload(text: string, options: TTSModelOptions, position: number): void {
     const found = this.backgroundQueue.find(
-      (x) =>
-        x.readerId === readerId &&
-        x.text === text &&
-        mobx.comparer.structural(x.options, options),
+      (x) => x.text === text && mobx.comparer.structural(x.options, options),
     );
     if (found) {
       return;
@@ -65,18 +48,13 @@ export class ChunkLoader {
     this.backgroundQueue.push({
       text,
       options,
-      readerId,
       requestedTime: Date.now(),
       position,
     });
     this.backgroundRequestProcessor.startIfNot();
   }
 
-  load(
-    text: string,
-    options: TTSModelOptions,
-    readerId: string,
-  ): Promise<ArrayBuffer> {
+  load(text: string, options: TTSModelOptions): Promise<ArrayBuffer> {
     const existing = this.localCache.find((x) => {
       x.text === text && mobx.comparer.structural(x.options, options);
     });
@@ -84,7 +62,7 @@ export class ChunkLoader {
       existing.requestedTime = Date.now();
       return existing.result;
     } else {
-      const audio = this.createCachedAudio(text, options, readerId);
+      const audio = this.createCachedAudio(text, options);
       this.localCache.push(audio);
       return audio.result;
     }
@@ -98,12 +76,10 @@ export class ChunkLoader {
   private createCachedAudio(
     text: string,
     options: TTSModelOptions,
-    readerId: string,
   ): CachedAudio {
     const audio = {
       text,
       options,
-      readerId,
       requestedTime: Date.now(),
       result: this.tryLoadTrack(text, options, 0, 3).catch((e) => {
         this.destroyCachedAudio(audio);
@@ -130,7 +106,7 @@ export class ChunkLoader {
     } else {
       const item = this.backgroundQueue.shift()!;
       this.backgroundActiveCount += 1;
-      this.load(item.text, item.options, item.readerId).finally(() => {
+      this.load(item.text, item.options).finally(() => {
         this.backgroundActiveCount -= 1;
         this.processBackgroundQueue();
       });
@@ -251,8 +227,6 @@ interface BackgroundRequest {
   text: string;
   /** the options used to generate this audio */
   options: TTSModelOptions;
-  /** The reader ID that requested this audio, so that we can expire it */
-  readerId: string;
   /** the time the request was made. Milliseconds since Unix Epoch */
   requestedTime: number;
   /** the track number that was requested */
@@ -264,8 +238,6 @@ interface CachedAudio {
   readonly text: string;
   /** the options used to generate this audio */
   readonly options: TTSModelOptions;
-  /** The reader ID that requested this audio, so that we can expire it */
-  readonly readerId: string;
   /** the final result of the request across retries */
   readonly result: Promise<ArrayBuffer>;
   /** the time the request was made. Milliseconds since Unix Epoch. May be updated to prevent deletion */

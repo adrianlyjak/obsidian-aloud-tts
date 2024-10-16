@@ -60,7 +60,7 @@
   background-color: var(--icon-color);
   border-radius: 10px;
   width: 6%;
-  transition: height 0.03s ease-in-out;
+  transition: height 0.04s linear;
 }
 
 .tts-audio-status-error {

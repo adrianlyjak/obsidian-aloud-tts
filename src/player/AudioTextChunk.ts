@@ -100,5 +100,16 @@ export class AudioTextChunk {
   }
   setAudioBuffer(audioBuffer: AudioBuffer) {
     this.audioBuffer = audioBuffer;
+    this.duration = audioBuffer.duration;
+  }
+
+  async onceLoaded(fully: boolean = false): Promise<ArrayBuffer> {
+    await mobx.when(
+      () =>
+        !this.loading &&
+        !!this.audio &&
+        (fully ? typeof this.duration === "number" : true),
+    );
+    return this.audio!;
   }
 }

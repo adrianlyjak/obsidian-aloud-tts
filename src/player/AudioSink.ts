@@ -15,7 +15,7 @@ export interface AudioSink {
   /** observable for the currently playing track status */
   readonly trackStatus: TrackStatus;
   /** Web Audio stuff, for observing the audio state, like visualization */
-  readonly audio?: HTMLAudioElement;
+  readonly audio: HTMLAudioElement;
 
   /** play the current audio */
   play(): void;
@@ -35,7 +35,7 @@ export interface AudioSink {
   /** called by the data source to append audio data to the current playing track */
   appendMedia(data: ArrayBuffer): Promise<void>;
   /** called by the data source when the audio is complete */
-  mediaComplete(): void;
+  mediaComplete(): Promise<void>;
 }
 
 export class WebAudioSink implements AudioSink {
@@ -171,7 +171,7 @@ export class WebAudioSink implements AudioSink {
     this._updateTrackStatus();
   }
 
-  mediaComplete() {
+  async mediaComplete() {
     this._isPlaying = false;
     this._audio.pause();
   }

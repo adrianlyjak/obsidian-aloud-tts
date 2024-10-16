@@ -2,7 +2,7 @@ import * as mobx from "mobx";
 import { action, computed, observable } from "mobx";
 import { randomId, splitParagraphs, splitSentences } from "../util/misc";
 import { AudioSystem } from "./AudioSystem";
-import { ChunkSwitcher } from "./ChunkSwitcher";
+import { ChunkPlayer } from "./ChunkPlayer";
 import { onMultiTextChanged } from "./onMultiTextChanged";
 import { toModelOptions, TTSErrorInfo } from "./TTSModel";
 import { voiceHash } from "./TTSPluginSettings";
@@ -36,7 +36,7 @@ export class ActiveAudioTextImpl implements ActiveAudioText {
   private system: AudioSystem;
 
   private voiceChangeId: mobx.IReactionDisposer;
-  queue: ChunkSwitcher;
+  queue: ChunkPlayer;
 
   // goes to -1 once completed
   position = 0;
@@ -106,7 +106,7 @@ export class ActiveAudioTextImpl implements ActiveAudioText {
 
   initializeQueue = () => {
     this.queue?.destroy();
-    this.queue = new ChunkSwitcher({
+    this.queue = new ChunkPlayer({
       activeAudioText: this,
       system: this.system,
     });
