@@ -4,8 +4,7 @@ import { randomId, splitParagraphs, splitSentences } from "../util/misc";
 import { AudioSystem } from "./AudioSystem";
 import { ChunkPlayer } from "./ChunkPlayer";
 import { onMultiTextChanged } from "./onMultiTextChanged";
-import { toModelOptions, TTSErrorInfo } from "./TTSModel";
-import { voiceHash } from "./TTSPluginSettings";
+import { TTSErrorInfo } from "./TTSModel";
 import { AudioText, AudioTextChunk, AudioTextOptions } from "./AudioTextChunk";
 
 export interface TextEdit {
@@ -29,14 +28,15 @@ export interface ActiveAudioText {
   destroy(): void;
   goToNext(): void;
   goToPrevious(): void;
+  setPosition(position: number): void;
 }
 
 export class ActiveAudioTextImpl implements ActiveAudioText {
   audio: AudioText;
   private system: AudioSystem;
 
-  private voiceChangeId: mobx.IReactionDisposer;
-  queue: ChunkPlayer;
+  private playReaction: mobx.IReactionDisposer;
+  queue: ChunkPlayer | undefined = undefined;
 
   // goes to -1 once completed
   position = 0;
@@ -70,29 +70,24 @@ export class ActiveAudioTextImpl implements ActiveAudioText {
     this.audio = audio;
     this.system = system;
 
-    this.initializeQueue();
+    this.queue = new ChunkPlayer({
+      activeAudioText: this,
+      system: this.system,
+    });
 
     mobx.makeObservable(this, {
       isPlaying: computed,
       isLoading: computed,
       position: observable,
-      currentChunk: computed,
       error: computed,
       queue: observable,
       destroy: action,
       goToNext: action,
       goToPrevious: action,
-      initializeQueue: action,
+      setPosition: action,
       onMultiTextChanged: action,
     });
-
-    this.voiceChangeId = mobx.reaction(
-      () => voiceHash(toModelOptions(this.system.settings)),
-      this.initializeQueue,
-      {
-        fireImmediately: false,
-      },
-    );
+    (window as any).activeAudioText = this;
   }
 
   onTextChanged(position: number, type: "add" | "remove", text: string): void {
@@ -104,17 +99,10 @@ export class ActiveAudioTextImpl implements ActiveAudioText {
     onMultiTextChanged(changes, this.audio.chunks);
   }
 
-  initializeQueue = () => {
-    this.queue?.destroy();
-    this.queue = new ChunkPlayer({
-      activeAudioText: this,
-      system: this.system,
-    });
-  };
-
   play() {
     this.system.audioSink.play();
   }
+
   pause(): void {
     this.system.audioSink.pause();
   }
@@ -122,8 +110,9 @@ export class ActiveAudioTextImpl implements ActiveAudioText {
   destroy(): void {
     this.system.audioSink?.pause();
     this.queue?.destroy();
-    this.voiceChangeId?.();
+    this.playReaction?.();
   }
+
   goToNext(): void {
     let next = this.position + 1;
     if (next >= this.audio.chunks.length) {
@@ -143,6 +132,9 @@ export class ActiveAudioTextImpl implements ActiveAudioText {
       }
     }
     this.position = next;
+  }
+  setPosition(position: number): void {
+    this.position = position;
   }
 }
 

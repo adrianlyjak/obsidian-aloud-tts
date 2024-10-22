@@ -4,7 +4,8 @@ import * as React from "react";
 export const AudioVisualizer: React.FC<{
   audioElement: HTMLAudioElement;
   audioBuffer: AudioBuffer;
-}> = ({ audioElement, audioBuffer }) => {
+  offsetDurationSeconds: number;
+}> = ({ audioElement, audioBuffer, offsetDurationSeconds }) => {
   const ref = React.useRef<HTMLElement | null>(null);
   const fft = React.useMemo(() => new FFT(512), [audioBuffer]);
   React.useEffect(() => {
@@ -14,12 +15,13 @@ export const AudioVisualizer: React.FC<{
         audioElement,
         audioBuffer,
         fft,
+        offsetDurationSeconds,
       );
       return () => {
         destroyer.destroy();
       };
     }
-  }, [ref.current, audioElement, audioBuffer, fft]);
+  }, [ref.current, audioElement, audioBuffer, offsetDurationSeconds, fft]);
 
   return (
     <div className="tts-audio-visualizer" ref={(x) => (ref.current = x)}></div>
@@ -31,8 +33,10 @@ function getFrequencyBins(
   audioBuffer: AudioBuffer,
   audioElement: HTMLAudioElement,
   magnitudes: Float32Array,
+  offsetDurationSeconds: number,
 ) {
-  const position = audioElement.currentTime * audioBuffer.sampleRate;
+  const position =
+    (audioElement.currentTime - offsetDurationSeconds) * audioBuffer.sampleRate;
   const mono = audioBuffer
     .getChannelData(0)
     .subarray(position, position + fft.size);
@@ -51,6 +55,7 @@ export function attachVisualizationToDom(
   audioElement: HTMLAudioElement,
   audioBuffer: AudioBuffer,
   fft: FFT,
+  offsetDurationSeconds: number,
 ): {
   destroy: () => void;
 } {
@@ -78,7 +83,13 @@ export function attachVisualizationToDom(
   function draw() {
     frameId = requestAnimationFrame(draw);
 
-    getFrequencyBins(fft, audioBuffer, audioElement, dataArray);
+    getFrequencyBins(
+      fft,
+      audioBuffer,
+      audioElement,
+      dataArray,
+      offsetDurationSeconds,
+    );
 
     const min = Math.floor(bufferLength / 32);
     const max = Math.floor(bufferLength / 6) + min;

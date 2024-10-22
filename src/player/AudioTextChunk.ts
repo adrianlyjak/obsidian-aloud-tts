@@ -1,7 +1,9 @@
 import cleanMarkup from "../util/cleanMarkdown";
+import { CancellablePromise } from "./CancellablePromise";
 import { TTSErrorInfo } from "./TTSModel";
 import * as mobx from "mobx";
 import { action, observable } from "mobx";
+
 /** data to run TTS on */
 export interface AudioTextOptions {
   filename: string;
@@ -35,6 +37,7 @@ export class AudioTextChunk {
   failed?: boolean;
   failureInfo?: TTSErrorInfo;
   audioBuffer?: AudioBuffer;
+  offsetDuration?: number;
 
   constructor(opts: { rawText: string; start: number; end: number }) {
     this.rawText = opts.rawText;
@@ -47,12 +50,14 @@ export class AudioTextChunk {
     this.failed = undefined;
     this.failureInfo = undefined;
     this.audioBuffer = undefined;
+    this.offsetDuration = undefined;
     mobx.makeObservable(this, {
       rawText: observable,
       text: observable,
       start: observable,
       end: observable,
       duration: observable,
+      offsetDuration: observable,
       audio: observable.ref,
       loading: observable,
       failed: observable,
@@ -73,6 +78,8 @@ export class AudioTextChunk {
     this.loading = false;
     this.failed = undefined;
     this.failureInfo = undefined;
+    this.offsetDuration = undefined;
+    this.duration = undefined;
   }
 
   updateText(rawText: string) {
@@ -98,18 +105,19 @@ export class AudioTextChunk {
     this.audio = audio;
     this.loading = false;
   }
-  setAudioBuffer(audioBuffer: AudioBuffer) {
+  setAudioBuffer(audioBuffer: AudioBuffer, offsetDuration: number) {
     this.audioBuffer = audioBuffer;
     this.duration = audioBuffer.duration;
+    this.offsetDuration = offsetDuration;
   }
 
-  async onceLoaded(fully: boolean = false): Promise<ArrayBuffer> {
-    await mobx.when(
+  onceLoaded(fully: boolean = false): CancellablePromise<ArrayBuffer> {
+    const when = mobx.when(
       () =>
         !this.loading &&
         !!this.audio &&
         (fully ? typeof this.duration === "number" : true),
     );
-    return this.audio!;
+    return CancellablePromise.from(when).thenCancellable(() => this.audio!);
   }
 }

@@ -27,7 +27,7 @@ export interface AudioSink {
   setRate(rate: number): void;
 
   /** remove existing media, must be called before starting a new audio */
-  clearMedia(): void;
+  clearMedia(): Promise<void>;
   /** utility to decode arbitrary audio data to a wave form audio buffer*/
   getAudioBuffer(audio: ArrayBuffer): Promise<AudioBuffer>;
   /** called by the data source to replace the current audio track with the new one */
@@ -87,11 +87,13 @@ export class WebAudioSink implements AudioSink {
   }
 
   constructor(_audio: HTMLAudioElement, _sourceBuffer: SourceBuffer) {
+    (window as any)["audioSink"] = this;
     this._audio = _audio;
     this._sourceBuffer = _sourceBuffer;
     mobx.makeObservable(this, {
       _trackStatus: mobx.observable,
       _audio: mobx.observable.ref,
+      _isPlaying: mobx.observable,
       audio: mobx.computed,
       play: mobx.action,
       pause: mobx.action,
@@ -99,6 +101,8 @@ export class WebAudioSink implements AudioSink {
       trackStatus: mobx.computed,
       isPlaying: mobx.computed,
       _updateTrackStatus: mobx.action,
+      _onpause: mobx.action,
+      _onplay: mobx.action,
     });
     this._audio.addEventListener("play", this._onplay);
     this._audio.addEventListener("pause", this._onpause);
@@ -114,7 +118,7 @@ export class WebAudioSink implements AudioSink {
   }
 
   get isPlaying(): boolean {
-    return this._trackStatus === "playing";
+    return this._isPlaying;
   }
 
   private getTrackStatus() {
@@ -176,19 +180,15 @@ export class WebAudioSink implements AudioSink {
     this._audio.pause();
   }
 
-  clearMedia() {
-    this._audio.pause();
-
+  async clearMedia() {
     if (this._sourceBuffer.buffered.length > 0) {
       this._audio.currentTime = 0;
 
-      (async () => {
-        this._sourceBuffer.remove(0, this._sourceBuffer.buffered.end(0));
-        await onceBuffUpdateEnd(this._sourceBuffer);
-        this._sourceBuffer.timestampOffset = 0;
-        await onceBuffUpdateEnd(this._sourceBuffer);
-        this._updateTrackStatus();
-      })();
+      this._sourceBuffer.remove(0, this._sourceBuffer.buffered.end(0));
+      await onceBuffUpdateEnd(this._sourceBuffer);
+      this._sourceBuffer.timestampOffset = 0;
+      await onceBuffUpdateEnd(this._sourceBuffer);
+      this._updateTrackStatus();
     }
   }
 
