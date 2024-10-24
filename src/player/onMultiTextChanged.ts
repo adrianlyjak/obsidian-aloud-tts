@@ -1,5 +1,5 @@
 import cleanMarkup from "../util/cleanMarkdown";
-import { AudioTextChunk } from "./ActiveAudioText";
+import { AudioTextChunk } from "./AudioTextChunk";
 
 /**
  * mutates the given chunks array in-place. If these are mobx, must be wrapped in an action

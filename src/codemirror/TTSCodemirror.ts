@@ -16,7 +16,7 @@ import {
 } from "@codemirror/view";
 import * as mobx from "mobx";
 import { AudioSink } from "../player/AudioSink";
-import { AudioStore, AudioTextChunk, TextEdit } from "../player/AudioStore";
+import { AudioStore } from "../player/AudioStore";
 
 import * as React from "react";
 import { createRoot } from "react-dom/client";
@@ -26,6 +26,8 @@ import { ObsidianBridge } from "../obsidian/ObsidianBridge";
 import { PlayerView } from "../components/PlayerView";
 import { createDOM } from "../components/DownloadProgress";
 import { TTSPluginSettingsStore } from "../player/TTSPluginSettings";
+import { TextEdit } from "../player/ActiveAudioText";
+import { AudioTextChunk } from "../player/AudioTextChunk";
 
 function playerPanel(
   editor: EditorView,

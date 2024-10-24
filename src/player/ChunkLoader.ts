@@ -26,10 +26,21 @@ export class ChunkLoader {
     }).startIfNot();
   }
 
-  expireBefore(position: number): void {
+  expireBefore = (
+    position: number = this.system.audioStore?.activeText?.position ?? 0,
+  ): void => {
     this.backgroundQueue = this.backgroundQueue.filter(
       (x) => !(x.position < position),
     );
+  };
+
+  /**
+   * When you remove an ArrayBuffer from the audio, it dereferences the ArrayBuffer, rendering it
+   * as a useless pointer that can no longer be used. This method removes the cached audio for that same
+   * text, such that it can be re-loaded from the disk cache.
+   */
+  uncache(text: string): void {
+    this.localCache = this.localCache.filter((x) => x.text !== text);
   }
 
   preload(text: string, options: TTSModelOptions, position: number): void {
@@ -55,9 +66,11 @@ export class ChunkLoader {
   }
 
   load(text: string, options: TTSModelOptions): Promise<ArrayBuffer> {
-    const existing = this.localCache.find((x) => {
-      x.text === text && mobx.comparer.structural(x.options, options);
-    });
+    const existing = this.localCache.find(
+      (x) =>
+        x.text === text &&
+        JSON.stringify(x.options) === JSON.stringify(options),
+    );
     if (existing) {
       existing.requestedTime = Date.now();
       return existing.result;

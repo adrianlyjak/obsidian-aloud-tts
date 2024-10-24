@@ -13,7 +13,7 @@ import {
 } from "../player/TTSPluginSettings";
 import { ObsidianBridge, ObsidianBridgeImpl } from "./ObsidianBridge";
 import { configurableAudioCache } from "./ObsidianPlayer";
-import { openAITextToSpeech } from "src/player/TTSModel";
+import { openAITextToSpeech } from "../player/TTSModel";
 
 // standard lucide.dev icon, but for some reason not working as a ribbon icon without registering it
 // https://lucide.dev/icons/audio-lines

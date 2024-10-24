@@ -14,7 +14,7 @@ import FFT from "fft.js";
 import { AudioVisualizer } from "../components/AudioVisualizer";
 import { useEffect, useState, type FC, useCallback, useRef } from "react";
 import { observer } from "mobx-react-lite";
-import { createAudioSystem } from "src/player/AudioSystem";
+import { createAudioSystem } from "../player/AudioSystem";
 
 /**
  *
@@ -325,10 +325,13 @@ The frumious Bandersnatch!`;
         >
           {store.activeText?.isPlaying ? "Pause" : "Play"}
         </button>
-        {sink.audioBuffer && (
+        {store.activeText?.currentChunk?.audioBuffer && (
           <AudioVisualizer
             audioElement={sink.audio}
-            audioBuffer={sink.audioBuffer}
+            audioBuffer={store.activeText.currentChunk.audioBuffer}
+            offsetDurationSeconds={
+              store.activeText.currentChunk.offsetDuration!
+            }
           />
         )}
       </div>

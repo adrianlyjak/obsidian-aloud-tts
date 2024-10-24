@@ -58,7 +58,6 @@ class AudioStoreImpl implements AudioStore {
       closePlayer: action,
     });
     this.initializeBackgroundProcessors();
-    return this;
   }
 
   getStorageSize(): Promise<number> {
@@ -131,8 +130,8 @@ class AudioStoreImpl implements AudioStore {
     this.system.audioSink.clearMedia();
     const audio: AudioText = buildTrack(opts, this.system.settings.chunkType);
     this.activeText?.destroy();
-    this.activeText = mobx.runInAction(
-      () => new ActiveAudioTextImpl(audio, this.system),
+    mobx.runInAction(
+      () => (this.activeText = new ActiveAudioTextImpl(audio, this.system)),
     );
     this.activeText!.play();
     return this.activeText!;

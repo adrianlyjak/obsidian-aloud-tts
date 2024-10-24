@@ -56,7 +56,9 @@ export const CancellablePromise = {
   delay(duration: number): CancellablePromise<void> {
     let timer: ReturnType<typeof setTimeout> | undefined = undefined;
     return CancellablePromise.cancelFn(
-      new Promise((resolve) => (timer = setTimeout(resolve, duration))),
+      new Promise((resolve) => {
+        timer = setTimeout(resolve, duration);
+      }),
       () => {
         if (timer) {
           clearTimeout(timer);
@@ -84,6 +86,28 @@ export const CancellablePromise = {
     result.promise = CancellablePromise.cancelFn(promise, cancel);
     result.cancelFn = (fn) => (cancel = fn);
     return result;
+  },
+  fromEvent<T extends EventTarget, E extends Event>(
+    target: T,
+    eventName: string,
+  ): CancellablePromise<E> {
+    let listener: ((event: E) => void) | undefined;
+
+    const promise = new Promise<E>((resolve) => {
+      listener = (event: E) => {
+        resolve(event);
+        target.removeEventListener(eventName, listener as EventListener);
+      };
+      target.addEventListener(eventName, listener as EventListener);
+    });
+
+    const cancel = () => {
+      if (listener) {
+        target.removeEventListener(eventName, listener as EventListener);
+      }
+    };
+
+    return CancellablePromise.cancelFn(promise, cancel);
   },
 };
 

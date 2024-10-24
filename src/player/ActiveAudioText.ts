@@ -86,8 +86,8 @@ export class ActiveAudioTextImpl implements ActiveAudioText {
       goToPrevious: action,
       setPosition: action,
       onMultiTextChanged: action,
+      onTextChanged: action,
     });
-    (window as any).activeAudioText = this;
   }
 
   onTextChanged(position: number, type: "add" | "remove", text: string): void {
@@ -114,6 +114,9 @@ export class ActiveAudioTextImpl implements ActiveAudioText {
   }
 
   goToNext(): void {
+    if (this.position === -1) {
+      return;
+    }
     let next = this.position + 1;
     if (next >= this.audio.chunks.length) {
       next = -1;

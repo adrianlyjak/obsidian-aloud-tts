@@ -28,6 +28,7 @@ export class ChunkPlayer {
 
   private cancelDemand: { cancel: () => void } | undefined = undefined;
   private cancelMonitorText: { cancel: () => void } | undefined = undefined;
+  private cancelSettingsChange: { cancel: () => void } | undefined = undefined;
   private chunkLoader: ChunkLoader;
 
   constructor({
@@ -49,32 +50,20 @@ export class ChunkPlayer {
       _clearChunks: mobx.action,
     });
 
-    mobx.reaction(
-      () => this.activeAudioText.isPlaying,
-      (isPlaying) => {
-        if (this._shouldBeActive()) {
-          this._activate();
-        } else {
-          this._deactivate();
-        }
-      },
-      {
-        fireImmediately: true,
-      },
-    );
+    this._activate();
   }
 
-  _shouldBeActive() {
+  _shouldBeActive(): boolean {
     return (
       !this.isDestroyed &&
       this.activeAudioText.isPlaying &&
-      this.system.audioStore.activeText
+      !!this.system.audioStore.activeText &&
+      this.activeAudioText.position !== -1
     );
   }
-
   /** should only be called when this.active is undefined or the current track is finished*/
   async _activate() {
-    const BUFFER_AHEAD = 4;
+    const BUFFER_AHEAD = 3;
 
     let toReset: { indexes: number[] } | { all: true } | undefined = undefined;
 
@@ -83,8 +72,6 @@ export class ChunkPlayer {
         this.activeAudioText,
         BUFFER_AHEAD,
       ).thenCancellable((x) => {
-        this.cancelDemand?.cancel();
-        this.cancelDemand = undefined;
         if (!toReset) {
           toReset = { indexes: [x] };
         } else if (!("all" in toReset)) {
@@ -94,48 +81,43 @@ export class ChunkPlayer {
       });
     };
 
-    while (this._shouldBeActive()) {
+    // reset when should be active no longer matches the mode
+    while (!this.isDestroyed) {
+      const foreground = this._shouldBeActive();
       this.cancelDemand?.cancel();
       this.cancelDemand = undefined;
       this.cancelMonitorText?.cancel();
       this.cancelMonitorText = undefined;
 
+      if (
+        this.activeAudioText.position === -1 &&
+        this.system.audioSink.isPlaying
+      ) {
+        this.system.audioSink.pause();
+      }
       if (toReset) {
         if ("all" in toReset) {
-          await this.system.audioSink.clearMedia();
-          this._clearChunks();
+          await this._clearAudio();
         } else if ("indexes" in toReset) {
           // TODO - make this incremental, rather than a hard reset
-          // const indexes: number[] = (toReset as any).indexes;
-          // const currentPosition = this.activeAudioText.position;
-          // const before = indexes.filter((x) => x < currentPosition);
-          // const after = indexes.filter((x) => x >= currentPosition);
-          // const [low, high] = getLoadedRange(this.activeAudioText);
-          // if (after.length > 0) {
-          //   const min = Math.min(...after);
-          //   const chunks = this.activeAudioText.audio.chunks.slice(min, high);
-          //   const duration = chunks.reduce((acc, x) => acc + (x.duration || 0), 0);
-          //   this.system.audioSink.clearMedia()
-          // }
-          // if (before.length > 0) {
-          //   const max = Math.max(...before);
-          // }
-          await this.system.audioSink.clearMedia();
-          this._clearChunks();
+          await this._clearAudio();
         } else {
           throw new Error("Invalid reset state " + JSON.stringify(toReset));
         }
         toReset = undefined;
       }
 
-      this.cancelDemand = loadCheckLoop(
-        this.system,
-        this.chunkLoader,
-        BUFFER_AHEAD,
-      );
+      this.cancelDemand = foreground
+        ? loadCheckLoop(this.system, this.chunkLoader, BUFFER_AHEAD)
+        : undefined;
       this.cancelMonitorText = loopMonitorTextForChanges();
+      this.cancelSettingsChange = this._whenSettingsChange().thenCancellable(
+        () => {
+          toReset = { all: true };
+        },
+      );
       const [start, end] = getLoadedRange(this.activeAudioText);
-      const transitionType = await this._chunkDoneOrInterrupted();
+      const transitionType = await this._onAudioAudioChanged(foreground);
       if (transitionType === "position-changed") {
         const position = this.activeAudioText.position;
         if (start <= position && position <= end) {
@@ -143,73 +125,57 @@ export class ChunkPlayer {
           const duration = getSequentialLoadedChunks(this.activeAudioText)
             .slice(0, position - start)
             .reduce((s, x) => s + x.duration!, 0);
-          this.system.audioSink.audio.currentTime = duration;
+          this.system.audioSink.currentTime = duration;
         } else {
           toReset = { all: true };
           // hard immediate reset if the position is outside the bounds of the loaded audio
-          await this.system.audioSink.clearMedia();
-          this._clearChunks();
+          await this._clearAudio();
           this.cancelDemand?.cancel();
 
           while (true) {
             // debounce the updates to the position
             const result = await CancellablePromise.race([
-              CancellablePromise.delay(500).thenCancellable(() => "timeout"),
+              CancellablePromise.delay(250).thenCancellable(() => "timeout"),
               this._whenPositionChanges(),
             ]);
             if (result === "timeout") {
               break;
             }
           }
+          if (this.activeAudioText.position === -1) {
+            this.system.audioSink.pause();
+          }
         }
       } else if (transitionType === "chunk-complete") {
         this.activeAudioText.goToNext();
         if (this.activeAudioText.position === -1) {
           this.system.audioSink.pause();
-          break;
+          await this._clearAudio();
         }
       } else if (transitionType === "seeked") {
         const position = getPositionAccordingToPlayback(
           this.activeAudioText,
           this.system.audioSink,
         );
-        if (position.type === "AfterLoaded") {
-          this.activeAudioText.goToNext();
-        } else if (position.type === "BeforeLoaded") {
-          this.activeAudioText.goToPrevious();
-        } else {
-          this.activeAudioText.setPosition(position.position);
+
+        this.activeAudioText.setPosition(position.position);
+        if (position.type !== "Position") {
+          toReset = { all: true };
         }
-      } else if (transitionType === "paused") {
-        break;
+      } else if (transitionType === "play-paused") {
+        // just reset the loop to re-watch the state
       }
     }
   }
 
   _deactivate() {
+    this.cancelSettingsChange?.cancel();
+    this.cancelSettingsChange = undefined;
     this.cancelDemand?.cancel();
     this.cancelDemand = undefined;
     this.cancelMonitorText?.cancel();
     this.cancelMonitorText = undefined;
   }
-
-  /** preload data for upcoming tracks */
-  _populateUpcoming = () => {
-    // somewhat intentional bug-like behavior here. This is non-reactive to user edits on the text.
-    // if a user edits some text, this will load the text on demand, rather than upcoming
-
-    this.chunkLoader.expireBefore(this.activeAudioText.position);
-    this.activeAudioText.audio.chunks
-      .filter((x) => !!x.text.trim())
-      .slice(this.activeAudioText.position, this.activeAudioText.position + 3)
-      .forEach((x, i) => {
-        this.chunkLoader.preload(
-          x.text,
-          toModelOptions(this.system.settings),
-          this.activeAudioText.position + i,
-        );
-      });
-  };
 
   destroy() {
     if (this.isDestroyed) {
@@ -217,18 +183,23 @@ export class ChunkPlayer {
     }
     this.isDestroyed = true;
     this.chunkLoader.destroy();
+    this._clearAudio().then(() => {});
+    this._deactivate();
+  }
+
+  async _clearAudio() {
     this._clearChunks();
-    this.system.audioSink.clearMedia();
-    this.cancelDemand?.cancel();
-    this.cancelDemand = undefined;
-    this.cancelMonitorText?.cancel();
-    this.cancelMonitorText = undefined;
-    this.system.audioSink.pause();
+    this.chunkLoader.expireBefore();
+    await this.system.audioSink.clearMedia();
   }
 
   _clearChunks() {
     for (const chunk of this.activeAudioText.audio.chunks) {
+      const wasLoaded = !!chunk.audio;
       chunk.reset();
+      if (wasLoaded) {
+        this.chunkLoader.uncache(chunk.text);
+      }
     }
   }
 
@@ -244,36 +215,49 @@ export class ChunkPlayer {
       () => "chunk-complete",
     );
   }
+
   _whenSeeked(): CancellablePromise<"seeked"> {
-    const deferred = CancellablePromise.deferred<"seeked">();
-    const onSeeked = () => deferred.resolve("seeked");
-    this.system.audioSink.audio.addEventListener("seeked", onSeeked, {
-      once: true,
-    });
-    deferred.cancelFn(() =>
-      this.system.audioSink.audio.removeEventListener("seeked", onSeeked),
-    );
-    return deferred.promise;
+    return CancellablePromise.fromEvent(
+      this.system.audioSink.audio,
+      "seeking",
+    ).thenCancellable(() => "seeked");
   }
 
-  _whenPaused(): CancellablePromise<"paused"> {
+  _whenPlayPaused(): CancellablePromise<"play-paused"> {
+    const initial = this.system.audioSink.isPlaying;
     return CancellablePromise.from(
-      mobx.when(() => !this.system.audioSink.isPlaying),
-    ).thenCancellable(() => "paused");
+      mobx.when(() => this.system.audioSink.isPlaying !== initial),
+    ).thenCancellable(() => "play-paused");
   }
-  _chunkDoneOrInterrupted(): CancellablePromise<
-    "position-changed" | "chunk-complete" | "seeked" | "paused"
+
+  _onAudioAudioChanged(
+    foreground: boolean,
+  ): CancellablePromise<
+    | "position-changed"
+    | "chunk-complete"
+    | "seeked"
+    | "play-paused"
+    | "settings-changed"
   > {
-    const whenAdvanced = this._whenCurrentChunkDonePlaying();
-    const whenPositionChanges = this._whenPositionChanges();
-    const whenPaused = this._whenPaused();
-    // const whenSeeked = this._whenSeeked();
-    return CancellablePromise.race([
-      whenAdvanced,
-      whenPositionChanges,
-      whenPaused,
-      // whenSeeked,
-    ]);
+    return CancellablePromise.race(
+      (
+        [
+          this._whenPositionChanges(),
+          this._whenPlayPaused(),
+          this._whenSettingsChange(),
+          this._whenSeeked(),
+        ] as CancellablePromise<TransitionType>[]
+      ).concat(foreground ? [this._whenCurrentChunkDonePlaying()] : []),
+    );
+  }
+
+  _whenSettingsChange(): CancellablePromise<"settings-changed"> {
+    const init = JSON.stringify(toModelOptions(this.system.settings));
+    return CancellablePromise.from(
+      mobx.when(
+        () => JSON.stringify(toModelOptions(this.system.settings)) !== init,
+      ),
+    ).thenCancellable(() => "settings-changed");
   }
 }
 
@@ -300,7 +284,7 @@ const whenCurrentChunkDonePlaying = (
     const duration = loadedChunks
       .slice(0, index + 1)
       .reduce((acc, x) => acc + (x.duration || 0), 0);
-    const currentTime = audioSink.audio.currentTime;
+    const currentTime = audioSink.currentTime;
     const hasNotProgressed = lastCurrentTime && currentTime === lastCurrentTime;
     lastCurrentTime = currentTime;
     const remaining = duration - currentTime;
@@ -371,7 +355,7 @@ function getPositionAccordingToPlayback(
   const [start, end] = getLoadedRange(active);
   const loaded = active.audio.chunks.slice(start, end);
   if (loaded.length === 0) {
-    return { type: "BeforeLoaded" };
+    return { type: "BeforeLoaded", position: Math.max(0, start - 1) };
   }
   const audioPosition = audioSink.audio.currentTime;
 
@@ -383,7 +367,10 @@ function getPositionAccordingToPlayback(
       return { type: "Position", position: start + i };
     }
   }
-  return { type: "AfterLoaded" };
+  return {
+    type: "AfterLoaded",
+    position: Math.min(end, active.audio.chunks.length),
+  };
 }
 
 const indexesToLoad = (
@@ -391,19 +378,21 @@ const indexesToLoad = (
   maxBufferAhead: number,
 ) => {
   const next = nextToLoad(activeAudioText, maxBufferAhead);
-  console.log({ nextToLoad: next });
   if (next === null) {
     return [];
   }
-  const max = activeAudioText.audio.chunks.length;
+  const max = Math.min(
+    activeAudioText.audio.chunks.length,
+    activeAudioText.position + maxBufferAhead,
+  );
   return [...Array(maxBufferAhead).fill(0)]
     .map((_, i) => next + i)
     .filter((x) => x < max);
 };
 
 type PlaybackPosition =
-  | { type: "BeforeLoaded" }
-  | { type: "AfterLoaded" }
+  | { type: "BeforeLoaded"; position: number }
+  | { type: "AfterLoaded"; position: number }
   | { type: "Position"; position: number };
 
 /**
@@ -431,7 +420,6 @@ const loadCheck = async (
 
   const position = indexes[0];
   const chunk = system.audioStore.activeText!.audio.chunks[position];
-  console.log({ chunk, position, indexes });
   const text = chunk.text;
 
   // then wait for the next one to complete
@@ -460,6 +448,7 @@ const loadCheckLoop = (
   let cancelled = false;
   const inner = (): Promise<void> => {
     const position = nextToLoad(system.audioStore.activeText!, maxBufferAhead);
+    chunkLoader.expireBefore(system.audioStore.activeText!.position);
     return loadCheck(system, chunkLoader, maxBufferAhead, () => cancelled).then(
       (result) => {
         const activeText = system.audioStore.activeText;
@@ -501,6 +490,7 @@ function monitorTextForChanges(
   const [low, high] = getLoadedRange(active);
   const toLoad = indexesToLoad(active, maxBufferAhead);
   const toMonitor = active.audio.chunks.slice(low, high + toLoad.length);
+
   function getState() {
     return toMonitor.map((x) => x.rawText);
   }
@@ -519,3 +509,10 @@ function monitorTextForChanges(
     return diffIndex(getState(), before);
   });
 }
+
+type TransitionType =
+  | "position-changed"
+  | "play-paused"
+  | "settings-changed"
+  | "chunk-complete"
+  | "seeked";

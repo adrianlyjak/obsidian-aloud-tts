@@ -100,6 +100,8 @@ export class AudioTextChunk {
   }
   setLoading() {
     this.loading = true;
+    this.failed = undefined;
+    this.failureInfo = undefined;
   }
   setLoaded(audio: ArrayBuffer) {
     this.audio = audio;

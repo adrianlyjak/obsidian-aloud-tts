@@ -1,4 +1,5 @@
 import * as mobx from "mobx";
+import { CancellablePromise } from "./CancellablePromise";
 
 export type TrackStatus = "playing" | "paused" | "complete";
 
@@ -12,6 +13,10 @@ export interface AudioSink {
    * Additionally, this will be false when the audio has been set to a "complete" state by the data source.
    */
   readonly isPlaying: boolean;
+
+  /** get or set the current time of the audio */
+  currentTime: number;
+
   /** observable for the currently playing track status */
   readonly trackStatus: TrackStatus;
   /** Web Audio stuff, for observing the audio state, like visualization */
@@ -87,7 +92,6 @@ export class WebAudioSink implements AudioSink {
   }
 
   constructor(_audio: HTMLAudioElement, _sourceBuffer: SourceBuffer) {
-    (window as any)["audioSink"] = this;
     this._audio = _audio;
     this._sourceBuffer = _sourceBuffer;
     mobx.makeObservable(this, {
@@ -109,6 +113,10 @@ export class WebAudioSink implements AudioSink {
     this._audio.addEventListener("seeked", this._onseeked);
   }
 
+  seek(seconds: number = 1): void {
+    this._audio.currentTime = this.audio.currentTime + seconds;
+  }
+
   setRate(rate: number) {
     this._audio.playbackRate = rate;
   }
@@ -119,6 +127,14 @@ export class WebAudioSink implements AudioSink {
 
   get isPlaying(): boolean {
     return this._isPlaying;
+  }
+
+  get currentTime(): number {
+    return this._audio.currentTime;
+  }
+
+  set currentTime(value: number) {
+    this._audio.currentTime = value;
   }
 
   private getTrackStatus() {
@@ -182,12 +198,27 @@ export class WebAudioSink implements AudioSink {
 
   async clearMedia() {
     if (this._sourceBuffer.buffered.length > 0) {
-      this._audio.currentTime = 0;
-
+      const wasZero = this._audio.currentTime === 0;
+      let seekComplete: CancellablePromise<void> | undefined;
+      if (!wasZero) {
+        const wasSeeking = this._audio.seeking;
+        this._audio.currentTime = 0;
+        if (!wasSeeking) {
+          // this doesn't seem to fire in scenarios where it was already seeking
+          // Wait for the HTML audio to emit the 'seeked' event, otherwise
+          seekComplete = CancellablePromise.fromEvent(
+            this._audio,
+            "seeked",
+          ).thenCancellable(() => undefined);
+        }
+      }
       this._sourceBuffer.remove(0, this._sourceBuffer.buffered.end(0));
       await onceBuffUpdateEnd(this._sourceBuffer);
       this._sourceBuffer.timestampOffset = 0;
       await onceBuffUpdateEnd(this._sourceBuffer);
+      if (seekComplete) {
+        await seekComplete;
+      }
       this._updateTrackStatus();
     }
   }
