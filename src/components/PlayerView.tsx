@@ -133,6 +133,26 @@ const EditPlaybackSpeedButton: React.FC<{
     // reset the timeout when the playback speed changes
   }, [isOpen, settings.settings.playbackSpeed]);
 
+  // Add event listener to close popover when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        popoverRef.current &&
+        !popoverRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+
   return (
     <>
       <div
