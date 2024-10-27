@@ -16,7 +16,7 @@ import {
 } from "@codemirror/view";
 import * as mobx from "mobx";
 import { AudioSink } from "../player/AudioSink";
-import { AudioStore, AudioTextTrack, TextEdit } from "../player/Player";
+import { AudioStore } from "../player/AudioStore";
 
 import * as React from "react";
 import { createRoot } from "react-dom/client";
@@ -26,6 +26,8 @@ import { ObsidianBridge } from "../obsidian/ObsidianBridge";
 import { PlayerView } from "../components/PlayerView";
 import { createDOM } from "../components/DownloadProgress";
 import { TTSPluginSettingsStore } from "../player/TTSPluginSettings";
+import { TextEdit } from "../player/ActiveAudioText";
+import { AudioTextChunk } from "../player/AudioTextChunk";
 
 function playerPanel(
   editor: EditorView,
@@ -85,21 +87,21 @@ const setViewState = StateEffect.define<TTSCodeMirrorState>();
 interface TTSCodeMirrorState {
   playerState?: {
     isPlaying: boolean;
-    playingTrack?: AudioTextTrack;
-    tracks?: AudioTextTrack[];
+    playingTrack?: AudioTextChunk;
+    tracks?: AudioTextChunk[];
   };
   decoration?: DecorationSet;
 }
 
 function playerToCodeMirrorState(player: AudioStore): TTSCodeMirrorState {
   if (player.activeText) {
-    const currentTrack = player.activeText.currentTrack;
+    const currentTrack = player.activeText.currentChunk;
 
     return {
       playerState: {
         isPlaying: player.activeText.isPlaying && !!currentTrack,
         playingTrack: currentTrack || undefined,
-        tracks: mobx.toJS(player.activeText.audio.tracks) || [],
+        tracks: mobx.toJS(player.activeText.audio.chunks) || [],
       },
     };
   } else {

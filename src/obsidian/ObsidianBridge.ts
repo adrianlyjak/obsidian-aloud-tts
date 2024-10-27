@@ -11,7 +11,7 @@ import {
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { IsPlaying } from "../components/IsPlaying";
-import { AudioStore } from "../player/Player";
+import { AudioStore } from "../player/AudioStore";
 import { hashString } from "../util/Minhash";
 import { TTSPluginSettingsStore } from "../player/TTSPluginSettings";
 

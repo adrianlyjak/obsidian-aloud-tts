@@ -1,28 +1,46 @@
 import * as mobx from "mobx";
+import { CancellablePromise } from "./CancellablePromise";
 
 export type TrackStatus = "playing" | "paused" | "complete";
 
 export interface AudioSink {
-  /** Sets an audio track to play */
-  setMedia(data: ArrayBuffer): Promise<void>;
+  /**
+   * indicates whether the audio is currently in a playing state
+   *
+   * note: this is NOT equivalent to trackStatus === "playing". This signals whether the audio _should_ be playing.
+   * So this will be true in the case where a track is "stalled" due to an upstream loading delay. In that case trackStatus === "complete."
+   *
+   * Additionally, this will be false when the audio has been set to a "complete" state by the data source.
+   */
+  readonly isPlaying: boolean;
+
+  /** get or set the current time of the audio */
+  currentTime: number;
+
+  /** observable for the currently playing track status */
+  readonly trackStatus: TrackStatus;
+  /** Web Audio stuff, for observing the audio state, like visualization */
+  readonly audio: HTMLAudioElement;
+
   /** play the current audio */
   play(): void;
   /** pause the current audio */
   pause(): void;
   /** move the audio to the beginning of the track */
   restart(): void;
-  /** remove existing media, to be called before starting a new audio */
-  clearMedia(): void;
   /** change the playback rate of the audio */
   setRate(rate: number): void;
-  /** whether the audio is currently playing (equivalent to trackStatus === "playing") */
-  readonly isPlaying: boolean;
-  /** observable for the currently playing track status */
-  readonly trackStatus: TrackStatus;
-  /** Web Audio stuff, for observing the audio state, like visualization */
-  readonly audio?: HTMLAudioElement;
-  /** */
-  readonly audioBuffer?: AudioBuffer;
+
+  /** remove existing media, must be called before starting a new audio */
+  clearMedia(): Promise<void>;
+  /** utility to decode arbitrary audio data to a wave form audio buffer*/
+  getAudioBuffer(audio: ArrayBuffer): Promise<AudioBuffer>;
+  /** called by the data source to replace the current audio track with the new one */
+  switchMedia(data: ArrayBuffer): Promise<void>;
+  /** called by the data source to append audio data to the current playing track */
+  appendMedia(data: ArrayBuffer): Promise<void>;
+  /** called by the data source when the audio is complete */
+  mediaComplete(): Promise<void>;
 }
 
 export class WebAudioSink implements AudioSink {
@@ -31,16 +49,20 @@ export class WebAudioSink implements AudioSink {
   _completionChecker?: ReturnType<typeof setTimeout> = undefined;
   _lastActivePlayPosition = 0;
   _audio: HTMLAudioElement;
-  private _audioSource: MediaSource;
   private _sourceBuffer: SourceBuffer;
-  _audioBuffer?: AudioBuffer = undefined;
+  _isPlaying = false;
 
   get audio(): HTMLAudioElement {
     return this._audio;
   }
 
-  get audioBuffer(): AudioBuffer | undefined {
-    return this._audioBuffer;
+  async getAudioBuffer(audio: ArrayBuffer): Promise<AudioBuffer> {
+    const context = new AudioContext();
+    try {
+      return await context.decodeAudioData(audio);
+    } finally {
+      await context.close();
+    }
   }
 
   static async create(): Promise<WebAudioSink> {
@@ -61,26 +83,21 @@ export class WebAudioSink implements AudioSink {
 
     // end required for ManagedMediaSource to open
     audio.src = URL.createObjectURL(audioSource);
-    await once("sourceopen", audioSource!);
+    await once("sourceopen", audioSource);
 
     const sourceBuffer = audioSource!.addSourceBuffer("audio/mpeg");
     await onceBuffUpdateEnd(sourceBuffer);
-    const sink = new WebAudioSink(audio, audioSource, sourceBuffer);
+    const sink = new WebAudioSink(audio, sourceBuffer);
     return sink;
   }
 
-  constructor(
-    _audio: HTMLAudioElement,
-    _audioSource: MediaSource,
-    _sourceBuffer: SourceBuffer,
-  ) {
+  constructor(_audio: HTMLAudioElement, _sourceBuffer: SourceBuffer) {
     this._audio = _audio;
-    this._audioSource = _audioSource;
     this._sourceBuffer = _sourceBuffer;
     mobx.makeObservable(this, {
       _trackStatus: mobx.observable,
       _audio: mobx.observable.ref,
-      _audioBuffer: mobx.observable.ref,
+      _isPlaying: mobx.observable,
       audio: mobx.computed,
       play: mobx.action,
       pause: mobx.action,
@@ -88,10 +105,16 @@ export class WebAudioSink implements AudioSink {
       trackStatus: mobx.computed,
       isPlaying: mobx.computed,
       _updateTrackStatus: mobx.action,
+      _onpause: mobx.action,
+      _onplay: mobx.action,
     });
     this._audio.addEventListener("play", this._onplay);
     this._audio.addEventListener("pause", this._onpause);
     this._audio.addEventListener("seeked", this._onseeked);
+  }
+
+  seek(seconds: number = 1): void {
+    this._audio.currentTime = this.audio.currentTime + seconds;
   }
 
   setRate(rate: number) {
@@ -103,7 +126,15 @@ export class WebAudioSink implements AudioSink {
   }
 
   get isPlaying(): boolean {
-    return this._trackStatus === "playing";
+    return this._isPlaying;
+  }
+
+  get currentTime(): number {
+    return this._audio.currentTime;
+  }
+
+  set currentTime(value: number) {
+    this._audio.currentTime = value;
   }
 
   private getTrackStatus() {
@@ -130,13 +161,8 @@ export class WebAudioSink implements AudioSink {
     this._trackStatus = this.getTrackStatus();
   }
 
-  // TODO - stop clipping from the reversion to 0 time
-  // TODO - maintain max-window size history to allow for OS level back/forward
-  // this will take a rather huge overhaul of the TrackSwitcher/TrackLoader and AudioSink's
-  // interactions
-  async setMedia(data: ArrayBuffer): Promise<void> {
+  async switchMedia(data: ArrayBuffer): Promise<void> {
     await onceBuffUpdateEnd(this._sourceBuffer);
-    mobx.runInAction(() => (this._audioBuffer = undefined));
     const buffered = this._sourceBuffer.buffered;
     if (buffered.length > 0) {
       const end = buffered.end(buffered.length - 1);
@@ -150,27 +176,50 @@ export class WebAudioSink implements AudioSink {
     await onceBuffUpdateEnd(this._sourceBuffer);
     this.loopCheckCompletion();
     this._updateTrackStatus();
-
-    // store decoded audio data for visualization
-    const context = new AudioContext();
-    const decoded = await context.decodeAudioData(data);
-    mobx.runInAction(() => (this._audioBuffer = decoded));
-    await context.close();
   }
 
-  clearMedia() {
+  async appendMedia(data: ArrayBuffer): Promise<void> {
+    await onceBuffUpdateEnd(this._sourceBuffer);
+    const buffered = this._sourceBuffer.buffered;
+    if (buffered.length > 0) {
+      this._sourceBuffer.timestampOffset = buffered.end(buffered.length - 1);
+      await onceBuffUpdateEnd(this._sourceBuffer);
+    }
+    this._sourceBuffer.appendBuffer(data);
+    await onceBuffUpdateEnd(this._sourceBuffer);
+    this.loopCheckCompletion();
+    this._updateTrackStatus();
+  }
+
+  async mediaComplete() {
+    this._isPlaying = false;
     this._audio.pause();
+  }
 
+  async clearMedia() {
     if (this._sourceBuffer.buffered.length > 0) {
-      this._audio.currentTime = 0;
-
-      (async () => {
-        this._sourceBuffer.remove(0, this._sourceBuffer.buffered.end(0));
-        await onceBuffUpdateEnd(this._sourceBuffer);
-        this._sourceBuffer.timestampOffset = 0;
-        await onceBuffUpdateEnd(this._sourceBuffer);
-        this._updateTrackStatus();
-      })();
+      const wasZero = this._audio.currentTime === 0;
+      let seekComplete: CancellablePromise<void> | undefined;
+      if (!wasZero) {
+        const wasSeeking = this._audio.seeking;
+        this._audio.currentTime = 0;
+        if (!wasSeeking) {
+          // this doesn't seem to fire in scenarios where it was already seeking
+          // Wait for the HTML audio to emit the 'seeked' event, otherwise
+          seekComplete = CancellablePromise.fromEvent(
+            this._audio,
+            "seeked",
+          ).thenCancellable(() => undefined);
+        }
+      }
+      this._sourceBuffer.remove(0, this._sourceBuffer.buffered.end(0));
+      await onceBuffUpdateEnd(this._sourceBuffer);
+      this._sourceBuffer.timestampOffset = 0;
+      await onceBuffUpdateEnd(this._sourceBuffer);
+      if (seekComplete) {
+        await seekComplete;
+      }
+      this._updateTrackStatus();
     }
   }
 
@@ -208,10 +257,12 @@ export class WebAudioSink implements AudioSink {
   _onplay = () => {
     this._updateTrackStatus();
     this.loopCheckCompletion();
+    this._isPlaying = true;
   };
   _onpause = () => {
     this._updateTrackStatus();
     clearInterval(this._completionChecker);
+    this._isPlaying = false;
   };
 
   _onseeked = () => {

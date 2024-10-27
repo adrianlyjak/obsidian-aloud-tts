@@ -6,7 +6,7 @@ import {
   TTSPluginSettingsStore,
 } from "../player/TTSPluginSettings";
 import { AudioSink } from "../player/AudioSink";
-import { AudioStore } from "../player/Player";
+import { AudioStore } from "../player/AudioStore";
 import { AudioVisualizer } from "./AudioVisualizer";
 import { IconButton, IconSpan, Spinner } from "./IconButton";
 import { EditorView } from "@codemirror/view";
@@ -133,6 +133,26 @@ const EditPlaybackSpeedButton: React.FC<{
     // reset the timeout when the playback speed changes
   }, [isOpen, settings.settings.playbackSpeed]);
 
+  // Add event listener to close popover when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        popoverRef.current &&
+        !popoverRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+
   return (
     <>
       <div
@@ -202,11 +222,17 @@ const AudioStatusInfoContents: React.FC<{
     return <TTSErrorInfoView error={player.activeText.error} />;
   } else if (player.activeText?.isLoading) {
     return <Spinner className="tts-audio-status-loading" delay={500} />;
-  } else if (audio.audio && audio.audioBuffer && player.activeText?.isPlaying) {
+  } else if (
+    audio.audio &&
+    player.activeText?.isPlaying &&
+    player.activeText.currentChunk?.audioBuffer &&
+    player.activeText.currentChunk.offsetDuration !== undefined
+  ) {
     return (
       <AudioVisualizer
         audioElement={audio.audio}
-        audioBuffer={audio.audioBuffer}
+        audioBuffer={player.activeText.currentChunk?.audioBuffer}
+        offsetDurationSeconds={player.activeText.currentChunk?.offsetDuration}
       />
     );
   } else {

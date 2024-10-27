@@ -4,7 +4,8 @@ import * as React from "react";
 export const AudioVisualizer: React.FC<{
   audioElement: HTMLAudioElement;
   audioBuffer: AudioBuffer;
-}> = ({ audioElement, audioBuffer }) => {
+  offsetDurationSeconds: number;
+}> = ({ audioElement, audioBuffer, offsetDurationSeconds }) => {
   const ref = React.useRef<HTMLElement | null>(null);
   const fft = React.useMemo(() => new FFT(512), [audioBuffer]);
   React.useEffect(() => {
@@ -14,12 +15,13 @@ export const AudioVisualizer: React.FC<{
         audioElement,
         audioBuffer,
         fft,
+        offsetDurationSeconds,
       );
       return () => {
         destroyer.destroy();
       };
     }
-  }, [ref.current, audioElement, audioBuffer, fft]);
+  }, [ref.current, audioElement, audioBuffer, offsetDurationSeconds, fft]);
 
   return (
     <div className="tts-audio-visualizer" ref={(x) => (ref.current = x)}></div>
@@ -31,8 +33,10 @@ function getFrequencyBins(
   audioBuffer: AudioBuffer,
   audioElement: HTMLAudioElement,
   magnitudes: Float32Array,
+  offsetDurationSeconds: number,
 ) {
-  const position = audioElement.currentTime * audioBuffer.sampleRate;
+  const position =
+    (audioElement.currentTime - offsetDurationSeconds) * audioBuffer.sampleRate;
   const mono = audioBuffer
     .getChannelData(0)
     .subarray(position, position + fft.size);
@@ -51,6 +55,7 @@ export function attachVisualizationToDom(
   audioElement: HTMLAudioElement,
   audioBuffer: AudioBuffer,
   fft: FFT,
+  offsetDurationSeconds: number,
 ): {
   destroy: () => void;
 } {
@@ -58,7 +63,7 @@ export function attachVisualizationToDom(
   const dataArray = new Float32Array(bufferLength);
 
   const nSegments = 8;
-  const historySize = 4; // Number of frames to average over
+  const historySize = 2; // Number of frames to average over
   const barHistory = Array.from({ length: nSegments }, () =>
     Array(historySize).fill(0),
   );
@@ -78,7 +83,13 @@ export function attachVisualizationToDom(
   function draw() {
     frameId = requestAnimationFrame(draw);
 
-    getFrequencyBins(fft, audioBuffer, audioElement, dataArray);
+    getFrequencyBins(
+      fft,
+      audioBuffer,
+      audioElement,
+      dataArray,
+      offsetDurationSeconds,
+    );
 
     const min = Math.floor(bufferLength / 32);
     const max = Math.floor(bufferLength / 6) + min;
@@ -88,9 +99,12 @@ export function attachVisualizationToDom(
       const index = Math.floor(min + i * segmentSize);
       const index2 = Math.floor(min + i * segmentSize + segmentSize / 2);
       const increase = 4;
-      const barHeight1 = dataArray[index] * increase;
-      const barHeight2 = dataArray[index2] * increase;
-      let barHeight = (barHeight1 + barHeight2) / 2;
+      const heights = dataArray.slice(index, index2 + 1);
+      const avgHeight = heights.reduce((sum, h) => sum + h, 0) / heights.length;
+      let barHeight = avgHeight * increase;
+      // Apply a curve to increase barHeight such that lower values change more and higher values change less
+      const curveFactor = 0.5; // Adjust this factor to control the curve intensity
+      barHeight = Math.pow(barHeight, curveFactor);
       const factor = Math.sin(((i + 1) / (nSegments + 2)) * Math.PI);
       barHeight = barHeight * factor;
       barHeight *= 100;

@@ -1,67 +1,51 @@
 import * as mobx from "mobx";
-import { AudioCache } from "./AudioCache";
-import { TTSErrorInfo, TTSModel, TTSModelOptions } from "./TTSModel";
+import { AudioSystem } from "./AudioSystem";
+import { TTSErrorInfo, TTSModelOptions } from "./TTSModel";
 
 /** manages loading and caching of tracks */
-export class TrackLoader {
+export class ChunkLoader {
   private MAX_BACKGROUND_REQUESTS = 3;
   private MAX_LOCAL_TTL_MILLIS = 60 * 1000;
 
-  private audioCache: AudioCache;
-  private ttsModel: TTSModel;
+  private system: AudioSystem;
   private backgroundQueue: BackgroundRequest[] = [];
   private backgroundActiveCount = 0;
   private localCache: CachedAudio[] = [];
   private backgroundRequestProcessor: IntervalDaemon;
   private garbageCollector: IntervalDaemon;
 
-  constructor({
-    ttsModel,
-    audioCache,
-    backgroundLoaderIntervalMillis = 1000,
-  }: {
-    ttsModel: TTSModel;
-    audioCache: AudioCache;
-    backgroundLoaderIntervalMillis?: number;
-  }) {
-    this.ttsModel = ttsModel;
-    this.audioCache = audioCache;
+  constructor({ system }: { system: AudioSystem }) {
+    this.system = system;
 
     this.backgroundRequestProcessor = IntervalDaemon(
       this.processBackgroundQueue.bind(this),
-      { interval: backgroundLoaderIntervalMillis },
+      { interval: system.config.backgroundLoaderIntervalMillis },
     );
     this.garbageCollector = IntervalDaemon(this.processGarbage.bind(this), {
       interval: this.MAX_LOCAL_TTL_MILLIS / 2,
     }).startIfNot();
   }
 
-  expireBefore(readerId: string, position: number): void {
+  expireBefore = (
+    position: number = this.system.audioStore?.activeText?.position ?? 0,
+  ): void => {
     this.backgroundQueue = this.backgroundQueue.filter(
-      (x) => !(x.readerId === readerId && x.position < position),
+      (x) => !(x.position < position),
     );
+  };
+
+  /**
+   * When you remove an ArrayBuffer from the audio, it dereferences the ArrayBuffer, rendering it
+   * as a useless pointer that can no longer be used. This method removes the cached audio for that same
+   * text, such that it can be re-loaded from the disk cache.
+   */
+  uncache(text: string): void {
+    this.localCache = this.localCache.filter((x) => x.text !== text);
   }
 
-  expire(readerId: string): void {
-    this.backgroundQueue = this.backgroundQueue.filter(
-      (req) => req.readerId !== readerId,
-    );
-    this.localCache = this.localCache.filter(
-      (req) => req.readerId !== readerId,
-    );
-  }
-
-  preload(
-    text: string,
-    options: TTSModelOptions,
-    readerId: string,
-    position: number,
-  ): void {
+  preload(text: string, options: TTSModelOptions, position: number): void {
     const found = this.backgroundQueue.find(
-      (x) =>
-        x.readerId === readerId &&
-        x.text === text &&
-        mobx.comparer.structural(x.options, options),
+      (x) => x.text === text && mobx.comparer.structural(x.options, options),
     );
     if (found) {
       return;
@@ -75,26 +59,23 @@ export class TrackLoader {
     this.backgroundQueue.push({
       text,
       options,
-      readerId,
       requestedTime: Date.now(),
       position,
     });
     this.backgroundRequestProcessor.startIfNot();
   }
 
-  load(
-    text: string,
-    options: TTSModelOptions,
-    readerId: string,
-  ): Promise<ArrayBuffer> {
-    const existing = this.localCache.find((x) => {
-      x.text === text && mobx.comparer.structural(x.options, options);
-    });
+  load(text: string, options: TTSModelOptions): Promise<ArrayBuffer> {
+    const existing = this.localCache.find(
+      (x) =>
+        x.text === text &&
+        JSON.stringify(x.options) === JSON.stringify(options),
+    );
     if (existing) {
       existing.requestedTime = Date.now();
       return existing.result;
     } else {
-      const audio = this.createCachedAudio(text, options, readerId);
+      const audio = this.createCachedAudio(text, options);
       this.localCache.push(audio);
       return audio.result;
     }
@@ -108,12 +89,10 @@ export class TrackLoader {
   private createCachedAudio(
     text: string,
     options: TTSModelOptions,
-    readerId: string,
   ): CachedAudio {
     const audio = {
       text,
       options,
-      readerId,
       requestedTime: Date.now(),
       result: this.tryLoadTrack(text, options, 0, 3).catch((e) => {
         this.destroyCachedAudio(audio);
@@ -140,7 +119,7 @@ export class TrackLoader {
     } else {
       const item = this.backgroundQueue.shift()!;
       this.backgroundActiveCount += 1;
-      this.load(item.text, item.options, item.readerId).finally(() => {
+      this.load(item.text, item.options).finally(() => {
         this.backgroundActiveCount -= 1;
         this.processBackgroundQueue();
       });
@@ -190,15 +169,15 @@ export class TrackLoader {
   ): Promise<ArrayBuffer> {
     // copy the settings to make sure audio isn't stored under under the wrong key
     // if the settings are changed while request is in flight
-    const stored: ArrayBuffer | null = await this.audioCache.getAudio(
+    const stored: ArrayBuffer | null = await this.system.storage.getAudio(
       text,
       options,
     );
     if (stored) {
       return stored;
     } else {
-      const buff = await this.ttsModel(text, options);
-      await this.audioCache.saveAudio(text, options, buff);
+      const buff = await this.system.ttsModel(text, options);
+      await this.system.storage.saveAudio(text, options, buff);
       return buff;
     }
   }
@@ -261,8 +240,6 @@ interface BackgroundRequest {
   text: string;
   /** the options used to generate this audio */
   options: TTSModelOptions;
-  /** The reader ID that requested this audio, so that we can expire it */
-  readerId: string;
   /** the time the request was made. Milliseconds since Unix Epoch */
   requestedTime: number;
   /** the track number that was requested */
@@ -274,8 +251,6 @@ interface CachedAudio {
   readonly text: string;
   /** the options used to generate this audio */
   readonly options: TTSModelOptions;
-  /** The reader ID that requested this audio, so that we can expire it */
-  readonly readerId: string;
   /** the final result of the request across retries */
   readonly result: Promise<ArrayBuffer>;
   /** the time the request was made. Milliseconds since Unix Epoch. May be updated to prevent deletion */

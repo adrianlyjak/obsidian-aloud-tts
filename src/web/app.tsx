@@ -1,5 +1,5 @@
 import { createRoot } from "react-dom/client";
-import { AudioStore, loadAudioStore } from "../player/Player";
+import { AudioStore, loadAudioStore } from "../player/AudioStore";
 import {
   pluginSettingsStore,
   REAL_OPENAI_API_URL,
@@ -14,6 +14,7 @@ import FFT from "fft.js";
 import { AudioVisualizer } from "../components/AudioVisualizer";
 import { useEffect, useState, type FC, useCallback, useRef } from "react";
 import { observer } from "mobx-react-lite";
+import { createAudioSystem } from "../player/AudioSystem";
 
 /**
  *
@@ -33,11 +34,19 @@ async function main() {
   );
 
   const audioSink = await WebAudioSink.create();
-  const store = loadAudioStore({
-    settings: settingsStore.settings,
-    storage: new IndexedDBAudioStorage(),
-    audioSink,
+
+  const system = createAudioSystem({
+    settings: () => settingsStore.settings,
+    ttsModel: () => openAITextToSpeech,
+    storage: () => new IndexedDBAudioStorage(),
+    audioSink: () => audioSink,
+    audioStore: (sys) => loadAudioStore({ system: sys }),
+    config: () => ({
+      backgroundLoaderIntervalMillis: 1000,
+    }),
   });
+
+  const store = system.audioStore;
 
   const root = document.createElement("div");
   root.id = "root";
@@ -243,7 +252,7 @@ const SimplePlayer: FC<{ settingsStore: TTSPluginSettingsStore }> = observer(
           voice: "shimmer",
           apiUri: REAL_OPENAI_API_URL,
         });
-        await sink.setMedia(audio);
+        await sink.switchMedia(audio);
         setSink(sink);
       });
     }, []);
@@ -316,10 +325,13 @@ The frumious Bandersnatch!`;
         >
           {store.activeText?.isPlaying ? "Pause" : "Play"}
         </button>
-        {sink.audioBuffer && (
+        {store.activeText?.currentChunk?.audioBuffer && (
           <AudioVisualizer
             audioElement={sink.audio}
-            audioBuffer={sink.audioBuffer}
+            audioBuffer={store.activeText.currentChunk.audioBuffer}
+            offsetDurationSeconds={
+              store.activeText.currentChunk.offsetDuration!
+            }
           />
         )}
       </div>

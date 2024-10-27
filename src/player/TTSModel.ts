@@ -62,7 +62,6 @@ export const openAITextToSpeech: TTSModel = async function openAITextToSpeech(
   text: string,
   options: TTSModelOptions,
 ): Promise<ArrayBuffer> {
-  await new Promise((resolve) => setTimeout(resolve, 3000));
   const headers = await fetch(
     orDefaultOpenAI(options.apiUri) + "/v1/audio/speech",
     {

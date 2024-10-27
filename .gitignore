@@ -26,3 +26,5 @@ data.json
 dist
 
 .history
+.metals
+.scala-build
