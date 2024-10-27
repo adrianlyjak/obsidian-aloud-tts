@@ -118,6 +118,7 @@ export class ChunkPlayer {
       );
       const [start, end] = getLoadedRange(this.activeAudioText);
       const transitionType = await this._onAudioAudioChanged(foreground);
+      console.log(`${new Date().toISOString()} transitionType`, transitionType);
       if (transitionType === "position-changed") {
         const position = this.activeAudioText.position;
         if (start <= position && position <= end) {
@@ -126,6 +127,11 @@ export class ChunkPlayer {
             .slice(0, position - start)
             .reduce((s, x) => s + x.duration!, 0);
           this.system.audioSink.currentTime = duration;
+          // wait for seeking event to fire, otherwise seek will fire next iteration
+          await CancellablePromise.fromEvent(
+            this.system.audioSink.audio,
+            "seeking",
+          );
         } else {
           toReset = { all: true };
           // hard immediate reset if the position is outside the bounds of the loaded audio
