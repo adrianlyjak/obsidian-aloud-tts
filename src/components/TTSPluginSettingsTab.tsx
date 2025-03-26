@@ -77,6 +77,7 @@ const TTSSettingsTabComponent: React.FC<{
           <OpenAIApiKeyComponent store={store} />
           <OpenAIModelComponent store={store} />
           <OpenAIVoiceComponent store={store} />
+          <OpenAITTSInstructionsComponent store={store} />
         </>
       ) : (
         <>
@@ -535,18 +536,71 @@ const OpenAICompatibleApiKeyComponent: React.FC<{
   );
 });
 
-const DEFAULT_MODELS = [
+const DEFAULT_MODELS: Model[] = [
   { label: "tts-1", value: "tts-1" },
   { label: "tts-1-hd", value: "tts-1-hd" },
+  { label: "gpt-4o-mini-tts", value: "gpt-4o-mini-tts", supportsInstructions: true },
 ] as const;
 
-const DEFAULT_VOICES = [
-  { label: "Alloy", value: "alloy" },
-  { label: "Echo", value: "echo" },
-  { label: "Fable", value: "fable" },
-  { label: "Onyx", value: "onyx" },
-  { label: "Nova", value: "nova" },
-  { label: "Shimmer", value: "shimmer" },
+interface Model {
+  label: string;
+  value: string;
+  supportsInstructions?: boolean;
+}
+
+interface Voice {
+  label: string;
+  value: string;
+  models: string[];
+}
+const DEFAULT_VOICES: Voice[] = [
+  {
+    label: "Alloy",
+    value: "alloy",
+    models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+  },
+  {
+    label: "Ash",
+    value: "ash",
+    models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+  },
+  { label: "Ballad", value: "ballad", models: ["gpt-4o-mini-tts"] },
+  {
+    label: "Coral",
+    value: "coral",
+    models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+  },
+  {
+    label: "Echo",
+    value: "echo",
+    models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+  },
+  {
+    label: "Fable",
+    value: "fable",
+    models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+  },
+  {
+    label: "Onyx",
+    value: "onyx",
+    models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+  },
+  {
+    label: "Nova",
+    value: "nova",
+    models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+  },
+  {
+    label: "Sage",
+    value: "sage",
+    models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+  },
+  {
+    label: "Shimmer",
+    value: "shimmer",
+    models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+  },
+  { label: "Verse", value: "verse", models: ["gpt-4o-mini-tts"] },
 ] as const;
 
 const OpenAIModelComponent: React.FC<{
@@ -578,6 +632,21 @@ const OpenAIModelComponent: React.FC<{
 const OpenAIVoiceComponent: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
+  const voices = React.useMemo(() => {
+    return DEFAULT_VOICES.filter((v) =>
+      v.models.includes(store.settings.openai_ttsModel),
+    );
+  }, [store.settings.openai_ttsModel]);
+
+  React.useEffect(() => {
+    if (voices.find((v) => v.value === store.settings.ttsVoice)) {
+      return;
+    }
+    store.updateModelSpecificSettings("openai", {
+      openai_ttsVoice: voices[0].value,
+    });
+  }, [store.settings.openai_ttsVoice, voices]);
+
   return (
     <div className="setting-item">
       <div className="setting-item-info">
@@ -671,3 +740,48 @@ const OptionSelect: React.FC<{
     </>
   );
 };
+
+const OpenAITTSInstructionsComponent: React.FC<{
+  store: TTSPluginSettingsStore;
+}> = observer(({ store }) => {
+  const onChange: React.ChangeEventHandler<HTMLTextAreaElement> =
+    React.useCallback((evt) => {
+      store.updateModelSpecificSettings("openai", {
+        openai_ttsInstructions: evt.target.value,
+      });
+    }, []);
+
+  const modelSupportsInstructions = React.useMemo(() => {
+    const model = DEFAULT_MODELS.find(
+      (x) => x.value === store.settings.openai_ttsModel,
+    );
+    console.log(model);
+    return model?.supportsInstructions || false;
+  }, [store.settings.openai_ttsModel]);
+
+  const disabled = !modelSupportsInstructions;
+
+  const instructions = modelSupportsInstructions
+    ? store.settings.openai_ttsInstructions
+    : "";
+
+  return (
+    <div className="setting-item" style={{ display: "block" }}>
+      <div className="setting-item-info">
+        <div className="setting-item-name">Voice Instructions</div>
+        <div className="setting-item-description">
+          Optional instructions to customize the tone and style of the voice
+          (only supported by some models)
+        </div>
+      </div>
+      <textarea
+        value={instructions}
+        disabled={disabled}
+        onChange={onChange}
+        placeholder="Example: Speak in a whisper"
+        rows={3}
+        style={{ width: "100%", marginTop: "12px" }}
+      />
+    </div>
+  );
+});
