@@ -7,6 +7,7 @@ import { REAL_OPENAI_API_URL, TTSPluginSettings } from "./TTSPluginSettings";
 export interface TTSModelOptions {
   model: string;
   voice: string;
+  instructions?: string;
   apiUri: string;
   apiKey: string;
 }
@@ -49,6 +50,7 @@ export function toModelOptions(
   return {
     model: pluginSettings.model,
     voice: pluginSettings.ttsVoice,
+    instructions: pluginSettings.instructions || undefined,
     apiUri: pluginSettings.OPENAI_API_URL || REAL_OPENAI_API_URL,
     apiKey: pluginSettings.OPENAI_API_KEY,
   };
@@ -73,6 +75,7 @@ export const openAITextToSpeech: TTSModel = async function openAITextToSpeech(
       body: JSON.stringify({
         model: options.model,
         voice: options.voice,
+        instructions: options.instructions,
         input: text,
         speed: 1,
       }),
