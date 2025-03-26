@@ -275,6 +275,8 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
             [file?.path, file?.name].filter((x) => x).join("/") || "Untitled",
           start,
           end: start + selection.length,
+        }).catch((ex) => {
+          console.error("Couldn't start player!", ex);
         });
       } catch (ex) {
         console.error("Couldn't start player!", ex);

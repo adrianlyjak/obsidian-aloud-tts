@@ -27,7 +27,7 @@ describe("AudioStore", () => {
   test("should add and play", async () => {
     const text = "later tater";
 
-    const txt = store.startPlayer({
+    const txt = await store.startPlayer({
       text,
       filename: "potatoes.md",
       start: 0,
@@ -40,9 +40,9 @@ describe("AudioStore", () => {
     expect(store.activeText?.isPlaying).toEqual(true);
   });
 
-  test("should activate", () => {
+  test("should activate", async () => {
     const text = "later tater";
-    store.startPlayer({
+    await store.startPlayer({
       text,
       filename: "potatoes.md",
       start: 0,
@@ -55,7 +55,7 @@ describe("AudioStore", () => {
   });
 
   describe("Active Track", async () => {
-    function createActiveTrack(
+    async function createActiveTrack(
       {
         text = "how now brown cow",
         filename = "file.md",
@@ -64,9 +64,9 @@ describe("AudioStore", () => {
         end = start + text.length,
       }: Partial<AudioTextOptions> = {},
       deps: MaybeStoreDependencies = {},
-    ): ActiveAudioText {
+    ): Promise<ActiveAudioText> {
       store = createStore(deps);
-      const active = store.startPlayer({
+      const active = await store.startPlayer({
         text,
         filename,
         start,
