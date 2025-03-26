@@ -8,6 +8,7 @@ export type TTSPluginSettings = {
   modelProvider: ModelProvider;
   model: string;
   ttsVoice: string;
+  instructions?: string;
   chunkType: "sentence" | "paragraph";
   playbackSpeed: number;
   cacheType: "local" | "vault";
@@ -22,6 +23,7 @@ export interface OpenAIModelConfig {
   openai_apiKey: string;
   openai_ttsModel: string;
   openai_ttsVoice: string;
+  openai_ttsInstructions?: string;
 }
 
 export interface OpenAICompatibleModelConfig {
@@ -45,7 +47,7 @@ export function isPlayerViewMode(value: unknown): value is PlayerViewMode {
 }
 
 export function voiceHash(options: TTSModelOptions): string {
-  return hashString(options.apiUri + options.model + options.voice).toString();
+  return hashString(options.apiUri + options.model + options.voice + (options.instructions || "")).toString();
 }
 
 export const REAL_OPENAI_API_URL = "https://api.openai.com";
@@ -57,8 +59,9 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   OPENAI_API_KEY: "",
   OPENAI_API_URL: "",
   modelProvider: "openai",
-  model: "tts-1", // tts-1-hd
-  ttsVoice: "shimmer", // alloy, echo, fable, onyx, nova, and shimmer
+  model: "gpt-4o-mini-tts",
+  ttsVoice: "shimmer",
+  instructions: undefined,
   chunkType: "sentence",
   playbackSpeed: 1.0,
   cacheDurationMillis: 1000 * 60 * 60 * 24 * 7, // 7 days
@@ -66,8 +69,9 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   showPlayerView: "always-mobile",
   // openai
   openai_apiKey: "",
-  openai_ttsModel: "tts-1",
+  openai_ttsModel: "gpt-4o-mini-tts",
   openai_ttsVoice: "shimmer",
+  openai_ttsInstructions: undefined,
   // openaicompat
   openaicompat_apiKey: "",
   openaicompat_apiBase: "",
@@ -170,12 +174,14 @@ export async function pluginSettingsStore(
                 OPENAI_API_KEY: merged.openai_apiKey,
                 OPENAI_API_URL: "",
                 ttsVoice: merged.openai_ttsVoice,
+                instructions: merged.openai_ttsInstructions || undefined,
                 model: merged.openai_ttsModel,
               }
             : {
                 OPENAI_API_KEY: merged.openaicompat_apiKey,
                 OPENAI_API_URL: merged.openaicompat_apiBase,
                 ttsVoice: merged.openaicompat_ttsVoice,
+                instructions: undefined,
                 model: merged.openaicompat_ttsModel,
               };
         await store.updateSettings({
