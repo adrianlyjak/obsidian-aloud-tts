@@ -387,9 +387,33 @@ const AudioFolderComponent: React.FC<{
 const APIBaseURLComponent: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
+
+  function isValidURL(url: string) {
+    if (!url) {
+      return true;
+    }
+    try {
+      new URL(url);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+  const [state, setState] = React.useState({
+    raw: store.settings.OPENAI_API_URL,
+    valid: isValidURL(store.settings.OPENAI_API_URL),
+  });
   const onChange: React.ChangeEventHandler<HTMLInputElement> =
     React.useCallback((v: React.ChangeEvent<HTMLInputElement>) => {
-      store.updateSettings({ OPENAI_API_URL: v.target.value });
+      const url = v.target.value;
+      const valid = isValidURL(url);
+      setState({
+        raw: url,
+        valid,
+      });
+      if (valid) {
+        store.updateSettings({ OPENAI_API_URL: url });
+      }
     }, []);
   return (
     <div className="setting-item">
@@ -403,9 +427,15 @@ const APIBaseURLComponent: React.FC<{
         <input
           type="text"
           placeholder={REAL_OPENAI_API_URL}
-          value={store.settings.OPENAI_API_URL}
+          value={state.raw}
           onChange={onChange}
+          className={!state.valid ? 'tts-error-input' : ''}
         />
+        {!state.valid && state.raw && (
+          <div className="setting-item-description tts-error-text">
+            Please enter a valid URL (e.g. https://api.example.com)
+          </div>
+        )}
       </div>
     </div>
   );
@@ -510,7 +540,7 @@ const OpenAICompatibleApiKeyComponent: React.FC<{
 
   const onChange: React.ChangeEventHandler<HTMLInputElement> =
     React.useCallback((v: React.ChangeEvent<HTMLInputElement>) => {
-      store.updateSettings({ OPENAI_API_KEY: v.target.value });
+      store.updateSettings({ openaicompat_apiKey: v.target.value });
     }, []);
   return (
     <div className="setting-item">
@@ -639,7 +669,7 @@ const OpenAIVoiceComponent: React.FC<{
   }, [store.settings.openai_ttsModel]);
 
   React.useEffect(() => {
-    if (voices.find((v) => v.value === store.settings.ttsVoice)) {
+    if (voices.find((v) => v.value === store.settings.openai_ttsVoice)) {
       return;
     }
     store.updateModelSpecificSettings("openai", {
@@ -656,7 +686,7 @@ const OpenAIVoiceComponent: React.FC<{
       <div className="setting-item-control">
         <OptionSelect
           options={DEFAULT_VOICES}
-          value={store.settings.ttsVoice}
+          value={store.settings.openai_ttsVoice}
           onChange={(v) =>
             store.updateModelSpecificSettings("openai", {
               openai_ttsVoice: v,
@@ -755,7 +785,6 @@ const OpenAITTSInstructionsComponent: React.FC<{
     const model = DEFAULT_MODELS.find(
       (x) => x.value === store.settings.openai_ttsModel,
     );
-    console.log(model);
     return model?.supportsInstructions || false;
   }, [store.settings.openai_ttsModel]);
 
@@ -766,7 +795,7 @@ const OpenAITTSInstructionsComponent: React.FC<{
     : "";
 
   return (
-    <div className="setting-item" style={{ display: "block" }}>
+    <div className="setting-item tts-settings-block">
       <div className="setting-item-info">
         <div className="setting-item-name">Voice Instructions</div>
         <div className="setting-item-description">
@@ -780,7 +809,7 @@ const OpenAITTSInstructionsComponent: React.FC<{
         onChange={onChange}
         placeholder="Example: Speak in a whisper"
         rows={3}
-        style={{ width: "100%", marginTop: "12px" }}
+        className="tts-instructions-textarea"
       />
     </div>
   );
