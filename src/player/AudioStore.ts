@@ -17,7 +17,7 @@ export interface AudioStore {
   // switches the active track
   // returns a track ID
   // starts playing the audio
-  startPlayer(opts: AudioTextOptions): ActiveAudioText;
+  startPlayer(opts: AudioTextOptions): Promise<ActiveAudioText>;
 
   closePlayer(): void;
 
@@ -126,8 +126,8 @@ class AudioStoreImpl implements AudioStore {
     return this.system.storage.expire(0);
   }
 
-  startPlayer(opts: AudioTextOptions): ActiveAudioText {
-    this.system.audioSink.clearMedia();
+  async startPlayer(opts: AudioTextOptions): Promise<ActiveAudioText> {
+    await this.system.audioSink.clearMedia();
     const audio: AudioText = buildTrack(opts, this.system.settings.chunkType);
     this.activeText?.destroy();
     mobx.runInAction(

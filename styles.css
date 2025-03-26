@@ -146,6 +146,27 @@
   justify-content: space-between;
 }
 
+.tts-error-input {
+  border-color: var(--background-modifier-error);
+}
+
+.tts-error-text {
+  color: var(--text-error);
+}
+
+.tts-instructions-textarea {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.tts-settings-block {
+  display: block;
+}
+
+
+
+/** player view */
+
 details .tts-error-details {
   opacity: 0;
 }
@@ -162,3 +183,4 @@ details[open] .tts-error-details {
     opacity: 1;
   }
 }
+
