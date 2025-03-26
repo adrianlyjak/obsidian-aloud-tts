@@ -54,5 +54,17 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
-  "packageManager": "pnpm@9.0.2+sha1.2a34aeb80bf8e8435815d14f620ec4ba0eff1604"
+  "packageManager": "pnpm@9.0.2+sha1.2a34aeb80bf8e8435815d14f620ec4ba0eff1604",
+  "pnpm": {
+    "overrides": {
+      "cross-spawn@>=7.0.0 <7.0.5": ">=7.0.5",
+      "nanoid@<3.3.8": ">=3.3.8",
+      "elliptic@<6.6.0": ">=6.6.0",
+      "esbuild@<=0.24.2": ">=0.25.0",
+      "vitest@>=1.0.0 <1.6.1": ">=1.6.1",
+      "vite@>=5.0.0 <=5.4.11": ">=5.4.12",
+      "elliptic@<=6.6.0": ">=6.6.1",
+      "vite@>=5.0.0 <5.4.15": ">=5.4.15"
+    }
+  }
 }
