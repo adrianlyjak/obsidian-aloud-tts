@@ -3,10 +3,12 @@ import { AudioStore, loadAudioStore } from "../player/AudioStore";
 import {
   pluginSettingsStore,
   REAL_OPENAI_API_URL,
+  REAL_HUMEAI_API_URL,
   TTSPluginSettingsStore,
 } from "../player/TTSPluginSettings";
 import { IndexedDBAudioStorage } from "./IndexedDBAudioStorage";
 import { openAITextToSpeech } from "../player/TTSModel";
+import { humeTextToSpeech } from "../player/TTSModel";
 import { WebAudioSink } from "../player/AudioSink";
 import * as React from "react";
 import FFT from "fft.js";
@@ -246,14 +248,25 @@ const SimplePlayer: FC<{ settingsStore: TTSPluginSettingsStore }> = observer(
     useEffect(() => {
       WebAudioSink.create().then(async (sink) => {
         const text = `Speaking of connections, I think that's another important aspect of embracing uncertainty. When we're open to new experiences and perspectives, we're more likely to form meaningful connections with others. We're more likely to listen, to learn, and to grow together.`;
-        const audio = await openAITextToSpeech(text, {
-          apiKey: settingsStore.settings.openai_apiKey,
-          model: "tts-1",
-          voice: "shimmer",
-          apiUri: REAL_OPENAI_API_URL,
-        });
-        await sink.switchMedia(audio);
-        setSink(sink);
+        if (settingsStore.modelProvider === "humeai") {
+          const audio = await humeTextToSpeech(text, {
+            apiKey: settingsStore.settings.humeai_apiKey,
+            apiUri: REAL_HUMEAI_API_URL,
+          });
+        
+          await sink.switchMedia(audio);
+          setSink(sink);
+        } else {
+          const audio = await openAITextToSpeech(text, {
+            apiKey: settingsStore.settings.openai_apiKey,
+            model: "tts-1",
+            voice: "shimmer",
+            apiUri: REAL_OPENAI_API_URL,
+          });
+        
+          await sink.switchMedia(audio);
+          setSink(sink);
+        }
       });
     }, []);
     async function loadText() {

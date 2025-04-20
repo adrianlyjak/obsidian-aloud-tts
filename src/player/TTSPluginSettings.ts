@@ -1,10 +1,10 @@
 import { action, observable } from "mobx";
 import { TTSErrorInfo, TTSModelOptions, listModels } from "./TTSModel";
-import { debounce } from "../util/misc";
+import { debounce, isTruthy } from "../util/misc";
 import { hashString } from "../util/Minhash";
 export type TTSPluginSettings = {
-  OPENAI_API_KEY: string;
-  OPENAI_API_URL: string;
+  API_KEY: string;
+  API_URL: string;
   modelProvider: ModelProvider;
   model: string;
   ttsVoice: string;
@@ -16,21 +16,26 @@ export type TTSPluginSettings = {
   showPlayerView: PlayerViewMode;
   version: number;
   audioFolder: string;
-} & OpenAIModelConfig &
-  OpenAICompatibleModelConfig;
+} & OpenAIModelConfig & CustomModelConfig & HumeAIModelConfig;
 
 export interface OpenAIModelConfig {
   openai_apiKey: string;
   openai_ttsModel: string;
   openai_ttsVoice: string;
-  openai_ttsInstructions?: string;
+  openai_ttsInstructions?: string | undefined;
 }
 
-export interface OpenAICompatibleModelConfig {
+export interface CustomModelConfig {
   openaicompat_apiKey: string;
   openaicompat_apiBase: string;
   openaicompat_ttsModel: string;
   openaicompat_ttsVoice: string;
+}
+
+export interface HumeAIModelConfig {
+  humeai_apiKey: string;
+  humeai_ttsVoice: string;
+  humeai_ttsInstructions?: string | undefined;
 }
 
 export const playViewModes = [
@@ -48,21 +53,20 @@ export function isPlayerViewMode(value: unknown): value is PlayerViewMode {
 
 export function voiceHash(options: TTSModelOptions): string {
   return hashString(
-    options.apiUri +
-      options.model +
-      options.voice +
-      (options.instructions || ""),
+    options.apiUri + options.voice + (options.instructions || ""),
   ).toString();
 }
 
 export const REAL_OPENAI_API_URL = "https://api.openai.com";
+//https://api.hume.ai/v0/tts/file
+export const REAL_HUMEAI_API_URL = "https://api.hume.ai";
 
-export const modelProviders = ["openai", "openaicompat"] as const;
+export const modelProviders = ["openai", "openaicompat", "humeai"] as const;
 export type ModelProvider = (typeof modelProviders)[number];
 
 export const DEFAULT_SETTINGS: TTSPluginSettings = {
-  OPENAI_API_KEY: "",
-  OPENAI_API_URL: "",
+  API_KEY: "",
+  API_URL: "",
   modelProvider: "openai",
   model: "gpt-4o-mini-tts",
   ttsVoice: "shimmer",
@@ -82,6 +86,11 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   openaicompat_apiBase: "",
   openaicompat_ttsModel: "",
   openaicompat_ttsVoice: "",
+  // humeai
+  humeai_apiKey: "",
+  humeai_ttsVoice: "",
+  humeai_ttsInstructions: undefined,
+
   version: 1,
   audioFolder: "aloud",
 } as const;
@@ -117,12 +126,12 @@ export async function pluginSettingsStore(
       },
       checkApiKey: debounce(async () => {
         if (
-          store.settings.OPENAI_API_URL &&
-          store.settings.OPENAI_API_URL !== REAL_OPENAI_API_URL
+          store.settings.API_URL &&
+          store.settings.API_URL !== REAL_OPENAI_API_URL
         ) {
           store.setApiKeyValidity(true);
         } else {
-          if (!store.settings.OPENAI_API_KEY) {
+          if (!store.settings.API_KEY) {
             store.setApiKeyValidity(
               false,
               `Please enter an API key in the "${MARKETING_NAME_LONG}" plugin settings`,
@@ -154,12 +163,12 @@ export async function pluginSettingsStore(
       updateSettings: async (
         update: Partial<TTSPluginSettings>,
       ): Promise<void> => {
-        const keyBefore = store.settings.OPENAI_API_KEY;
-        const apiBefore = store.settings.OPENAI_API_URL;
+        const keyBefore = store.settings.API_KEY;
+        const apiBefore = store.settings.API_URL;
         Object.assign(store.settings, update);
         if (
-          keyBefore !== store.settings.OPENAI_API_KEY ||
-          apiBefore !== store.settings.OPENAI_API_URL
+          keyBefore !== store.settings.API_KEY ||
+          apiBefore !== store.settings.API_URL
         ) {
           await store.checkApiKey();
         }
@@ -176,19 +185,28 @@ export async function pluginSettingsStore(
         const additionalSettings: Partial<TTSPluginSettings> =
           provider === "openai"
             ? {
-                OPENAI_API_KEY: merged.openai_apiKey,
-                OPENAI_API_URL: "",
-                ttsVoice: merged.openai_ttsVoice,
-                instructions: merged.openai_ttsInstructions || undefined,
-                model: merged.openai_ttsModel,
-              }
-            : {
-                OPENAI_API_KEY: merged.openaicompat_apiKey,
-                OPENAI_API_URL: merged.openaicompat_apiBase,
-                ttsVoice: merged.openaicompat_ttsVoice,
-                instructions: undefined,
-                model: merged.openaicompat_ttsModel,
-              };
+              API_KEY: merged.openai_apiKey,
+              API_URL: "",
+              ttsVoice: merged.openai_ttsVoice,
+              instructions: merged.openai_ttsInstructions,
+              model: merged.openai_ttsModel,
+            }
+            : provider === "openaicompat"
+            ? {
+              API_KEY: merged.openaicompat_apiKey,
+              API_URL: merged.openaicompat_apiBase,
+              ttsVoice: merged.openaicompat_ttsVoice,
+              instructions: undefined,
+              model: merged.openaicompat_ttsModel,
+            }
+            : provider === "humeai"
+            ? {
+              API_KEY: merged.humeai_apiKey,
+              API_URL: "",
+              ttsVoice: merged.humeai_ttsVoice,
+              model: "none"
+            }
+            : {};
         await store.updateSettings({
           ...settings,
           ...additionalSettings,
@@ -233,19 +251,19 @@ const parsePluginSettings = (toParse: unknown): TTSPluginSettings => {
 function migrateToVersion1(data: any): any {
   // extract the openai_apiKey and openai_apiBase fields
   const isCustom =
-    !!data.OPENAI_API_URL && data.OPENAI_API_URL !== REAL_OPENAI_API_URL;
+    !!data.API_URL && data.API_URL !== REAL_OPENAI_API_URL;
   return {
     ...data,
     modelProvider: isCustom ? "openaicompat" : "openai",
-    ...(isCustom
+    ...(isCustom && !!data.API_URL
       ? {
-          openaicompat_apiKey: data.OPENAI_API_KEY,
-          openaicompat_apiBase: data.OPENAI_API_URL,
+          openaicompat_apiKey: data.API_KEY,
+          openaicompat_apiBase: data.API_URL,
           openaicompat_ttsModel: data.model,
           openaicompat_ttsVoice: data.ttsVoice,
         }
       : {
-          openai_apiKey: data.OPENAI_API_KEY,
+          openai_apiKey: data.API_KEY,
           openai_ttsModel: data.model,
           openai_ttsVoice: data.ttsVoice,
         }),
