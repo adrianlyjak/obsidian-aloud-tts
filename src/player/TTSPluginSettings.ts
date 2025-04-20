@@ -1,6 +1,6 @@
 import { action, observable } from "mobx";
 import { TTSErrorInfo, TTSModelOptions, listModels } from "./TTSModel";
-import { debounce, isTruthy } from "../util/misc";
+import { debounce } from "../util/misc";
 import { hashString } from "../util/Minhash";
 export type TTSPluginSettings = {
   API_KEY: string;
@@ -22,7 +22,7 @@ export interface OpenAIModelConfig {
   openai_apiKey: string;
   openai_ttsModel: string;
   openai_ttsVoice: string;
-  openai_ttsInstructions?: string | undefined;
+  openai_ttsInstructions?: string;
 }
 
 export interface CustomModelConfig {
@@ -35,7 +35,7 @@ export interface CustomModelConfig {
 export interface HumeAIModelConfig {
   humeai_apiKey: string;
   humeai_ttsVoice: string;
-  humeai_ttsInstructions?: string | undefined;
+  humeai_ttsInstructions?: string;
 }
 
 export const playViewModes = [
@@ -53,12 +53,11 @@ export function isPlayerViewMode(value: unknown): value is PlayerViewMode {
 
 export function voiceHash(options: TTSModelOptions): string {
   return hashString(
-    options.apiUri + options.voice + (options.instructions || ""),
+    options.apiUri + (options.model || "") + options.voice + (options.instructions || ""),
   ).toString();
 }
 
 export const REAL_OPENAI_API_URL = "https://api.openai.com";
-//https://api.hume.ai/v0/tts/file
 export const REAL_HUMEAI_API_URL = "https://api.hume.ai";
 
 export const modelProviders = ["openai", "openaicompat", "humeai"] as const;
@@ -127,7 +126,8 @@ export async function pluginSettingsStore(
       checkApiKey: debounce(async () => {
         if (
           store.settings.API_URL &&
-          store.settings.API_URL !== REAL_OPENAI_API_URL
+          store.settings.API_URL !== REAL_OPENAI_API_URL &&
+          store.settings.API_URL !== REAL_HUMEAI_API_URL
         ) {
           store.setApiKeyValidity(true);
         } else {
@@ -188,7 +188,7 @@ export async function pluginSettingsStore(
               API_KEY: merged.openai_apiKey,
               API_URL: "",
               ttsVoice: merged.openai_ttsVoice,
-              instructions: merged.openai_ttsInstructions,
+              instructions: merged.openai_ttsInstructions || undefined,
               model: merged.openai_ttsModel,
             }
             : provider === "openaicompat"
@@ -203,8 +203,9 @@ export async function pluginSettingsStore(
             ? {
               API_KEY: merged.humeai_apiKey,
               API_URL: "",
-              ttsVoice: merged.humeai_ttsVoice,
-              model: "none"
+              ttsVoice: merged.humeai_ttsVoice || undefined,
+              instructions: merged.humeai_ttsInstructions || undefined,
+              model: undefined
             }
             : {};
         await store.updateSettings({
