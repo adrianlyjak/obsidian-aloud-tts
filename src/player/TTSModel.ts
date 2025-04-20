@@ -9,6 +9,7 @@ import {
  * will cause audio to reload
  */
 export interface TTSModelOptions {
+  model: string;
   voice: string;
   instructions?: string;
   apiUri: string;
@@ -52,6 +53,7 @@ export function toModelOptions(
 ): TTSModelOptions {
   if (pluginSettings.modelProvider === "humeai") {
     return {
+      model: pluginSettings.model,
       voice: pluginSettings.ttsVoice,
       instructions: pluginSettings.instructions || undefined,
       apiUri: pluginSettings.API_URL || REAL_HUMEAI_API_URL,
@@ -59,14 +61,11 @@ export function toModelOptions(
     };
   } else {
     return {
+      model: pluginSettings.model,
       voice: pluginSettings.ttsVoice,
       instructions: pluginSettings.instructions || undefined,
-      apiUri:
-        pluginSettings.modelProvider === "openai"
-          ? pluginSettings.API_URL || REAL_OPENAI_API_URL
-          : pluginSettings.openaicompat_apiBase,
-      apiKey:
-        pluginSettings.modelProvider === "openai" ? pluginSettings.API_KEY : pluginSettings.openaicompat_apiKey,
+      apiUri: pluginSettings.API_URL || REAL_OPENAI_API_URL,
+      apiKey: pluginSettings.API_KEY,
     };
   }
 }
@@ -78,7 +77,7 @@ export const humeTextToSpeech: TTSModel = async function humeTextToSpeech(
   text: string,
   options: TTSModelOptions,
 ): Promise<ArrayBuffer> {
-  const headers = await fetch(orDefaultHume(options.apiUri) + "/v0/tts/file", {
+  const headers = await fetch(orDefaultHume(options.apiUri) + "/v0/tts", {
     headers: {
       "X-Hume-Api-Key": options.apiKey,
       "Content-Type": "application/json",
@@ -87,13 +86,13 @@ export const humeTextToSpeech: TTSModel = async function humeTextToSpeech(
     body: JSON.stringify({
       utterances: [
         { 
-          text: text,
           voice: {
-            name: options.voice
-            ? { voice: options.voice }
-            : undefined,
+            id: options.voice,
+            provider: "HUME_AI",
           },
           description: options.instructions,
+          text: text,
+          speed: 1,
         },
       ],
       format: { type: "mp3" },
@@ -122,7 +121,7 @@ export const openAITextToSpeech: TTSModel = async function openAITextToSpeech(
     method: "POST",
     body: JSON.stringify({
       model: options.model,
-      voice: options.voice, // for openai is the voice
+      voice: options.voice,
       instructions: options.instructions,
       input: text,
       speed: 1,
@@ -133,16 +132,17 @@ export const openAITextToSpeech: TTSModel = async function openAITextToSpeech(
   return bf;
 };
 
-export const textToSpeech: TTSModel = async (
+export async function textToSpeech(
   text: string,
   options: TTSModelOptions,
-) => {
-  if (options.apiUri.startsWith(REAL_HUMEAI_API_URL)) {
-     return humeTextToSpeech(text, options)
+  pluginSettings: TTSPluginSettings,
+): Promise<ArrayBuffer> {
+  if (pluginSettings.modelProvider === "humeai") {
+    return humeTextToSpeech(text, options);
   } else {
-     return openAITextToSpeech(text, options)
-   }
-};
+    return openAITextToSpeech(text, options);
+  }
+}
 
 function orDefaultHume(maybeUrl: string): string {
   return maybeUrl.replace(/\/$/, "") || REAL_HUMEAI_API_URL;
