@@ -3,7 +3,7 @@ import { AudioStore, loadAudioStore } from "../player/AudioStore";
 import {
   pluginSettingsStore,
   REAL_OPENAI_API_URL,
-  REAL_HUMEAI_API_URL,
+  REAL_HUME_API_URL,
   TTSPluginSettingsStore,
 } from "../player/TTSPluginSettings";
 import { IndexedDBAudioStorage } from "./IndexedDBAudioStorage";
@@ -248,12 +248,12 @@ const SimplePlayer: FC<{ settingsStore: TTSPluginSettingsStore }> = observer(
     useEffect(() => {
       WebAudioSink.create().then(async (sink) => {
         const text = `Speaking of connections, I think that's another important aspect of embracing uncertainty. When we're open to new experiences and perspectives, we're more likely to form meaningful connections with others. We're more likely to listen, to learn, and to grow together.`;
-        if (settingsStore.settings.modelProvider === "humeai") {
+        if (settingsStore.settings.modelProvider === "hume") {
           const audio = await humeTextToSpeech(text, {
-            apiKey: settingsStore.settings.humeai_apiKey,
+            apiKey: settingsStore.settings.hume_apiKey,
             model: "",
             voice: "",
-            apiUri: REAL_HUMEAI_API_URL,
+            apiUri: REAL_HUME_API_URL,
           });
         
           await sink.switchMedia(audio);

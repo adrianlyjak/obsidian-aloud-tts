@@ -1,6 +1,6 @@
 import * as mobx from "mobx";
 import { AudioSystem } from "./AudioSystem";
-import { TTSErrorInfo, TTSModelOptions, toModelOptions } from "./TTSModel"; // Import toModelOptions
+import { TTSErrorInfo, TTSModelOptions, toModelOptions } from "./TTSModel";
 
 /** manages loading and caching of tracks */
 export class ChunkLoader {

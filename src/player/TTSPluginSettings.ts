@@ -7,7 +7,8 @@ export type TTSPluginSettings = {
   API_URL: string;
   modelProvider: ModelProvider;
   model: string;
-  ttsVoice: string;
+  ttsVoice?: string;
+  sourceType: string;
   instructions?: string;
   chunkType: "sentence" | "paragraph";
   playbackSpeed: number;
@@ -16,7 +17,7 @@ export type TTSPluginSettings = {
   showPlayerView: PlayerViewMode;
   version: number;
   audioFolder: string;
-} & OpenAIModelConfig & CustomModelConfig & HumeAIModelConfig;
+} & OpenAIModelConfig & OpenAICompatModelConfig & HumeModelConfig;
 
 export interface OpenAIModelConfig {
   openai_apiKey: string;
@@ -25,17 +26,18 @@ export interface OpenAIModelConfig {
   openai_ttsInstructions?: string;
 }
 
-export interface CustomModelConfig {
+export interface OpenAICompatModelConfig {
   openaicompat_apiKey: string;
   openaicompat_apiBase: string;
   openaicompat_ttsModel: string;
   openaicompat_ttsVoice: string;
 }
 
-export interface HumeAIModelConfig {
-  humeai_apiKey: string;
-  humeai_ttsVoice: string;
-  humeai_ttsInstructions?: string;
+export interface HumeModelConfig {
+  hume_apiKey: string;
+  hume_ttsVoice?: string;
+  hume_sourceType: string;
+  hume_ttsInstructions?: string;
 }
 
 export const playViewModes = [
@@ -58,9 +60,9 @@ export function voiceHash(options: TTSModelOptions): string {
 }
 
 export const REAL_OPENAI_API_URL = "https://api.openai.com";
-export const REAL_HUMEAI_API_URL = "https://api.hume.ai";
+export const REAL_HUME_API_URL = "https://api.hume.ai";
 
-export const modelProviders = ["openai", "openaicompat", "humeai"] as const;
+export const modelProviders = ["openai", "openaicompat", "hume"] as const;
 export type ModelProvider = (typeof modelProviders)[number];
 
 export const DEFAULT_SETTINGS: TTSPluginSettings = {
@@ -69,6 +71,7 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   modelProvider: "openai",
   model: "gpt-4o-mini-tts",
   ttsVoice: "shimmer",
+  sourceType: "",
   instructions: undefined,
   chunkType: "sentence",
   playbackSpeed: 1.0,
@@ -85,10 +88,11 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   openaicompat_apiBase: "",
   openaicompat_ttsModel: "",
   openaicompat_ttsVoice: "",
-  // humeai
-  humeai_apiKey: "",
-  humeai_ttsVoice: "",
-  humeai_ttsInstructions: undefined,
+  // hume
+  hume_apiKey: "",
+  hume_ttsVoice: undefined,
+  hume_sourceType: "HUME_AI",
+  hume_ttsInstructions: undefined,
 
   version: 1,
   audioFolder: "aloud",
@@ -127,7 +131,7 @@ export async function pluginSettingsStore(
         if (
           store.settings.API_URL &&
           store.settings.API_URL !== REAL_OPENAI_API_URL &&
-          store.settings.API_URL !== REAL_HUMEAI_API_URL
+          store.settings.API_URL !== REAL_HUME_API_URL
         ) {
           store.setApiKeyValidity(true);
         } else if (!store.settings.API_KEY) {
@@ -135,7 +139,7 @@ export async function pluginSettingsStore(
             false,
             `Please enter an API key in the "${MARKETING_NAME_LONG}" plugin settings`,
           );
-        } else if (store.settings.modelProvider !== "humeai") {
+        } else if (store.settings.modelProvider !== "hume") {
           store.setApiKeyValidity(undefined, undefined);
 
           try {
@@ -200,13 +204,13 @@ export async function pluginSettingsStore(
               instructions: undefined,
               model: merged.openaicompat_ttsModel,
             }
-            : provider === "humeai"
+            : provider === "hume"
             ? {
-              API_KEY: merged.humeai_apiKey,
+              API_KEY: merged.hume_apiKey,
               API_URL: "",
-              ttsVoice: merged.humeai_ttsVoice || undefined,
-              instructions: merged.humeai_ttsInstructions || undefined,
-              model: undefined
+              ttsVoice: merged.hume_ttsVoice || undefined,
+              sourceType: merged.hume_sourceType,
+              instructions: merged.hume_ttsInstructions || undefined,
             }
             : {};
         await store.updateSettings({
@@ -251,24 +255,43 @@ const parsePluginSettings = (toParse: unknown): TTSPluginSettings => {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function migrateToVersion1(data: any): any {
-  // extract the openai_apiKey and openai_apiBase fields
   const isCustom =
-    !!data.API_URL && data.API_URL !== REAL_OPENAI_API_URL;
+    !!data.API_URL &&
+    data.API_URL !== REAL_OPENAI_API_URL &&
+    data.API_URL !== REAL_HUME_API_URL;
+  const isHume = data.API_URL === REAL_HUME_API_URL;
+
+  let providerSettings = {};
+  let modelProvider: ModelProvider = "openai"; // Default to openai
+
+  if (isCustom) {
+    modelProvider = "openaicompat";
+    providerSettings = {
+      openaicompat_apiKey: data.API_KEY,
+      openaicompat_apiBase: data.API_URL,
+      openaicompat_ttsModel: data.model,
+      openaicompat_ttsVoice: data.ttsVoice,
+    };
+  } else if (isHume) {
+    modelProvider = "hume";
+    providerSettings = {
+      hume_apiKey: data.API_KEY,
+      hume_ttsVoice: data.ttsVoice,
+      hume_sourceType: data.sourceType,
+    };
+  } else { // OpenAI (REAL_OPENAI_API_URL or empty/default)
+    modelProvider = "openai";
+    providerSettings = {
+      openai_apiKey: data.API_KEY,
+      openai_ttsModel: data.model,
+      openai_ttsVoice: data.ttsVoice,
+    };
+  }
+
   return {
     ...data,
-    modelProvider: isCustom ? "openaicompat" : "openai",
-    ...(isCustom && !!data.API_URL
-      ? {
-          openaicompat_apiKey: data.API_KEY,
-          openaicompat_apiBase: data.API_URL,
-          openaicompat_ttsModel: data.model,
-          openaicompat_ttsVoice: data.ttsVoice,
-        }
-      : {
-          openai_apiKey: data.API_KEY,
-          openai_ttsModel: data.model,
-          openai_ttsVoice: data.ttsVoice,
-        }),
+    modelProvider: modelProvider,
+    ...providerSettings,
     version: 1,
   };
 }
