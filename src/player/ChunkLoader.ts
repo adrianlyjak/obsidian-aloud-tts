@@ -1,6 +1,6 @@
 import * as mobx from "mobx";
 import { AudioSystem } from "./AudioSystem";
-import { TTSErrorInfo, TTSModelOptions } from "./TTSModel";
+import { TTSErrorInfo, TTSModelOptions, toModelOptions } from "./TTSModel"; // Import toModelOptions
 
 /** manages loading and caching of tracks */
 export class ChunkLoader {
@@ -167,8 +167,7 @@ export class ChunkLoader {
     text: string,
     options: TTSModelOptions,
   ): Promise<ArrayBuffer> {
-    // copy the settings to make sure audio isn't stored under under the wrong key
-    // if the settings are changed while request is in flight
+    // Use the passed 'options' ONLY for the cache lookup key
     const stored: ArrayBuffer | null = await this.system.storage.getAudio(
       text,
       options,
@@ -176,7 +175,9 @@ export class ChunkLoader {
     if (stored) {
       return stored;
     } else {
-      const buff = await this.system.ttsModel(text, options);
+      // Regenerate options from CURRENT settings before making the API call
+      const currentOptions = toModelOptions(this.system.settings);
+      const buff = await this.system.ttsModel(text, currentOptions);
       await this.system.storage.saveAudio(text, options, buff);
       return buff;
     }

@@ -40,10 +40,10 @@ export class TTSErrorInfo extends Error {
     return this.httpErrorCode === 429 || this.httpErrorCode >= 500;
   }
 
-  openAIJsonMessage(): string | undefined {
+  ttsJsonMessage(): string | undefined {
     return (this.errorDetails as ErrorMessage)?.error?.message;
   }
-  openAIErrorCode(): string | undefined {
+  ttsErrorCode(): string | undefined {
     return (this.errorDetails as ErrorMessage)?.error?.code;
   }
 }
@@ -132,27 +132,15 @@ export const openAITextToSpeech: TTSModel = async function openAITextToSpeech(
   return bf;
 };
 
-export async function textToSpeech(
-  text: string,
-  options: TTSModelOptions,
-  pluginSettings: TTSPluginSettings,
-): Promise<ArrayBuffer> {
-  if (pluginSettings.modelProvider === "humeai") {
-    return humeTextToSpeech(text, options);
-  } else {
-    return openAITextToSpeech(text, options);
-  }
+function orDefaultOpenAI(maybeUrl: string): string {
+  return maybeUrl.replace(/\/$/, "") || REAL_OPENAI_API_URL;
 }
 
 function orDefaultHume(maybeUrl: string): string {
   return maybeUrl.replace(/\/$/, "") || REAL_HUMEAI_API_URL;
 }
 
-function orDefaultOpenAI(maybeUrl: string): string {
-  return maybeUrl.replace(/\/$/, "") || REAL_OPENAI_API_URL;
-}
-
-export async function listModels(
+export async function listOpenAIModels(
   settings: TTSPluginSettings,
 ): Promise<string[]> {
   const headers = await fetch(
@@ -186,12 +174,13 @@ async function validate200(response: Response) {
   }
 }
 
-export class OpenAIAPIError extends Error {
-  name = "OpenAIAPIError";
+export class APIError extends Error {
+  name = "APIError";
   status: number;
   json?: unknown;
+
   constructor(status: number, json?: unknown) {
-    super(`OpenAI API error (${status}) - ${JSON.stringify(json)})`);
+    super(`API error (${status}) - ${JSON.stringify(json)})`);
     this.status = status;
     this.json = json;
   }
