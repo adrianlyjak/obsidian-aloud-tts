@@ -1,5 +1,5 @@
 import { action, observable } from "mobx";
-import { TTSErrorInfo, TTSModelOptions, listModels } from "./TTSModel";
+import { TTSErrorInfo, TTSModelOptions, listOpenAIModels } from "./TTSModel";
 import { debounce } from "../util/misc";
 import { hashString } from "../util/Minhash";
 export type TTSPluginSettings = {
@@ -130,34 +130,35 @@ export async function pluginSettingsStore(
           store.settings.API_URL !== REAL_HUMEAI_API_URL
         ) {
           store.setApiKeyValidity(true);
-        } else {
-          if (!store.settings.API_KEY) {
-            store.setApiKeyValidity(
-              false,
-              `Please enter an API key in the "${MARKETING_NAME_LONG}" plugin settings`,
-            );
-          } else {
-            store.setApiKeyValidity(undefined, undefined);
-            try {
-              await listModels(store.settings);
-              store.setApiKeyValidity(true, undefined);
-            } catch (ex: unknown) {
-              console.error("Could not validate API key", ex);
-              let message = "Cannot connect to OpenAI";
-              if (ex instanceof TTSErrorInfo) {
-                if (ex.openAIErrorCode() === "invalid_api_key") {
-                  message =
-                    "Invalid API key! Enter a valid API key in the plugin settings";
-                } else {
-                  const msg = ex.openAIJsonMessage();
-                  if (msg) {
-                    message = msg;
-                  }
+        } else if (!store.settings.API_KEY) {
+          store.setApiKeyValidity(
+            false,
+            `Please enter an API key in the "${MARKETING_NAME_LONG}" plugin settings`,
+          );
+        } else if (store.settings.modelProvider !== "humeai") {
+          store.setApiKeyValidity(undefined, undefined);
+
+          try {
+            await listOpenAIModels(store.settings);
+            store.setApiKeyValidity(true, undefined);
+          } catch (ex: unknown) {
+            console.error("Could not validate API key", ex);
+            let message = "Cannot connect to OpenAI";
+            if (ex instanceof TTSErrorInfo) {
+              if (ex.ttsErrorCode() === "invalid_api_key") {
+                message =
+                  "Invalid API key! Enter a valid API key in the plugin settings";
+              } else {
+                const msg = ex.ttsJsonMessage();
+                if (msg) {
+                  message = msg;
                 }
               }
-              store.setApiKeyValidity(false, message);
             }
+            store.setApiKeyValidity(false, message);
           }
+        } else {
+          store.setApiKeyValidity(true);
         }
       }, 500),
       updateSettings: async (

@@ -172,10 +172,6 @@ export default class TTSPlugin extends Plugin {
       () => this.loadData(),
       (data) => this.saveData(data),
     );
-    let ttsRequest = openAITextToSpeech;
-    if (this.settings.settings.modelProvider === "humeai") {
-      ttsRequest = humeTextToSpeech;
-    }
 
     const audio = await WebAudioSink.create();
     const cache = configurableAudioCache(this.app, this.settings);
@@ -188,7 +184,11 @@ export default class TTSPlugin extends Plugin {
           system: sys,
         }),
       storage: () => cache,
-      ttsModel: () => ttsRequest,
+      ttsModel: () => (
+        this.settings.settings.modelProvider === "humeai" ?
+          humeTextToSpeech :
+          openAITextToSpeech
+      ),
       config: () => ({
         backgroundLoaderIntervalMillis: 1000,
       }),

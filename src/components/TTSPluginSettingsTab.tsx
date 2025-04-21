@@ -63,7 +63,7 @@ const TTSSettingsTabComponent: React.FC<{
   const [isActive, setActive] = React.useState(false);
   return (
     <>
-      <h1>OpenAI</h1>
+      <h1>Aloud</h1>
       <ErrorInfoView player={player} />
       <TestVoiceComponent
         store={store}
@@ -84,12 +84,14 @@ const TTSSettingsTabComponent: React.FC<{
 
       {store.settings.modelProvider === "humeai" &&(
         <>
-          <h1>Hume AI</h1>
+          <h1>HumeAI</h1>
           <HumeAIModelComponent store={store} />
           <HumeAIVoiceComponent store={store} />
+          <HumeAITTSInstructionsComponent store={store} />
         </>)}
       {store.settings.modelProvider === "openaicompat" && (
         <>
+          <h1>OpenAI Compatible API</h1>
           <OpenAICompatibleApiKeyComponent store={store} />
           <APIBaseURLComponent store={store} />
           <CustomVoices store={store} />
@@ -148,7 +150,7 @@ const ModelSwitcher: React.FC<{
         <OptionSelect
           options={modelProviders.map((v) => ({ label: labels[v], value: v }))}
           value={store.settings.modelProvider}
-          onChange={(v) => store.updateSettings({ modelProvider: v as ModelProvider })}
+          onChange={(v) => store.updateModelSpecificSettings(v as ModelProvider, {})}
         />
       </div>
     </div>
@@ -776,13 +778,23 @@ const TestVoiceComponent: React.FC<{
   const isLoading = player.activeText?.isLoading;
   const playSample = React.useCallback(() => {
     if (!isPlaying) {
-      const text = `Hi, I'm ${store.settings.ttsVoice}. I'm a virtual text to speech assistant.`;
-      player.startPlayer({
-        text,
-        filename: "sample " + store.settings.ttsVoice,
-        start: 0,
-        end: text.length,
-      });
+      if (store.settings.modelProvider === "humeai") {
+        const text = `Hi, I'm Hume AI. I'm a virtual text to speech assistant.`;
+        player.startPlayer({
+          text,
+          filename: "sample " + store.settings.ttsVoice,
+          start: 0,
+          end: text.length,
+        });
+      } else {
+        const text = `Hi, I'm ${store.settings.ttsVoice}. I'm a virtual text to speech assistant.`;
+        player.startPlayer({
+          text,
+          filename: "sample " + store.settings.ttsVoice,
+          start: 0,
+          end: text.length,
+        });
+      }
       if (!isActive) {
         setActive(true);
       }
@@ -869,6 +881,39 @@ const OpenAITTSInstructionsComponent: React.FC<{
         <div className="setting-item-description">
           Optional instructions to customize the tone and style of the voice
           (only supported by some models)
+        </div>
+      </div>
+      <textarea
+        value={instructions}
+        disabled={disabled}
+        onChange={onChange}
+        placeholder="Example: Speak in a whisper"
+        rows={3}
+        className="tts-instructions-textarea"
+      />
+    </div>
+  );
+});
+
+const HumeAITTSInstructionsComponent: React.FC<{
+  store: TTSPluginSettingsStore;
+}> = observer(({ store }) => {
+  const onChange: React.ChangeEventHandler<HTMLTextAreaElement> =
+    React.useCallback((evt) => {
+      store.updateModelSpecificSettings("openai", {
+        humeai_ttsInstructions: evt.target.value,
+      });
+    }, []);
+
+  const disabled = false;
+  const instructions = store.settings.humeai_ttsInstructions;
+
+  return (
+    <div className="setting-item tts-settings-block">
+      <div className="setting-item-info">
+        <div className="setting-item-name">Voice Instructions</div>
+        <div className="setting-item-description">
+          Optional instructions to customize the tone and style of the voice
         </div>
       </div>
       <textarea
