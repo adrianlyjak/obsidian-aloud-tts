@@ -1,5 +1,5 @@
 import {
-  REAL_HUMEAI_API_URL,
+  REAL_HUME_API_URL,
   REAL_OPENAI_API_URL,
   TTSPluginSettings,
 } from "./TTSPluginSettings";
@@ -10,7 +10,8 @@ import {
  */
 export interface TTSModelOptions {
   model: string;
-  voice: string;
+  voice?: string;
+  sourceType: string;
   instructions?: string;
   apiUri: string;
   apiKey: string;
@@ -51,23 +52,14 @@ export class TTSErrorInfo extends Error {
 export function toModelOptions(
   pluginSettings: TTSPluginSettings,
 ): TTSModelOptions {
-  if (pluginSettings.modelProvider === "humeai") {
-    return {
-      model: pluginSettings.model,
-      voice: pluginSettings.ttsVoice,
-      instructions: pluginSettings.instructions || undefined,
-      apiUri: pluginSettings.API_URL || REAL_HUMEAI_API_URL,
-      apiKey: pluginSettings.API_KEY,
-    };
-  } else {
-    return {
-      model: pluginSettings.model,
-      voice: pluginSettings.ttsVoice,
-      instructions: pluginSettings.instructions || undefined,
-      apiUri: pluginSettings.API_URL || REAL_OPENAI_API_URL,
-      apiKey: pluginSettings.API_KEY,
-    };
-  }
+  return {
+    model: pluginSettings.model,
+    voice: pluginSettings.ttsVoice || undefined,
+    instructions: pluginSettings.instructions || undefined,
+    sourceType: pluginSettings.sourceType,
+    apiUri: pluginSettings.API_URL || (pluginSettings.modelProvider === 'hume' ? REAL_HUME_API_URL : REAL_OPENAI_API_URL),
+    apiKey: pluginSettings.API_KEY,
+  };
 }
 
 export interface TTSModel {
@@ -85,18 +77,23 @@ export const humeTextToSpeech: TTSModel = async function humeTextToSpeech(
     method: "POST",
     body: JSON.stringify({
       utterances: [
-        { 
-          voice: {
-            id: options.voice,
-            provider: "HUME_AI",
-          },
-          description: options.instructions,
+        {
+          ...(options.voice && {
+            voice: {
+              id: options.voice,
+              provider: options.sourceType,
+            },
+          }),
+          ...(options.instructions && {
+            description: options.instructions,
+          }),
           text: text,
           speed: 1,
         },
       ],
       format: { type: "mp3" },
       num_generations: 1,
+      split_utterances: false,
     }),
   });
   await validate200(headers);
@@ -121,8 +118,10 @@ export const openAITextToSpeech: TTSModel = async function openAITextToSpeech(
     method: "POST",
     body: JSON.stringify({
       model: options.model,
-      voice: options.voice,
-      instructions: options.instructions,
+      voice: (options.voice ? options.voice : ""),
+      ...(options.instructions && {
+        instructions: options.instructions
+      }),
       input: text,
       speed: 1,
     }),
@@ -137,7 +136,7 @@ function orDefaultOpenAI(maybeUrl: string): string {
 }
 
 function orDefaultHume(maybeUrl: string): string {
-  return maybeUrl.replace(/\/$/, "") || REAL_HUMEAI_API_URL;
+  return maybeUrl.replace(/\/$/, "") || REAL_HUME_API_URL;
 }
 
 export async function listOpenAIModels(

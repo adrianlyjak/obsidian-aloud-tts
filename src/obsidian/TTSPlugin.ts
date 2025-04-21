@@ -185,7 +185,7 @@ export default class TTSPlugin extends Plugin {
         }),
       storage: () => cache,
       ttsModel: () => (
-        this.settings.settings.modelProvider === "humeai" ?
+        this.settings.settings.modelProvider === "hume" ?
           humeTextToSpeech :
           openAITextToSpeech
       ),

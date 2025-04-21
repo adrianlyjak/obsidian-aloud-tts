@@ -96,9 +96,9 @@ describe("pluginSettingsStore", () => {
   });
   it("should migrate data (hume base url) to version 1 format", async () => {
     const baseData = {
-      humeai_apiKey: "test-key",
-      humeai_voice: "test-voice",
-      humeai_ttsVoice: "test-voice",
+      hume_apiKey: "test-key",
+      hume_voice: "test-voice",
+      hume_ttsVoice: "test-voice",
     };
     const loadData = async () => baseData;
     const saveData = async (data: unknown) => {};
@@ -107,15 +107,15 @@ describe("pluginSettingsStore", () => {
 
     const expectedSettings: TTSPluginSettings = {
       ...DEFAULT_SETTINGS,
-      modelProvider: "humeai",
-      humeai_apiKey: "test-key",
-      humeai_ttsVoice: "test-voice",
+      modelProvider: "hume",
+      hume_apiKey: "test-key",
+      hume_ttsVoice: "test-voice",
     };
-    expect(store.settings.humeai_apiKey).toEqual(expectedSettings.humeai_apiKey);
-    expect(store.settings.humeai_ttsVoice).toEqual(
-      expectedSettings.humeai_ttsVoice,
+    expect(store.settings.hume_apiKey).toEqual(expectedSettings.hume_apiKey);
+    expect(store.settings.hume_ttsVoice).toEqual(
+      expectedSettings.hume_ttsVoice,
     );
-    expect(store.settings.humeai_ttsVoice).toEqual(expectedSettings.humeai_ttsVoice);
+    expect(store.settings.hume_ttsVoice).toEqual(expectedSettings.hume_ttsVoice);
     expect(store.settings).toMatchObject(expectedSettings);
   });
 
