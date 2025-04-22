@@ -1,4 +1,4 @@
-import { hashString } from "../util/Minhash";
+import { hashStrings } from "../util/Minhash";
 import { TTSModelOptions } from "./TTSModel";
 import { voiceHash } from "./TTSPluginSettings";
 
@@ -22,7 +22,7 @@ export function hashAudioInputs(
   text: string,
   settings: TTSModelOptions,
 ): string {
-  return hashString(voiceHash(settings) + text).toString();
+  return hashStrings([voiceHash(settings) + text])[0].toString();
 }
 
 export function memoryStorage(): AudioCache {

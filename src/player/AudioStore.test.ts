@@ -8,6 +8,7 @@ import { DEFAULT_SETTINGS, TTSPluginSettings } from "./TTSPluginSettings";
 import { ActiveAudioText } from "./ActiveAudioText";
 import { createAudioSystem } from "./AudioSystem";
 import { AudioTextOptions } from "./AudioTextChunk";
+import { ChunkLoader } from "./ChunkLoader";
 
 vi.mock("obsidian", () => ({
   requestUrl: vi.fn(),
@@ -99,9 +100,9 @@ describe("AudioStore", () => {
         },
       });
       const loaded: string[] = [];
-      const tts = (txt: string, _: TTSModelOptions) => {
+      const tts = async (txt: string, _: TTSModelOptions) => {
         loaded.push(txt);
-        return Promise.resolve(new ArrayBuffer(txt.length));
+        return new ArrayBuffer(txt.length);
       };
       const text =
         "First there was one bottle top. Then there were two bottle tops. Penultimately there were three bottle tops. Finally there were four bottle tops.";
@@ -146,7 +147,7 @@ describe("AudioStore", () => {
     test("should switch out the queue when the settings change", async () => {
       const seen: { text: string; settings: TTSModelOptions }[] = [];
       const tts: TTSModel = (text: string, settings: TTSModelOptions) => {
-        seen.push({ text, settings });
+        seen.push({ text: text, settings });
         return fakeTTS(text, settings);
       };
       const settings = mobx.observable({ ...DEFAULT_SETTINGS });
@@ -228,9 +229,9 @@ describe("AudioStore", () => {
     test("should reset audio after current track finishes when text in next track is edited", async () => {
       vi.useFakeTimers();
       const duration = 5;
-      const ttsCalls: string[] = [];
+      const ttsCall: string[] = [];
       const tts = async (txt: string, _: TTSModelOptions) => {
-        ttsCalls.push(txt);
+        ttsCall.push(txt);
         return new ArrayBuffer(txt.length);
       };
       const sink = new FakeAudioSink({
@@ -255,7 +256,7 @@ describe("AudioStore", () => {
 
       // wait a tick
       await vi.advanceTimersByTimeAsync(1);
-      expect(ttsCalls).toHaveLength(3);
+      expect(ttsCall).toHaveLength(3);
       // Advance time to finish the first chunk
       sink.currentTime = duration;
       await vi.advanceTimersByTimeAsync(5000);
@@ -265,8 +266,8 @@ describe("AudioStore", () => {
       // Verify that the text has been updated in the third chunk
       expect(aat.audio.chunks[2].rawText).toContain("New ");
 
-      expect(ttsCalls).toHaveLength(4);
-      expect(ttsCalls[3]).toMatch(/^New /);
+      expect(ttsCall).toHaveLength(4);
+      expect(ttsCall[3]).toMatch(/^New /);
     });
 
     test("should update the tracks' positions forward when the text is added before", async () => {
@@ -781,6 +782,7 @@ function createStore({
         system: sys,
       });
     },
+    chunkLoader: (sys) => (new ChunkLoader({ system: sys })),
   });
   return system.audioStore;
 }

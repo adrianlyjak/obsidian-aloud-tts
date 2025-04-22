@@ -2,17 +2,22 @@ import { AudioCache } from "./AudioCache";
 import { AudioSink } from "./AudioSink";
 import { AudioStore } from "./AudioStore";
 import { TTSModel } from "./TTSModel";
-import { TTSPluginSettings } from "./TTSPluginSettings";
+import { TTSPluginSettings, DEFAULT_SETTINGS } from "./TTSPluginSettings";
+import { ChunkLoader } from "./ChunkLoader";
+
+// Configuration options for the AudioSystem
+export interface AudioSystemConfig {
+  backgroundLoaderIntervalMillis: number;
+}
 
 export interface AudioSystem {
   readonly audioSink: AudioSink;
   readonly audioStore: AudioStore;
   readonly settings: TTSPluginSettings;
   readonly storage: AudioCache;
+  readonly chunkLoader: ChunkLoader;
   readonly ttsModel: TTSModel;
-  readonly config: {
-    backgroundLoaderIntervalMillis: number;
-  };
+  readonly config: AudioSystemConfig;
 }
 
 // Define the AsLazyBuilder type

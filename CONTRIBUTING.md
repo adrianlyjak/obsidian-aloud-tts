@@ -1,14 +1,14 @@
 # Installation and Development
 
-This project uses pnpm as its package manager. To get started, make sure you have `corepack` enabled by running `corepack enable`, and then run `pnpm install` to install the dependencies.
+To get started, run `npm install` to install the dependencies.
 
 From there, you can run the package.json scripts:
 
-- Run tests with `pnpm run test`
-- Lint with `pnpm run lint`
-- Reformat with `pnpm run format:write`
-- `pnpm run dev` to start the development build of the plugin. (More on this below)
-- `pnpm run build` to bundle the build for release
+- Run tests with `npm run test`
+- Lint with `npm run lint`
+- Reformat with `npm run format:write`
+- `npm run dev` to start the development build of the plugin. (More on this below)
+- `npm run build` to bundle the build for release
 
 ### Installing the plugin
 

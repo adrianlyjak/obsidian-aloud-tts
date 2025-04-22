@@ -45,7 +45,7 @@ export class Minhash {
     for (let i = 0; i < this.hashvalues.length; i++) {
       const a = this.permA[i];
       const b = this.permB[i];
-      const hash = (a * hashString(str) + b) % PRIME;
+      const hash = (a * hashStrings([str])[0] + b) % PRIME;
       this.hashvalues[i] = Math.min(this.hashvalues[i], hash);
     }
   }
@@ -164,15 +164,19 @@ export class LshIndex {
 }
 
 /**
- * Hashes a string to a 32-bit integer.
- * This is a simple hash function to convert a string into a numerical value.
+ * Hashes every string to a 32-bit integer.
+ * This is a simple hash function to convert strings into numerical values.
  */
-export function hashString(str: string): number {
-  let hash = 0;
+export function hashStrings(str: string[]): number[] {
+  let hash = [];
   for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash |= 0; // Converts to a 32-bit integer
+    hash[i] = 0;
+    for (let j = 0; j < str[i].length; j++) {
+      const char = str[i].charCodeAt(j);
+      hash[i] = (hash[i] << 5) - hash[i] + char;
+      hash[i] |= 0; // Converts to a 32-bit integer
+    }
+    hash[i] += MAX_HASH;
   }
-  return hash + MAX_HASH;
+  return hash;
 }

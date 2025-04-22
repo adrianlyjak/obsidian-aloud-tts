@@ -3,6 +3,7 @@ import {
   REAL_OPENAI_API_URL,
   TTSPluginSettings,
 } from "./TTSPluginSettings";
+import { base64ToArrayBuffer } from "../util/misc";
 
 /**
  * options used by the audio model. Some options are used as a cache key, such that changes to the options
@@ -13,6 +14,7 @@ export interface TTSModelOptions {
   voice?: string;
   sourceType: string;
   instructions?: string;
+  contextMode: boolean;
   apiUri: string;
   apiKey: string;
 }
@@ -55,20 +57,53 @@ export function toModelOptions(
   return {
     model: pluginSettings.model,
     voice: pluginSettings.ttsVoice || undefined,
-    instructions: pluginSettings.instructions || undefined,
     sourceType: pluginSettings.sourceType,
-    apiUri: pluginSettings.API_URL || (pluginSettings.modelProvider === 'hume' ? REAL_HUME_API_URL : REAL_OPENAI_API_URL),
+    instructions: pluginSettings.instructions || undefined,
+    contextMode: pluginSettings.contextMode,
+    apiUri: pluginSettings.API_URL || (
+      pluginSettings.modelProvider === 'hume' ?
+      REAL_HUME_API_URL :
+      REAL_OPENAI_API_URL
+    ),
     apiKey: pluginSettings.API_KEY,
   };
 }
 
+// Interface for batch text-to-speech requests
 export interface TTSModel {
-  (text: string, options: TTSModelOptions): Promise<ArrayBuffer>;
+  (text: string, options: TTSModelOptions, contexts?: string[]): Promise<ArrayBuffer>;
 }
+
 export const humeTextToSpeech: TTSModel = async function humeTextToSpeech(
   text: string,
   options: TTSModelOptions,
+  contexts?: string[],
 ): Promise<ArrayBuffer> {
+  // Construct the utterances array for the Hume API request
+    const utterance: {
+      text: string;
+      voice?: { id: string; provider: string };
+      description?: string;
+      speed?: number;
+    } = {
+      text: text,
+      voice: options.voice ? {
+        id: options.voice,
+        provider: options.sourceType.toUpperCase(),
+      } : undefined,
+      description: options.instructions,
+      speed: 1.0,
+    };
+
+  let contextUtterances: { text: string }[] | undefined;
+  if (contexts) {
+   contextUtterances = contexts.map((text) => {
+      return {
+        text: text,
+      };
+    });
+  }
+
   const headers = await fetch(orDefaultHume(options.apiUri) + "/v0/tts", {
     headers: {
       "X-Hume-Api-Key": options.apiKey,
@@ -76,21 +111,10 @@ export const humeTextToSpeech: TTSModel = async function humeTextToSpeech(
     },
     method: "POST",
     body: JSON.stringify({
-      utterances: [
-        {
-          ...(options.voice && {
-            voice: {
-              id: options.voice,
-              provider: options.sourceType,
-            },
-          }),
-          ...(options.instructions && {
-            description: options.instructions,
-          }),
-          text: text,
-          speed: 1,
-        },
-      ],
+      ...(contexts && contexts.length > 0 && options.contextMode && {
+        context: { utterances: contextUtterances }
+      }),
+      utterances: utterance,
       format: { type: "mp3" },
       num_generations: 1,
       split_utterances: false,
@@ -98,17 +122,23 @@ export const humeTextToSpeech: TTSModel = async function humeTextToSpeech(
   });
   await validate200(headers);
   const res = await headers.json();
-  const audioBase64: string = res.generations[0].audio;
-  const audioData = Uint8Array.from(
-    atob(audioBase64),
-    (c) => c.charCodeAt(0),
-  );
-  return audioData.buffer;
+
+  // Hume might return multiple generations, we only care about the first one.
+  const generation = res.generations[0];
+  if (!generation || !generation.snippets) {
+    console.error("Hume response missing generations or snippets:", res);
+    throw new Error("Hume response missing generations or snippets");
+  }
+  
+  const snippet = generation.snippets[0];
+  return base64ToArrayBuffer(snippet.audio);
 };
 
+// OpenAI / Compatible API implementation
 export const openAITextToSpeech: TTSModel = async function openAITextToSpeech(
   text: string,
   options: TTSModelOptions,
+  contexts?: string[],
 ): Promise<ArrayBuffer> {
   const headers = await fetch(orDefaultOpenAI(options.apiUri) + "/v1/audio/speech", {
     headers: {
@@ -120,10 +150,13 @@ export const openAITextToSpeech: TTSModel = async function openAITextToSpeech(
       model: options.model,
       voice: (options.voice ? options.voice : ""),
       ...(options.instructions && {
-        instructions: options.instructions
+        instructions: options.instructions + (
+          (contexts && contexts.length > 0 && options.contextMode) ? 
+          ("\n\n Previous sentence(s) (Context): " + contexts.join("")) : ""
+        )
       }),
       input: text,
-      speed: 1,
+      speed: 1.0,
     }),
   });
   await validate200(headers);
