@@ -1,7 +1,7 @@
 {
   "id": "aloud-tts",
   "name": "Aloud",
-  "version": "0.6.0",
+  "version": "0.7.0-rc1",
   "minAppVersion": "0.15.0",
   "description": "Highlight and speak text from your notes. Converts text to speech in real-time using lifelike voices from OpenAI.",
   "author": "Adrian Lyjak",
