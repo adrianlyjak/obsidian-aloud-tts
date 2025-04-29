@@ -7,12 +7,11 @@
 export default function cleanMarkup(md: string) {
   let output = md || "";
 
-  // Remove horizontal rules (stripListHeaders conflict with this rule, which is why it has been moved to the top)
-  output = output.replace(/^(-\s*?|\*\s*?|_\s*?){3,}\s*/gm, "");
+  // First, remove frontmatter (must be done before other transformations)
+  output = removeFrontMatter(output);
 
-  output = output
-    // Remove HTML tags
-    .replace(/<[^>]*>/g, "");
+  // Remove horizontal rules
+  output = output.replace(/^\s*(\*{3,}|_{3,}|-{3,})\s*$/gm, "");
 
   output = output
     // Remove HTML tags
@@ -54,4 +53,49 @@ export default function cleanMarkup(md: string) {
     .replace(/\{>>.*?<<\}/g, "");
 
   return output;
+}
+
+/**
+ * Removes frontmatter blocks from markdown documents.
+ * Handles YAML frontmatter (---) at the beginning of a document.
+ *
+ * @param md - The markdown content to process
+ * @returns The markdown content with frontmatter removed
+ */
+function removeFrontMatter(md: string): string {
+  if (!md) {
+    return "";
+  }
+
+  // Split the content into lines for easier processing
+  const lines = md.split("\n");
+
+  // If there aren't enough lines for frontmatter, return unchanged
+  if (lines.length < 3) {
+    return md;
+  }
+
+  // Check if the first line is exactly "---" (YAML frontmatter delimiter)
+  // It must be exactly "---" with no other characters
+  if (lines[0].trim() !== "---") {
+    return md;
+  }
+
+  // Look for the closing delimiter (must be exactly "---" on its own line)
+  let closingLineIndex = -1;
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trim() === "---") {
+      closingLineIndex = i;
+      break;
+    }
+  }
+
+  // If we found a closing delimiter, remove the frontmatter block
+  if (closingLineIndex > 0) {
+    // Return everything after the closing delimiter
+    return "\n" + lines.slice(closingLineIndex + 1).join("\n");
+  }
+
+  // No valid frontmatter found
+  return md;
 }

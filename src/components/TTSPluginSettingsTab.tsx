@@ -387,7 +387,6 @@ const AudioFolderComponent: React.FC<{
 const APIBaseURLComponent: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
-
   function isValidURL(url: string) {
     if (!url) {
       return true;
@@ -429,7 +428,7 @@ const APIBaseURLComponent: React.FC<{
           placeholder={REAL_OPENAI_API_URL}
           value={state.raw}
           onChange={onChange}
-          className={!state.valid ? 'tts-error-input' : ''}
+          className={!state.valid ? "tts-error-input" : ""}
         />
         {!state.valid && state.raw && (
           <div className="setting-item-description tts-error-text">
@@ -569,7 +568,11 @@ const OpenAICompatibleApiKeyComponent: React.FC<{
 const DEFAULT_MODELS: Model[] = [
   { label: "tts-1", value: "tts-1" },
   { label: "tts-1-hd", value: "tts-1-hd" },
-  { label: "gpt-4o-mini-tts", value: "gpt-4o-mini-tts", supportsInstructions: true },
+  {
+    label: "gpt-4o-mini-tts",
+    value: "gpt-4o-mini-tts",
+    supportsInstructions: true,
+  },
 ] as const;
 
 interface Model {
