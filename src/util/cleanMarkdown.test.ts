@@ -4,7 +4,7 @@ describe("cleanMarkdown", () => {
   it("should remove horizontal rules", () => {
     const md = "wow\n---\nsuch wow";
     const cleaned = cleanMarkup(md);
-    expect(cleaned).toEqual("wow\nsuch wow");
+    expect(cleaned).toEqual("wow\n\nsuch wow");
   });
 
   it("should strip links", () => {
@@ -87,5 +87,29 @@ alert("hello");
     const md = "Some text {>> notes to self <<} more text.";
     const cleaned = cleanMarkup(md);
     expect(cleaned).toEqual("Some text  more text.");
+  });
+
+  it("should remove YAML frontmatter", () => {
+    const md = `---
+title: My Document
+date: 2024-03-14
+tags:
+  - test
+  - example
+---
+
+# Actual Content
+This is the real content.`;
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("\nActual Content\nThis is the real content.");
+  });
+
+  it("should not remove text that just happens to have dashes", () => {
+    const md = `---not frontmatter---
+Just some text with dashes`;
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual(
+      "---not frontmatter---\nJust some text with dashes",
+    );
   });
 });

@@ -47,7 +47,12 @@ export function isPlayerViewMode(value: unknown): value is PlayerViewMode {
 }
 
 export function voiceHash(options: TTSModelOptions): string {
-  return hashString(options.apiUri + options.model + options.voice + (options.instructions || "")).toString();
+  return hashString(
+    options.apiUri +
+      options.model +
+      options.voice +
+      (options.instructions || ""),
+  ).toString();
 }
 
 export const REAL_OPENAI_API_URL = "https://api.openai.com";
