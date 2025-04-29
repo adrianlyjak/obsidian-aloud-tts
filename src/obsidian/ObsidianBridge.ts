@@ -269,15 +269,17 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     const selection = editor.getRange(from, to);
     if (selection) {
       try {
-        player.startPlayer({
-          text: selection,
-          filename:
-            [file?.path, file?.name].filter((x) => x).join("/") || "Untitled",
-          start,
-          end: start + selection.length,
-        }).catch((ex) => {
-          console.error("Couldn't start player!", ex);
-        });
+        player
+          .startPlayer({
+            text: selection,
+            filename:
+              [file?.path, file?.name].filter((x) => x).join("/") || "Untitled",
+            start,
+            end: start + selection.length,
+          })
+          .catch((ex) => {
+            console.error("Couldn't start player!", ex);
+          });
       } catch (ex) {
         console.error("Couldn't start player!", ex);
       }
