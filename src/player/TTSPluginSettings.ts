@@ -18,7 +18,28 @@ export type TTSPluginSettings = {
   showPlayerView: PlayerViewMode;
   version: number;
   audioFolder: string;
-} & OpenAIModelConfig & OpenAICompatModelConfig & HumeModelConfig;
+} & (
+  GeminiModelConfig &
+  HumeModelConfig &
+  OpenAIModelConfig &
+  OpenAICompatModelConfig
+);
+
+export interface GeminiModelConfig {
+  gemini_apiKey: string;
+  gemini_ttsModel: string;
+  gemini_ttsVoice: string;
+  gemini_ttsInstructions?: string;
+  gemini_contextMode: boolean;
+}
+
+export interface HumeModelConfig {
+  hume_apiKey: string;
+  hume_ttsVoice?: string;
+  hume_sourceType: string;
+  hume_ttsInstructions?: string;
+  hume_contextMode: boolean;
+}
 
 export interface OpenAIModelConfig {
   openai_apiKey: string;
@@ -34,14 +55,6 @@ export interface OpenAICompatModelConfig {
   openaicompat_ttsModel: string;
   openaicompat_ttsVoice: string;
   openaicompat_contextMode: false;
-}
-
-export interface HumeModelConfig {
-  hume_apiKey: string;
-  hume_ttsVoice?: string;
-  hume_sourceType: string;
-  hume_ttsInstructions?: string;
-  hume_contextMode: boolean;
 }
 
 export const playViewModes = [
@@ -63,10 +76,11 @@ export function voiceHash(options: TTSModelOptions): string {
   )[0].toString();
 }
 
-export const REAL_OPENAI_API_URL = "https://api.openai.com";
-export const REAL_HUME_API_URL = "https://api.hume.ai";
+export const GEMINI_API_URL = "https://generativelanguage.googleapis.com";
+export const HUME_API_URL = "https://api.hume.ai";
+export const OPENAI_API_URL = "https://api.openai.com";
 
-export const modelProviders = ["openai", "openaicompat", "hume"] as const;
+export const modelProviders = ["gemini", "hume", "openai", "openaicompat"] as const;
 export type ModelProvider = (typeof modelProviders)[number];
 
 export const DEFAULT_SETTINGS: TTSPluginSettings = {
@@ -83,6 +97,18 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   cacheDurationMillis: 1000 * 60 * 60 * 24 * 7, // 7 days
   cacheType: "local",
   showPlayerView: "always-mobile",
+  // gemini
+  gemini_apiKey: "",
+  gemini_ttsModel: "gemini-2.5-flash-preview-tts",
+  gemini_ttsVoice: "Zephyr",
+  gemini_ttsInstructions: undefined,
+  gemini_contextMode: false,
+  // hume
+  hume_apiKey: "",
+  hume_ttsVoice: undefined,
+  hume_sourceType: "HUME_AI",
+  hume_ttsInstructions: undefined,
+  hume_contextMode: false,
   // openai
   openai_apiKey: "",
   openai_ttsModel: "gpt-4o-mini-tts",
@@ -95,12 +121,6 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   openaicompat_ttsModel: "",
   openaicompat_ttsVoice: "",
   openaicompat_contextMode: false,
-  // hume
-  hume_apiKey: "",
-  hume_ttsVoice: undefined,
-  hume_sourceType: "HUME_AI",
-  hume_ttsInstructions: undefined,
-  hume_contextMode: false,
 
   version: 1,
   audioFolder: "aloud",
@@ -138,8 +158,9 @@ export async function pluginSettingsStore(
       checkApiKey: debounce(async () => {
         if (
           store.settings.API_URL &&
-          store.settings.API_URL !== REAL_OPENAI_API_URL &&
-          store.settings.API_URL !== REAL_HUME_API_URL
+          store.settings.API_URL !== GEMINI_API_URL &&
+          store.settings.API_URL !== HUME_API_URL &&
+          store.settings.API_URL !== OPENAI_API_URL
         ) {
           store.setApiKeyValidity(true);
         } else if (!store.settings.API_KEY) {
@@ -147,7 +168,7 @@ export async function pluginSettingsStore(
             false,
             `Please enter an API key in the "${MARKETING_NAME_LONG}" plugin settings`,
           );
-        } else if (store.settings.modelProvider !== "hume") {
+        } else if (store.settings.modelProvider === "openai") {
           store.setApiKeyValidity(undefined, undefined);
 
           try {
@@ -195,35 +216,51 @@ export async function pluginSettingsStore(
           ...store.settings,
           ...settings,
         };
-        const additionalSettings: Partial<TTSPluginSettings> =
-          provider === "openai"
-            ? {
-              API_KEY: merged.openai_apiKey,
-              API_URL: REAL_OPENAI_API_URL,
-              ttsVoice: merged.openai_ttsVoice,
-              instructions: merged.openai_ttsInstructions || undefined,
-              model: merged.openai_ttsModel,
-              contextMode: merged.openai_contextMode,
+        let additionalSettings: Partial<TTSPluginSettings>;
+        switch (provider) {
+          case "gemini":
+            additionalSettings = {
+              API_KEY: merged.gemini_apiKey,
+              API_URL: GEMINI_API_URL,
+              ttsVoice: merged.gemini_ttsVoice,
+              instructions: merged.gemini_ttsInstructions || undefined,
+              model: merged.gemini_ttsModel,
+              contextMode: merged.gemini_contextMode,
             }
-            : provider === "openaicompat"
-            ? {
-              API_KEY: merged.openaicompat_apiKey,
-              API_URL: merged.openaicompat_apiBase,
-              ttsVoice: merged.openaicompat_ttsVoice,
-              instructions: undefined,
-              model: merged.openaicompat_ttsModel,
-              contextMode: merged.openaicompat_contextMode,
-            }
-            : provider === "hume"
-            ? {
+            break;
+          case "hume":
+            additionalSettings = {
               API_KEY: merged.hume_apiKey,
-              API_URL: REAL_HUME_API_URL,
+              API_URL: HUME_API_URL,
               ttsVoice: merged.hume_ttsVoice || undefined,
               sourceType: merged.hume_sourceType,
               instructions: merged.hume_ttsInstructions || undefined,
               contextMode: merged.hume_contextMode,
             }
-            : {};
+            break;
+          case "openai":
+            additionalSettings = {
+              API_KEY: merged.openai_apiKey,
+              API_URL: OPENAI_API_URL,
+              ttsVoice: merged.openai_ttsVoice,
+              instructions: merged.openai_ttsInstructions || undefined,
+              model: merged.openai_ttsModel,
+              contextMode: merged.openai_contextMode,
+            };
+            break;
+          case "openaicompat":
+            additionalSettings = {
+              API_KEY: merged.openaicompat_apiKey,
+              API_URL: merged.openaicompat_apiBase,
+              ttsVoice: merged.openaicompat_ttsVoice,
+              instructions: undefined,
+              model: merged.openaicompat_ttsModel,
+              contextMode: merged.openaicompat_contextMode, // Assuming this is always false
+            };
+            break;
+          default:
+            additionalSettings = {};
+        }
         await store.updateSettings({
           ...settings,
           ...additionalSettings,
@@ -266,23 +303,25 @@ const parsePluginSettings = (toParse: unknown): TTSPluginSettings => {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function migrateToVersion1(data: any): any {
-  const isHume = data.API_URL === REAL_HUME_API_URL;
-  const isCustom =
-    !!data.API_URL &&
-    data.API_URL !== REAL_OPENAI_API_URL &&
-    !isHume;
+  const isGemini = data.API_URL === GEMINI_API_URL;
+  const isHume = data.API_URL === HUME_API_URL;
+  const isOpenAI = data.API_URL === OPENAI_API_URL;
+  const isCustom = !!data.API_URL && (
+    !isGemini &&
+    !isHume &&
+    !isOpenAI
+  );
 
   let providerSettings = {};
   let modelProvider: ModelProvider = "openai";
 
-  if (isCustom) {
-    modelProvider = "openaicompat";
+  if (isGemini) {
+    modelProvider = "gemini";
     providerSettings = {
-      openaicompat_apiKey: data.API_KEY,
-      openaicompat_apiBase: data.API_URL,
-      openaicompat_ttsModel: data.model,
-      openaicompat_ttsVoice: data.ttsVoice,
-      openaicompat_contextMode: data.contextMode,
+      gemini_apiKey: data.API_KEY,
+      gemini_ttsModel: data.model,
+      gemini_ttsVoice: data.ttsVoice,
+      gemini_contextMode: data.contextMode,
     };
   } else if (isHume) {
     modelProvider = "hume";
@@ -291,6 +330,23 @@ function migrateToVersion1(data: any): any {
       hume_ttsVoice: data.ttsVoice,
       hume_sourceType: data.sourceType,
       hume_contextMode: data.contextMode,
+    };
+  } else if (isOpenAI) {
+    modelProvider = "openai";
+    providerSettings = {
+      openai_apiKey: data.API_KEY,
+      openai_ttsModel: data.model,
+      openai_ttsVoice: data.ttsVoice,
+      openai_contextMode: data.contextMode,
+    };
+  } else if (isCustom) {
+    modelProvider = "openaicompat";
+    providerSettings = {
+      openaicompat_apiKey: data.API_KEY,
+      openaicompat_apiBase: data.API_URL,
+      openaicompat_ttsModel: data.model,
+      openaicompat_ttsVoice: data.ttsVoice,
+      openaicompat_contextMode: data.contextMode,
     };
   } else {
     modelProvider = "openai";

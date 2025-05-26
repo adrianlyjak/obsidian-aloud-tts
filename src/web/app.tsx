@@ -2,12 +2,14 @@ import { createRoot } from "react-dom/client";
 import { AudioStore, loadAudioStore } from "../player/AudioStore";
 import {
   pluginSettingsStore,
-  REAL_OPENAI_API_URL,
-  REAL_HUME_API_URL,
+  GEMINI_API_URL,
+  HUME_API_URL,
+  OPENAI_API_URL,
   TTSPluginSettingsStore,
 } from "../player/TTSPluginSettings";
 import { IndexedDBAudioStorage } from "./IndexedDBAudioStorage";
 import {
+  geminiTextToSpeech,
   humeTextToSpeech,
   openAITextToSpeech,
 } from "../player/TTSModel";
@@ -43,11 +45,16 @@ async function main() {
 
   const system = createAudioSystem({
     settings: () => settingsStore.settings,
-    ttsModel: () => (
-      system.settings.modelProvider === "hume" ? 
-        humeTextToSpeech :
-        openAITextToSpeech
-    ),
+    ttsModel: () => {
+      switch (system.settings.modelProvider) {
+        case "gemini":
+          return geminiTextToSpeech;
+        case "hume":
+          return humeTextToSpeech;
+        default:
+          return openAITextToSpeech;
+      }
+    },
     storage: () => new IndexedDBAudioStorage(),
     audioSink: () => audioSink,
     audioStore: (sys) => loadAudioStore({ system: sys }),
@@ -258,12 +265,24 @@ const SimplePlayer: FC<{ settingsStore: TTSPluginSettingsStore }> = observer(
     useEffect(() => {
       WebAudioSink.create().then(async (sink) => {
         const text = `Speaking of connections, I think that's another important aspect of embracing uncertainty. When we're open to new experiences and perspectives, we're more likely to form meaningful connections with others. We're more likely to listen, to learn, and to grow together.`;
-        if (settingsStore.settings.modelProvider === "hume") {
+        if (settingsStore.settings.modelProvider === "gemini") {
+          const audio = await geminiTextToSpeech(text, {
+            model: "gemini-2.5-flash-preview-tts",
+            voice: "Zephyr",
+            sourceType: "",
+            contextMode: false,
+            apiUri: GEMINI_API_URL,
+            apiKey: settingsStore.settings.gemini_apiKey,
+          });
+        
+          await sink.switchMedia(audio);
+          setSink(sink);
+        } else if (settingsStore.settings.modelProvider === "hume") {
           const audio = await humeTextToSpeech(text, {
             model: "",
             sourceType: "HUME_AI",
             contextMode: false,
-            apiUri: REAL_HUME_API_URL,
+            apiUri: HUME_API_URL,
             apiKey: settingsStore.settings.hume_apiKey,
           });
         
@@ -275,7 +294,7 @@ const SimplePlayer: FC<{ settingsStore: TTSPluginSettingsStore }> = observer(
             voice: "shimmer",
             sourceType: "",
             contextMode: false,
-            apiUri: REAL_OPENAI_API_URL,
+            apiUri: OPENAI_API_URL,
             apiKey: settingsStore.settings.openai_apiKey,
           });
         
