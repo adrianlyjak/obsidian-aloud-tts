@@ -32,7 +32,6 @@
     "builtin-modules": "3.3.0",
     "esbuild": "0.17.3",
     "eslint": "^8.57.1",
-    "node^20.0.0": "link:@types/node^20.0.0",
     "obsidian": "^1.7.2",
     "prettier": "^3.3.3",
     "tslib": "2.6.2",

@@ -118,9 +118,25 @@ export class ActiveAudioTextImpl implements ActiveAudioText {
       return;
     }
     let next = this.position + 1;
+    
+    // 跳过失败的音频块，但最多跳过5个连续失败的块
+    let skipCount = 0;
+    while (next < this.audio.chunks.length && skipCount < 5) {
+      const chunk = this.audio.chunks[next];
+      if (chunk.failed && !chunk.loading) {
+        console.warn(`跳过失败的音频块 ${next}: "${chunk.text.substring(0, 30)}..."`);
+        next++;
+        skipCount++;
+      } else {
+        break;
+      }
+    }
+    
     if (next >= this.audio.chunks.length) {
       next = -1;
     }
+    
+    console.log(`从位置 ${this.position} 跳转到 ${next}${skipCount > 0 ? ` (跳过了${skipCount}个失败块)` : ''}`);
     this.position = next;
   }
 
@@ -134,9 +150,37 @@ export class ActiveAudioTextImpl implements ActiveAudioText {
         next = 0;
       }
     }
+    
+    // 跳过失败的音频块，但最多跳过5个连续失败的块
+    let skipCount = 0;
+    while (next >= 0 && skipCount < 5) {
+      const chunk = this.audio.chunks[next];
+      if (chunk.failed && !chunk.loading) {
+        console.warn(`向前跳过失败的音频块 ${next}: "${chunk.text.substring(0, 30)}..."`);
+        next--;
+        skipCount++;
+      } else {
+        break;
+      }
+    }
+    
+    if (next < 0) {
+      next = 0;
+    }
+    
+    console.log(`从位置 ${this.position} 向前跳转到 ${next}${skipCount > 0 ? ` (跳过了${skipCount}个失败块)` : ''}`);
     this.position = next;
   }
+  
   setPosition(position: number): void {
+    // 确保位置在有效范围内
+    if (position < -1) {
+      position = -1;
+    } else if (position >= this.audio.chunks.length) {
+      position = -1;
+    }
+    
+    console.log(`设置播放位置: ${this.position} -> ${position}`);
     this.position = position;
   }
 }
@@ -145,14 +189,22 @@ export function buildTrack(
   opts: AudioTextOptions,
   chunkType: "sentence" | "paragraph" = "sentence",
 ): AudioText {
+  const maxChunkLength = 300; // 设置最大块长度为300字符
+  
   const splits =
     chunkType === "sentence"
-      ? splitSentences(opts.text, { minLength: opts.minChunkLength ?? 20 })
+      ? splitSentences(opts.text, { 
+          minLength: opts.minChunkLength ?? 20,
+          maxLength: maxChunkLength 
+        })
       : splitParagraphs(opts.text);
 
   let start = opts.start;
   const chunks = [];
   for (const s of splits) {
+    // 跳过空白块
+    if (s.trim().length === 0) continue;
+    
     const end = start + s.length;
     const chunk: AudioTextChunk = new AudioTextChunk({
       rawText: s,
@@ -162,14 +214,16 @@ export function buildTrack(
     start = end;
     chunks.push(chunk);
   }
+  
+  console.log(`文本已分割为 ${chunks.length} 个块，最大块长度限制: ${maxChunkLength} 字符`);
+  
   return observable({
     id: randomId(),
     filename: opts.filename,
     friendlyName:
       opts.filename +
       ": " +
-      splits[0].slice(0, 20) +
-      (splits[0].length > 20 ? "..." : ""),
+      (opts.text.length > 30 ? opts.text.substring(0, 27) + "..." : opts.text),
     created: new Date().valueOf(),
     chunks: chunks,
   });

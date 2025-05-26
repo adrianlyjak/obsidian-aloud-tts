@@ -92,6 +92,11 @@ export const PlayerView = observer(
             onClick={() => player.activeText?.goToNext()}
             disabled={!player.activeText}
           />
+          <ContinuousPlayButton 
+            settings={settings} 
+            player={player} 
+            obsidian={obsidian}
+          />
           <EditPlaybackSpeedButton settings={settings} />
         </div>
         <div className="tts-audio-status-container">
@@ -115,6 +120,40 @@ export const PlayerView = observer(
     );
   },
 );
+
+const ContinuousPlayButton: React.FC<{
+  settings: TTSPluginSettingsStore;
+  player: AudioStore;
+  obsidian: ObsidianBridge;
+}> = observer(({ settings, player, obsidian }) => {
+  const isContinuousMode = settings.settings.enableContinuousPlay;
+  
+  const toggleContinuousPlay = () => {
+    settings.updateSettings({ 
+      enableContinuousPlay: !isContinuousMode 
+    });
+    
+    // 如果当前有播放内容，重新开始播放以应用新设置
+    if (player.activeText && isContinuousMode !== settings.settings.enableContinuousPlay) {
+      // 获取当前播放的文本内容
+      const currentText = player.activeText.audio.chunks.map(chunk => chunk.rawText).join('');
+      player.closePlayer();
+      // 延迟一下再重新播放，确保设置已更新
+      setTimeout(() => {
+        obsidian.playDetached(currentText);
+      }, 100);
+    }
+  };
+
+  return (
+    <IconButton
+      icon="repeat"
+      tooltip={isContinuousMode ? "Disable continuous play" : "Enable continuous play"}
+      onClick={toggleContinuousPlay}
+      className={isContinuousMode ? "tts-continuous-play-button" : undefined}
+    />
+  );
+});
 
 const EditPlaybackSpeedButton: React.FC<{
   settings: TTSPluginSettingsStore;

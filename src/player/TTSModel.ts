@@ -1,4 +1,4 @@
-import { REAL_OPENAI_API_URL, TTSPluginSettings } from "./TTSPluginSettings";
+import { REAL_OPENAI_API_URL, TTSPluginSettings, CustomVoice } from "./TTSPluginSettings";
 
 /**
  * options used by the audio model. Some options are used as a cache key, such that changes to the options
@@ -10,6 +10,9 @@ export interface TTSModelOptions {
   instructions?: string;
   apiUri: string;
   apiKey: string;
+  isContinuousPlay?: boolean;
+  referenceAudio?: string;
+  referenceText?: string;
 }
 
 export class TTSErrorInfo extends Error {
@@ -64,6 +67,32 @@ export const openAITextToSpeech: TTSModel = async function openAITextToSpeech(
   text: string,
   options: TTSModelOptions,
 ): Promise<ArrayBuffer> {
+  // 构建请求体，支持自定义音色参数
+  const requestBody: any = {
+    model: options.model,
+    voice: options.voice,
+    input: text,
+    speed: 1,
+  };
+
+  // 添加指令（如果有）
+  if (options.instructions) {
+    requestBody.instructions = options.instructions;
+  }
+
+  // 添加自定义音色参数（用于零样本声音克隆）
+  if (options.referenceAudio) {
+    requestBody.reference_audio = [options.referenceAudio];
+  }
+  if (options.referenceText) {
+    requestBody.reference_text = [options.referenceText];
+  }
+
+  // 添加连续播放标记
+  if (options.isContinuousPlay) {
+    requestBody.is_continuous_play = true;
+  }
+
   const headers = await fetch(
     orDefaultOpenAI(options.apiUri) + "/v1/audio/speech",
     {
@@ -72,13 +101,7 @@ export const openAITextToSpeech: TTSModel = async function openAITextToSpeech(
         "Content-Type": "application/json",
       },
       method: "POST",
-      body: JSON.stringify({
-        model: options.model,
-        voice: options.voice,
-        instructions: options.instructions,
-        input: text,
-        speed: 1,
-      }),
+      body: JSON.stringify(requestBody),
     },
   );
   await validate200(headers);
@@ -158,3 +181,57 @@ type ErrorMessage = {
     param: unknown;
   };
 };
+
+export interface VoiceInfo {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export async function listVoices(
+  settings: TTSPluginSettings,
+): Promise<VoiceInfo[]> {
+  try {
+    const response = await fetch(
+      orDefaultOpenAI(settings.OPENAI_API_URL) + "/v1/voices",
+      {
+        method: "GET",
+        headers: {
+          Authorization: "Bearer " + settings.OPENAI_API_KEY,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+    
+    if (response.status === 404) {
+      return getDefaultVoices();
+    }
+    
+    await validate200(response);
+    const data = await response.json();
+    
+    if (data.voices && Array.isArray(data.voices)) {
+      return data.voices.map((voice: any) => ({
+        id: voice.id || voice.voice_id,
+        name: voice.name || voice.id || voice.voice_id,
+        description: voice.description || "",
+      }));
+    }
+    
+    return getDefaultVoices();
+  } catch (error) {
+    console.warn("Failed to fetch voices from server, using defaults:", error);
+    return getDefaultVoices();
+  }
+}
+
+function getDefaultVoices(): VoiceInfo[] {
+  return [
+    { id: "alloy", name: "Alloy", description: "中性声音" },
+    { id: "echo", name: "Echo", description: "男性声音" },
+    { id: "fable", name: "Fable", description: "英式男性声音" },
+    { id: "onyx", name: "Onyx", description: "深沉男性声音" },
+    { id: "nova", name: "Nova", description: "年轻女性声音" },
+    { id: "shimmer", name: "Shimmer", description: "温和女性声音" },
+  ];
+}
