@@ -1,6 +1,6 @@
 import * as mobx from "mobx";
 import { AudioSystem } from "./AudioSystem";
-import { TTSErrorInfo, TTSModelOptions } from "./TTSModel";
+import { TTSErrorInfo, TTSModelOptions, toModelOptions } from "./TTSModel";
 
 /** manages loading and caching of tracks */
 export class ChunkLoader {
@@ -88,7 +88,7 @@ export class ChunkLoader {
       return existing.result;
     } else {
       const audioTextChunks = (position ? 
-        this.system.audioStore.activeText?.audio.chunks.slice(0, position - 1)
+        this.system.audioStore.activeText?.audio.chunks.slice(0, Math.max(0, position))
       : undefined);
       const contexts = audioTextChunks?.map((x) => x.text);
 
@@ -207,6 +207,8 @@ export class ChunkLoader {
     if (stored) {
       return stored;
     } else {
+      // Regenerate options from CURRENT settings before making the API call
+      const currentOptions = toModelOptions(this.system.settings);
       const buff = await this.system.ttsModel(text, options, contexts);
       await this.system.storage.saveAudio(text, options, buff);
       return buff;
