@@ -10,7 +10,6 @@ export interface TTSModelOptions {
   instructions?: string;
   apiUri: string;
   apiKey: string;
-  isContinuousPlay?: boolean;
   referenceAudio?: string;
   referenceText?: string;
 }
@@ -88,10 +87,7 @@ export const openAITextToSpeech: TTSModel = async function openAITextToSpeech(
     requestBody.reference_text = [options.referenceText];
   }
 
-  // 添加连续播放标记
-  if (options.isContinuousPlay) {
-    requestBody.is_continuous_play = true;
-  }
+
 
   const headers = await fetch(
     orDefaultOpenAI(options.apiUri) + "/v1/audio/speech",

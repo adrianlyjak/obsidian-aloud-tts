@@ -14,13 +14,7 @@ export interface CustomVoice {
   referenceText?: string;
 }
 
-// 音频块设置
-export interface AudioChunkSettings {
-  BUFFER_AHEAD: number;
-  MAX_CHUNK_SIZE: number;
-  CONTINUOUS_PLAY_BATCH_SIZE: number;
-  BATCH_DELAY_MS: number;
-}
+
 
 export type TTSPluginSettings = {
   OPENAI_API_KEY: string;
@@ -38,9 +32,6 @@ export type TTSPluginSettings = {
   audioFolder: string;
   // 新增：自定义音色列表
   customVoices: CustomVoice[];
-  // 新增：连续播放设置
-  enableContinuousPlay: boolean;
-  audioChunkSettings: AudioChunkSettings;
 } & OpenAIModelConfig &
   OpenAICompatibleModelConfig;
 
@@ -111,14 +102,6 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   audioFolder: "aloud",
   // 新增：自定义音色列表
   customVoices: [],
-  // 新增：连续播放设置
-  enableContinuousPlay: false,
-  audioChunkSettings: {
-    BUFFER_AHEAD: 2,
-    MAX_CHUNK_SIZE: 1000,
-    CONTINUOUS_PLAY_BATCH_SIZE: 5,
-    BATCH_DELAY_MS: 100,
-  },
 } as const;
 
 export const MARKETING_NAME = "Aloud";

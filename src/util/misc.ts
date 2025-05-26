@@ -121,13 +121,44 @@ export function splitSentences(
     // 移除已处理的部分
     remaining = remaining.slice(buff.length);
     
-    // 添加到结果中（去除空白句子）
-    if (buff.trim().length > 0) {
-      sentences.push(buff);
+    // 清理文本块：移除换行符，规范化空白字符
+    const cleanedBuff = cleanTextChunk(buff);
+    
+    // 添加到结果中（确保有实际可读内容）
+    if (hasReadableContent(cleanedBuff)) {
+      sentences.push(cleanedBuff);
     }
   }
   
   return sentences;
+}
+
+/**
+ * 清理文本块：移除换行符，规范化空白字符
+ */
+function cleanTextChunk(text: string): string {
+  return text
+    // 将所有换行符替换为空格
+    .replace(/\n/g, ' ')
+    // 将多个连续空白字符替换为单个空格
+    .replace(/\s+/g, ' ')
+    // 移除首尾空白
+    .trim();
+}
+
+/**
+ * 检查文本是否包含可读内容（不仅仅是标点符号和空白）
+ */
+function hasReadableContent(text: string): boolean {
+  if (!text || text.length === 0) {
+    return false;
+  }
+  
+  // 移除所有空白字符和常见标点符号后，检查是否还有内容
+  const contentOnly = text.replace(/[\s\n\r\t""''""''（）()【】\[\]《》<>「」『』、，,。.！!？?；;：:…—–-]/g, '');
+  
+  // 如果还有字符剩余，说明有可读内容
+  return contentOnly.length > 0;
 }
 // Function to create sliding windows of 5 sentences
 export function createWindows<T>(

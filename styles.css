@@ -223,31 +223,7 @@ details[open] .tts-error-details {
   font-style: italic;
 }
 
-/* 连续播放按钮样式 */
-.tts-continuous-play-button svg {
-  color: var(--text-accent);
-}
 
-.tts-toolbar-player-button-group .tts-continuous-play-button:hover {
-  background-color: var(--interactive-accent-hover);
-}
-
-/* 增强显示效果 */
-.tts-continuous-play-button {
-  position: relative;
-}
-
-.tts-continuous-play-button::after {
-  content: '';
-  position: absolute;
-  bottom: 2px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 8px;
-  height: 2px;
-  background-color: var(--text-accent);
-  border-radius: 1px;
-}
 
 /* 改进工具栏在没有活动内容时的外观 */
 .tts-toolbar-player-button-group button[disabled] {

@@ -202,8 +202,15 @@ export function buildTrack(
   let start = opts.start;
   const chunks = [];
   for (const s of splits) {
-    // 跳过空白块
+    // 跳过空白块和无实际内容的块
     if (s.trim().length === 0) continue;
+    
+    // 额外检查：确保文本块包含可读内容（不仅仅是标点符号）
+    const hasContent = /[\u4e00-\u9fff\w]/.test(s); // 包含中文字符或字母数字
+    if (!hasContent) {
+      console.log(`跳过无实际内容的文本块: "${s}"`);
+      continue;
+    }
     
     const end = start + s.length;
     const chunk: AudioTextChunk = new AudioTextChunk({
