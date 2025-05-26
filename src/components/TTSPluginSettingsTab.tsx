@@ -6,7 +6,7 @@ import { AudioStore } from "../player/AudioStore";
 import {
   ModelProvider,
   PlayerViewMode,
-  REAL_OPENAI_API_URL,
+  OPENAI_API_URL,
   MARKETING_NAME,
   TTSPluginSettingsStore,
   isPlayerViewMode,
@@ -72,6 +72,26 @@ const TTSSettingsTabComponent: React.FC<{
         setActive={setActive}
       />
       <ModelSwitcher store={store} />
+      {store.settings.modelProvider === "gemini" && (
+        <>
+        <h1>Google Gemini</h1>
+          <GeminiApiKeyComponent store={store} />
+          <GeminiModelComponent store={store} />
+          <GeminiVoiceComponent store={store} />
+          <GeminiTTSInstructionsComponent store={store} />
+          <GeminiContextModeComponent store={store} />
+        </>
+      )}
+      {store.settings.modelProvider === "hume" &&(
+        <>
+          <h1>Hume</h1>
+          <HumeApiKeyComponent store={store} />
+          <HumeProviderComponent store={store} />
+          <HumeVoiceComponent store={store} />
+          <HumeTTSInstructionsComponent store={store} />
+          <HumeContextModeComponent store={store} />
+        </>
+      )}
       {store.settings.modelProvider === "openai" && (
         <>
         <h1>OpenAI</h1>
@@ -82,16 +102,6 @@ const TTSSettingsTabComponent: React.FC<{
           <OpenAIContextModeComponent store={store} />
         </>
       )}
-
-      {store.settings.modelProvider === "hume" &&(
-        <>
-          <h1>Hume</h1>
-          <HumeApiKeyComponent store={store} />
-          <HumeProviderComponent store={store} />
-          <HumeVoiceComponent store={store} />
-          <HumeTTSInstructionsComponent store={store} />
-          <HumeContextModeComponent store={store} />
-        </>)}
       {store.settings.modelProvider === "openaicompat" && (
         <>
           <h1>OpenAI Compatible API</h1>
@@ -133,9 +143,10 @@ const ErrorInfoView: React.FC<{
 });
 
 const labels: Record<ModelProvider, string> = {
+  gemini: "Google Gemini",
+  hume: "Hume",
   openai: "OpenAI",
   openaicompat: "OpenAI Compatible (Advanced)",
-  hume: "Hume",
 };
 
 const ModelSwitcher: React.FC<{
@@ -843,7 +854,13 @@ const TestVoiceComponent: React.FC<{
   );
 });
 
-const OpenAIApiKeyComponent: React.FC<{
+interface Model {
+  label: string;
+  value: string;
+  supportsInstructions?: boolean;
+}
+
+const GeminiApiKeyComponent: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
   const [showPassword, setShowPassword] = React.useState(false);
@@ -863,17 +880,17 @@ const OpenAIApiKeyComponent: React.FC<{
 
   const onChange: React.ChangeEventHandler<HTMLInputElement> =
     React.useCallback((v: React.ChangeEvent<HTMLInputElement>) => {
-      store.updateModelSpecificSettings("openai", {
-        openai_apiKey: v.target.value,
+      store.updateModelSpecificSettings("gemini", {
+        gemini_apiKey: v.target.value,
       });
     }, []);
   return (
     <div className="setting-item">
       <div className="setting-item-info">
-        <div className="setting-item-name">OpenAI API key</div>
+        <div className="setting-item-name">Gemini API key</div>
         <div className="setting-item-description">
-          Your OpenAI API key. You can create one{" "}
-          <a href="https://platform.openai.com/api-keys" target="_blank">
+          Your Gemini API key. You can create one{" "}
+          <a href="https://aistudio.google.com/apikey" target="_blank">
             here
           </a>
           .
@@ -884,7 +901,7 @@ const OpenAIApiKeyComponent: React.FC<{
         <input
           type={showPassword ? "text" : "password"}
           placeholder="API Key"
-          value={store.settings.openai_apiKey}
+          value={store.settings.gemini_apiKey}
           onChange={onChange}
         />
         <IconButton
@@ -896,19 +913,20 @@ const OpenAIApiKeyComponent: React.FC<{
   );
 });
 
-const DEFAULT_MODELS: Model[] = [
-  { label: "tts-1", value: "tts-1" },
-  { label: "tts-1-hd", value: "tts-1-hd" },
-  { label: "gpt-4o-mini-tts", value: "gpt-4o-mini-tts", supportsInstructions: true },
+const DEFAULT_GEMINI_MODELS: Model[] = [
+  {
+    label: "Gemini 2.5 Flash Preview Text-to-Speech",
+    value: "gemini-2.5-flash-preview-tts",
+    supportsInstructions: true
+  },
+  {
+    label: "Gemini 2.5 Pro Preview Text-to-Speech",
+    value: "gemini-2.5-pro-preview-tts",
+    supportsInstructions: true
+  },
 ] as const;
 
-interface Model {
-  label: string;
-  value: string;
-  supportsInstructions?: boolean;
-}
-
-const OpenAIModelComponent: React.FC<{
+const GeminiModelComponent: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
   return (
@@ -916,16 +934,16 @@ const OpenAIModelComponent: React.FC<{
       <div className="setting-item-info">
         <div className="setting-item-name">Model</div>
         <div className="setting-item-description">
-          The OpenAI TTS model to use
+          The Gemini TTS model to use
         </div>
       </div>
       <div className="setting-item-control">
         <OptionSelect
-          options={DEFAULT_MODELS}
-          value={store.settings.openai_ttsModel}
+          options={DEFAULT_GEMINI_MODELS}
+          value={store.settings.gemini_ttsModel}
           onChange={(v) =>
-            store.updateModelSpecificSettings("openai", {
-              openai_ttsModel: v,
+            store.updateModelSpecificSettings("gemini", {
+              gemini_ttsModel: v,
             })
           }
         />
@@ -934,7 +952,7 @@ const OpenAIModelComponent: React.FC<{
   );
 });
 
-const OpenAIVoiceComponent: React.FC<{
+const GeminiVoiceComponent: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
   interface Voice {
@@ -942,70 +960,103 @@ const OpenAIVoiceComponent: React.FC<{
     value: string;
     models: string[];
   }
-  const DEFAULT_VOICES: Voice[] = [
+  const DEFAULT_GEMINI_VOICES: Voice[] = [
     {
-      label: "Alloy",
-      value: "alloy",
-      models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+      label: "Zephyr -- Bright",
+      value: "Zephyr",
+      models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
     },
     {
-      label: "Ash",
-      value: "ash",
-      models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
-    },
-    { label: "Ballad", value: "ballad", models: ["gpt-4o-mini-tts"] },
-    {
-      label: "Coral",
-      value: "coral",
-      models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+      label: "Puck -- Upbeat",
+      value: "Puck",
+      models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
     },
     {
-      label: "Echo",
-      value: "echo",
-      models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+      label: "Charon -- Informative",
+      value: "Charon",
+      models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
     },
     {
-      label: "Fable",
-      value: "fable",
-      models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+      label: "Kore -- Firm",
+      value: "Kore",
+      models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
     },
     {
-      label: "Onyx",
-      value: "onyx",
-      models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+      label: "Fenrir -- Excitable",
+      value: "Fenrir",
+      models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
     },
     {
-      label: "Nova",
-      value: "nova",
-      models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+      label: "Leda -- Youthful",
+      value: "Leda",
+      models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
     },
     {
-      label: "Sage",
-      value: "sage",
-      models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+      label: "Orus -- Firm",
+      value: "Orus",
+      models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
     },
     {
-      label: "Shimmer",
-      value: "shimmer",
-      models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+      label: "Aoede -- Breezy",
+      value: "Aoede",
+      models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
     },
-    { label: "Verse", value: "verse", models: ["gpt-4o-mini-tts"] },
+    {
+      label: "Callirhoe -- Easy-going",
+      value: "Callirhoe",
+      models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
+    },
+    {
+      label: "Autonoe -- Bright",
+      value: "Autonoe",
+      models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
+    },
+    {
+      label: "Enceladus -- Breathy",
+      value: "Enceladus",
+      models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
+    },
+    {
+      label: "Iapetus -- Clear",
+      value: "Iapetus",
+      models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
+    },
+    {
+      label: "Umbriel -- Easy-going",
+      value: "Umbriel",
+      models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
+    },
+    {
+      label: "Algieba -- Smooth",
+      value: "Algieba",
+      models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
+    },
+    {
+      label: "Despina -- Smooth",
+      value: "Despina",
+      models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
+    },
+    {
+      label: "Erinome -- Clear",
+      value: "Erinome",
+      models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
+    },
   ] as const;
 
   const voices = React.useMemo(() => {
-    return DEFAULT_VOICES.filter((v) =>
-      v.models.includes(store.settings.openai_ttsModel),
+    return DEFAULT_GEMINI_VOICES.filter((v) =>
+      v.models.includes(store.settings.gemini_ttsModel),
     );
-  }, [store.settings.openai_ttsModel]);
+  }, [store.settings.gemini_ttsModel]);
 
   React.useEffect(() => {
-    if (voices.find((v) => v.value === store.settings.openai_ttsVoice)) {
+    if (voices.find((v) => v.value === store.settings.gemini_ttsVoice)) {
       return;
     }
-    store.updateModelSpecificSettings("openai", {
-      openai_ttsVoice: voices[0].value,
+    store.updateModelSpecificSettings("gemini", {
+      gemini_ttsVoice: voices[0].value,
     });
-  }, [store.settings.openai_ttsVoice, voices]);
+  }, [store.settings.gemini_ttsVoice, voices]);
 
   return (
     <div className="setting-item">
@@ -1015,11 +1066,11 @@ const OpenAIVoiceComponent: React.FC<{
       </div>
       <div className="setting-item-control">
         <OptionSelect
-          options={DEFAULT_VOICES}
-          value={store.settings.openai_ttsVoice}
+          options={DEFAULT_GEMINI_VOICES}
+          value={store.settings.gemini_ttsVoice}
           onChange={(v) =>
-            store.updateModelSpecificSettings("openai", {
-              openai_ttsVoice: v,
+            store.updateModelSpecificSettings("gemini", {
+              gemini_ttsVoice: v,
             })
           }
         />
@@ -1028,27 +1079,27 @@ const OpenAIVoiceComponent: React.FC<{
   );
 });
 
-const OpenAITTSInstructionsComponent: React.FC<{
+const GeminiTTSInstructionsComponent: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
   const onChange: React.ChangeEventHandler<HTMLTextAreaElement> =
     React.useCallback((evt) => {
-      store.updateModelSpecificSettings("openai", {
-        openai_ttsInstructions: evt.target.value,
+      store.updateModelSpecificSettings("gemini", {
+        gemini_ttsInstructions: evt.target.value,
       });
     }, []);
 
   const modelSupportsInstructions = React.useMemo(() => {
-    const model = DEFAULT_MODELS.find(
-      (x) => x.value === store.settings.openai_ttsModel,
+    const model = DEFAULT_GEMINI_MODELS.find(
+      (x) => x.value === store.settings.gemini_ttsModel,
     );
     return model?.supportsInstructions || false;
-  }, [store.settings.openai_ttsModel]);
+  }, [store.settings.gemini_ttsModel]);
 
   const disabled = !modelSupportsInstructions;
 
   const instructions = modelSupportsInstructions
-    ? store.settings.openai_ttsInstructions
+    ? store.settings.gemini_ttsInstructions
     : "";
 
   return (
@@ -1072,13 +1123,13 @@ const OpenAITTSInstructionsComponent: React.FC<{
   );
 });
 
-const OpenAIContextModeComponent: React.FC<{
+const GeminiContextModeComponent: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
   const onChange: React.ChangeEventHandler<HTMLInputElement> = React.useCallback(
     (evt) => {
-      store.updateModelSpecificSettings("openai", {
-        openai_contextMode: evt.target.checked,
+      store.updateModelSpecificSettings("gemini", {
+        gemini_contextMode: evt.target.checked,
       });
     },
     [store],
@@ -1090,7 +1141,7 @@ const OpenAIContextModeComponent: React.FC<{
         <div className="setting-item-description">Enable context mode to improve coherence across sentences.</div>
       </div>
       <div className="setting-item-control">
-        <input type="checkbox" checked={store.settings.openai_contextMode} onChange={onChange} />
+        <input type="checkbox" checked={store.settings.gemini_contextMode} onChange={onChange} />
       </div>
     </div>
   );
@@ -1240,6 +1291,261 @@ const HumeContextModeComponent: React.FC<{
   );
 });
 
+const OpenAIApiKeyComponent: React.FC<{
+  store: TTSPluginSettingsStore;
+}> = observer(({ store }) => {
+  const [showPassword, setShowPassword] = React.useState(false);
+
+  let validIcon: string;
+  switch (store.apiKeyValid) {
+    case true:
+      validIcon = "check";
+      break;
+    case false:
+      validIcon = "alert-circle";
+      break;
+    default:
+      validIcon = "loader";
+      break;
+  }
+
+  const onChange: React.ChangeEventHandler<HTMLInputElement> =
+    React.useCallback((v: React.ChangeEvent<HTMLInputElement>) => {
+      store.updateModelSpecificSettings("openai", {
+        openai_apiKey: v.target.value,
+      });
+    }, []);
+  return (
+    <div className="setting-item">
+      <div className="setting-item-info">
+        <div className="setting-item-name">OpenAI API key</div>
+        <div className="setting-item-description">
+          Your OpenAI API key. You can create one{" "}
+          <a href="https://platform.openai.com/api-keys" target="_blank">
+            here
+          </a>
+          .
+        </div>
+      </div>
+      <div className="setting-item-control">
+        {validIcon === "loader" ? <Spinner /> : <IconSpan icon={validIcon} />}
+        <input
+          type={showPassword ? "text" : "password"}
+          placeholder="API Key"
+          value={store.settings.openai_apiKey}
+          onChange={onChange}
+        />
+        <IconButton
+          icon={showPassword ? "eye-off" : "eye"}
+          onClick={() => setShowPassword(!showPassword)}
+        />
+      </div>
+    </div>
+  );
+});
+
+const DEFAULT_OPENAI_MODELS: Model[] = [
+  { label: "gpt-4o-mini-tts", value: "gpt-4o-mini-tts", supportsInstructions: true },
+  { label: "tts-1", value: "tts-1" },
+  { label: "tts-1-hd", value: "tts-1-hd" },
+] as const;
+
+const OpenAIModelComponent: React.FC<{
+  store: TTSPluginSettingsStore;
+}> = observer(({ store }) => {
+  return (
+    <div className="setting-item">
+      <div className="setting-item-info">
+        <div className="setting-item-name">Model</div>
+        <div className="setting-item-description">
+          The OpenAI TTS model to use
+        </div>
+      </div>
+      <div className="setting-item-control">
+        <OptionSelect
+          options={DEFAULT_OPENAI_MODELS}
+          value={store.settings.openai_ttsModel}
+          onChange={(v) =>
+            store.updateModelSpecificSettings("openai", {
+              openai_ttsModel: v,
+            })
+          }
+        />
+      </div>
+    </div>
+  );
+});
+
+const OpenAIVoiceComponent: React.FC<{
+  store: TTSPluginSettingsStore;
+}> = observer(({ store }) => {
+  interface Voice {
+    label: string;
+    value: string;
+    models: string[];
+  }
+  const DEFAULT_OPENAI_VOICES: Voice[] = [
+    {
+      label: "Alloy",
+      value: "alloy",
+      models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+    },
+    {
+      label: "Ash",
+      value: "ash",
+      models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+    },
+    {
+      label: "Ballad",
+      value: "ballad",
+      models: ["gpt-4o-mini-tts"]
+    },
+    {
+      label: "Coral",
+      value: "coral",
+      models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+    },
+    {
+      label: "Echo",
+      value: "echo",
+      models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+    },
+    {
+      label: "Fable",
+      value: "fable",
+      models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+    },
+    {
+      label: "Onyx",
+      value: "onyx",
+      models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+    },
+    {
+      label: "Nova",
+      value: "nova",
+      models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+    },
+    {
+      label: "Sage",
+      value: "sage",
+      models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+    },
+    {
+      label: "Shimmer",
+      value: "shimmer",
+      models: ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"],
+    },
+    {
+      label: "Verse",
+      value: "verse",
+      models: ["gpt-4o-mini-tts"]
+    },
+  ] as const;
+
+  const voices = React.useMemo(() => {
+    return DEFAULT_OPENAI_VOICES.filter((v) =>
+      v.models.includes(store.settings.openai_ttsModel),
+    );
+  }, [store.settings.openai_ttsModel]);
+
+  React.useEffect(() => {
+    if (voices.find((v) => v.value === store.settings.openai_ttsVoice)) {
+      return;
+    }
+    store.updateModelSpecificSettings("openai", {
+      openai_ttsVoice: voices[0].value,
+    });
+  }, [store.settings.openai_ttsVoice, voices]);
+
+  return (
+    <div className="setting-item">
+      <div className="setting-item-info">
+        <div className="setting-item-name">Voice</div>
+        <div className="setting-item-description">The voice option to use</div>
+      </div>
+      <div className="setting-item-control">
+        <OptionSelect
+          options={DEFAULT_OPENAI_VOICES}
+          value={store.settings.openai_ttsVoice}
+          onChange={(v) =>
+            store.updateModelSpecificSettings("openai", {
+              openai_ttsVoice: v,
+            })
+          }
+        />
+      </div>
+    </div>
+  );
+});
+
+const OpenAITTSInstructionsComponent: React.FC<{
+  store: TTSPluginSettingsStore;
+}> = observer(({ store }) => {
+  const onChange: React.ChangeEventHandler<HTMLTextAreaElement> =
+    React.useCallback((evt) => {
+      store.updateModelSpecificSettings("openai", {
+        openai_ttsInstructions: evt.target.value,
+      });
+    }, []);
+
+  const modelSupportsInstructions = React.useMemo(() => {
+    const model = DEFAULT_OPENAI_MODELS.find(
+      (x) => x.value === store.settings.openai_ttsModel,
+    );
+    return model?.supportsInstructions || false;
+  }, [store.settings.openai_ttsModel]);
+
+  const disabled = !modelSupportsInstructions;
+
+  const instructions = modelSupportsInstructions
+    ? store.settings.openai_ttsInstructions
+    : "";
+
+  return (
+    <div className="setting-item tts-settings-block">
+      <div className="setting-item-info">
+        <div className="setting-item-name">Voice Instructions</div>
+        <div className="setting-item-description">
+          Optional instructions to customize the tone and style of the voice
+          (only supported by some models)
+        </div>
+      </div>
+      <textarea
+        value={instructions}
+        disabled={disabled}
+        onChange={onChange}
+        placeholder="Example: Speak in a whisper"
+        rows={3}
+        className="tts-instructions-textarea"
+      />
+    </div>
+  );
+});
+
+const OpenAIContextModeComponent: React.FC<{
+  store: TTSPluginSettingsStore;
+}> = observer(({ store }) => {
+  const onChange: React.ChangeEventHandler<HTMLInputElement> = React.useCallback(
+    (evt) => {
+      store.updateModelSpecificSettings("openai", {
+        openai_contextMode: evt.target.checked,
+      });
+    },
+    [store],
+  );
+  return (
+    <div className="setting-item">
+      <div className="setting-item-info">
+        <div className="setting-item-name">Context Mode</div>
+        <div className="setting-item-description">Enable context mode to improve coherence across sentences.</div>
+      </div>
+      <div className="setting-item-control">
+        <input type="checkbox" checked={store.settings.openai_contextMode} onChange={onChange} />
+      </div>
+    </div>
+  );
+});
+
 const OpenAICompatibleApiKeyComponent: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
@@ -1315,7 +1621,7 @@ const OpenAICompatibleAPIBaseURLComponent: React.FC<{
       <div className="setting-item-control">
         <input
           type="text"
-          placeholder={REAL_OPENAI_API_URL}
+          placeholder={OPENAI_API_URL}
           value={state.raw}
           onChange={onChange}
           className={!state.valid ? "tts-error-input" : ""}

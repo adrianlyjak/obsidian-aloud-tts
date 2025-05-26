@@ -1,8 +1,11 @@
+import { GoogleGenAI } from '@google/genai';
 import {
-  REAL_HUME_API_URL,
-  REAL_OPENAI_API_URL,
+  GEMINI_API_URL,
+  HUME_API_URL,
+  OPENAI_API_URL,
   TTSPluginSettings,
 } from "./TTSPluginSettings";
+import { pcmBufferToMp3Buffer } from '../util/audioProcessing';
 import { base64ToArrayBuffer } from "../util/misc";
 
 /**
@@ -60,11 +63,16 @@ export function toModelOptions(
     sourceType: pluginSettings.sourceType,
     instructions: pluginSettings.instructions || undefined,
     contextMode: pluginSettings.contextMode,
-    apiUri: pluginSettings.API_URL || (
-      pluginSettings.modelProvider === 'hume' ?
-      REAL_HUME_API_URL :
-      REAL_OPENAI_API_URL
-    ),
+    apiUri: pluginSettings.API_URL || ((() => {
+      switch (pluginSettings.modelProvider) {
+        case "gemini":
+          return GEMINI_API_URL;
+        case "hume":
+          return HUME_API_URL;
+        default:
+          return OPENAI_API_URL;
+      }
+    })()),
     apiKey: pluginSettings.API_KEY,
   };
 }
@@ -72,6 +80,51 @@ export function toModelOptions(
 // Interface for batch text-to-speech requests
 export interface TTSModel {
   (text: string, options: TTSModelOptions, contexts?: string[]): Promise<ArrayBuffer>;
+}
+
+export const geminiTextToSpeech: TTSModel = async function geminiTextToSpeech(
+  text: string,
+  options: TTSModelOptions,
+  contexts?: string[],
+): Promise<ArrayBuffer> {
+  const ai = new GoogleGenAI({ apiKey: options.apiKey });
+  const response = await ai.models.generateContent({
+    model: options.model,
+    contents: [{ 
+      parts: [
+        { text: (
+          options.instructions ? (
+            (" {instruction} " + options.instructions + " {\\instruction} ") + 
+            ((contexts && options.contextMode) ? (
+              " {context} " + contexts?.join("") + " {\\context} "
+            ) : "")
+          ) : "" +
+          (" {content} " + text + " {\\content} ")
+        ) },
+      ]
+    }],
+    config: {
+      responseModalities: ['AUDIO'],
+      speechConfig: options.voice && {
+        voiceConfig: {
+          prebuiltVoiceConfig: { voiceName: options.voice },
+        },
+      },
+    },
+  });
+
+  const res = response.candidates?.[0]?.content?.parts?.[0];
+  const generation = res?.inlineData?.data;
+  if (!generation) {
+    console.error("Gemini response missing generations:", res);
+    throw new Error("Gemini response missing generations");
+  }
+
+  return pcmBufferToMp3Buffer(base64ToArrayBuffer(generation), {
+    sampleRate: 24000,
+    channels: 1,
+    bitDepth: 16,
+  });
 }
 
 export const humeTextToSpeech: TTSModel = async function humeTextToSpeech(
@@ -150,8 +203,8 @@ export const openAITextToSpeech: TTSModel = async function openAITextToSpeech(
       voice: (options.voice ? options.voice : ""),
       ...(options.instructions && {
         instructions: options.instructions + (
-          (contexts && contexts.length > 0 && options.contextMode) ? 
-          ("\n\n Previous sentence(s) (Context): " + contexts.join("")) : ""
+          (contexts && options.contextMode) && 
+          ("\n\n Previous sentence(s) (Context): " + contexts.join(""))
         )
       }),
       input: text,
@@ -163,12 +216,16 @@ export const openAITextToSpeech: TTSModel = async function openAITextToSpeech(
   return bf;
 };
 
-function orDefaultOpenAI(maybeUrl: string): string {
-  return maybeUrl.replace(/\/$/, "") || REAL_OPENAI_API_URL;
+function orDefaultGemini(maybeUrl: string): string {
+  return maybeUrl.replace(/\/$/, "") || GEMINI_API_URL;
 }
 
 function orDefaultHume(maybeUrl: string): string {
-  return maybeUrl.replace(/\/$/, "") || REAL_HUME_API_URL;
+  return maybeUrl.replace(/\/$/, "") || HUME_API_URL;
+}
+
+function orDefaultOpenAI(maybeUrl: string): string {
+  return maybeUrl.replace(/\/$/, "") || OPENAI_API_URL;
 }
 
 export async function listOpenAIModels(

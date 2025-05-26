@@ -229,9 +229,9 @@ describe("AudioStore", () => {
     test("should reset audio after current track finishes when text in next track is edited", async () => {
       vi.useFakeTimers();
       const duration = 5;
-      const ttsCall: string[] = [];
+      const ttsCalls: string[] = [];
       const tts = async (txt: string, _: TTSModelOptions) => {
-        ttsCall.push(txt);
+        ttsCalls.push(txt);
         return new ArrayBuffer(txt.length);
       };
       const sink = new FakeAudioSink({
@@ -256,7 +256,7 @@ describe("AudioStore", () => {
 
       // wait a tick
       await vi.advanceTimersByTimeAsync(1);
-      expect(ttsCall).toHaveLength(3);
+      expect(ttsCalls).toHaveLength(3);
       // Advance time to finish the first chunk
       sink.currentTime = duration;
       await vi.advanceTimersByTimeAsync(5000);
@@ -266,8 +266,8 @@ describe("AudioStore", () => {
       // Verify that the text has been updated in the third chunk
       expect(aat.audio.chunks[2].rawText).toContain("New ");
 
-      expect(ttsCall).toHaveLength(4);
-      expect(ttsCall[3]).toMatch(/^New /);
+      expect(ttsCalls).toHaveLength(4);
+      expect(ttsCalls[3]).toMatch(/^New /);
     });
 
     test("should update the tracks' positions forward when the text is added before", async () => {

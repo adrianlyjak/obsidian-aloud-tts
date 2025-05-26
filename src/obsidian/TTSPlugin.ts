@@ -14,7 +14,11 @@ import {
 } from "../player/TTSPluginSettings";
 import { ObsidianBridge, ObsidianBridgeImpl } from "./ObsidianBridge";
 import { configurableAudioCache } from "./ObsidianPlayer";
-import { openAITextToSpeech, humeTextToSpeech } from "../player/TTSModel";
+import { 
+  geminiTextToSpeech,
+  humeTextToSpeech,
+  openAITextToSpeech
+} from "../player/TTSModel";
 
 // standard lucide.dev icon, but for some reason not working as a ribbon icon without registering it
 // https://lucide.dev/icons/audio-lines
@@ -181,11 +185,16 @@ export default class TTSPlugin extends Plugin {
       audioSink: () => audio,
       audioStore: (sys) => loadAudioStore({ system: sys, }),
       storage: () => cache,
-      ttsModel: (system) => (
-        system.settings.modelProvider === "hume" ?
-          humeTextToSpeech :
-          openAITextToSpeech
-      ),
+      ttsModel: (system) => {
+        switch (system.settings.modelProvider) {
+          case "gemini":
+            return geminiTextToSpeech;
+          case "hume":
+            return humeTextToSpeech;
+          default:
+            return openAITextToSpeech;
+        }
+      },
       chunkLoader: (system) => new ChunkLoader({ system }),
       config: () => ({
         backgroundLoaderIntervalMillis: 1000,
