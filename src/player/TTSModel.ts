@@ -71,7 +71,8 @@ export const openAITextToSpeech: TTSModel = async function openAITextToSpeech(
     model: options.model,
     voice: options.voice,
     input: text,
-    speed: 1,
+    speed: 1.0,
+    response_format: "mp3",
   };
 
   // 添加指令（如果有）
@@ -86,8 +87,6 @@ export const openAITextToSpeech: TTSModel = async function openAITextToSpeech(
   if (options.referenceText) {
     requestBody.reference_text = [options.referenceText];
   }
-
-
 
   const headers = await fetch(
     orDefaultOpenAI(options.apiUri) + "/v1/audio/speech",
@@ -189,7 +188,7 @@ export async function listVoices(
 ): Promise<VoiceInfo[]> {
   try {
     const response = await fetch(
-      orDefaultOpenAI(settings.OPENAI_API_URL) + "/v1/voices",
+      orDefaultOpenAI(settings.OPENAI_API_URL) + "/v1/models/info",
       {
         method: "GET",
         headers: {
@@ -206,12 +205,22 @@ export async function listVoices(
     await validate200(response);
     const data = await response.json();
     
-    if (data.voices && Array.isArray(data.voices)) {
-      return data.voices.map((voice: any) => ({
-        id: voice.id || voice.voice_id,
-        name: voice.name || voice.id || voice.voice_id,
-        description: voice.description || "",
-      }));
+    // 解析新的API响应格式
+    if (data.models && Array.isArray(data.models)) {
+      const allVoices: VoiceInfo[] = [];
+      
+      for (const model of data.models) {
+        if (model.voices && Array.isArray(model.voices)) {
+          const modelVoices = model.voices.map((voice: any) => ({
+            id: voice.name,
+            name: voice.name,
+            description: `${voice.description} (${model.model_name})`,
+          }));
+          allVoices.push(...modelVoices);
+        }
+      }
+      
+      return allVoices.length > 0 ? allVoices : getDefaultVoices();
     }
     
     return getDefaultVoices();
