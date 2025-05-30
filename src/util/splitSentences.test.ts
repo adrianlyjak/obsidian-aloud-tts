@@ -117,4 +117,61 @@ alert("wow");
     ] as string[];
     expect(splitSentences(markdown)).toEqual(expected);
   });
+
+  // 新增：中文文本分段测试
+  it("handles Chinese text with proper sentence splitting", () => {
+    const text = "十七世纪见证了实验科学的兴起与传播。吉尔伯特摆弄磁石，伽利略让圆球沿斜面滚落。托里拆利通过摆弄水银管发现了气压原理！";
+    const expected = [
+      "十七世纪见证了实验科学的兴起与传播。",
+      "吉尔伯特摆弄磁石，伽利略让圆球沿斜面滚落。",
+      "托里拆利通过摆弄水银管发现了气压原理！"
+    ];
+    expect(splitSentences(text, { minLength: 0 })).toEqual(expected);
+  });
+
+  it("handles Chinese text with quotes and punctuation", () => {
+    const text = '他说："这是一个测试。"然后他离开了。';
+    const expected = [
+      '他说："这是一个测试。"',
+      '然后他离开了。'
+    ];
+    expect(splitSentences(text, { minLength: 0 })).toEqual(expected);
+  });
+
+  it("respects maxLength parameter for long Chinese text", () => {
+    const longText = "十七世纪见证了实验科学的兴起与传播。吉尔伯特摆弄磁石，伽利略让圆球沿斜面滚落，托里拆利通过摆弄水银管发现了气压原理，帕斯卡将气压计送上山顶以证实大气构成浩瀚气海的猜想，威廉·哈维为探究心脏奥秘解剖并活体解剖了无数动物，牛顿让光束穿过棱镜与透镜。";
+    const result = splitSentences(longText, { minLength: 0, maxLength: 50 });
+    
+    // 检查每个分段都不超过50字符
+    result.forEach(segment => {
+      expect(segment.length).toBeLessThanOrEqual(50);
+    });
+    
+    // 检查所有分段连接起来等于原文
+    expect(result.join("")).toBe(longText);
+  });
+
+  it("handles mixed Chinese and English text", () => {
+    const text = "这是中文。This is English. 这又是中文！Another English sentence.";
+    const expected = [
+      "这是中文。",
+      "This is English. ",
+      "这又是中文！",
+      "Another English sentence."
+    ];
+    expect(splitSentences(text, { minLength: 0 })).toEqual(expected);
+  });
+
+  it("handles Chinese text with commas as fallback split points", () => {
+    const longText = "这是一个很长的句子，包含很多逗号，但是没有句号，所以需要在逗号处分割，以确保不超过最大长度限制";
+    const result = splitSentences(longText, { minLength: 0, maxLength: 30 });
+    
+    // 检查每个分段都不超过30字符
+    result.forEach(segment => {
+      expect(segment.length).toBeLessThanOrEqual(30);
+    });
+    
+    // 检查所有分段连接起来等于原文
+    expect(result.join("")).toBe(longText);
+  });
 });

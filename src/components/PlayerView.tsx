@@ -92,6 +92,7 @@ export const PlayerView = observer(
             onClick={() => player.activeText?.goToNext()}
             disabled={!player.activeText}
           />
+
           <EditPlaybackSpeedButton settings={settings} />
         </div>
         <div className="tts-audio-status-container">
@@ -115,6 +116,8 @@ export const PlayerView = observer(
     );
   },
 );
+
+
 
 const EditPlaybackSpeedButton: React.FC<{
   settings: TTSPluginSettingsStore;

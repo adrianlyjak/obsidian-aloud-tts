@@ -4,7 +4,7 @@ import { AudioSink } from "./AudioSink";
 import { AudioSystem } from "./AudioSystem";
 import { AudioTextChunk } from "./AudioTextChunk";
 import { ChunkLoader } from "./ChunkLoader";
-import { toModelOptions } from "./TTSModel";
+import { toModelOptions, TTSErrorInfo } from "./TTSModel";
 import { CancellablePromise } from "./CancellablePromise";
 
 /**
@@ -427,14 +427,43 @@ const loadCheck = async (
   const chunk = system.audioStore.activeText!.audio.chunks[position];
   const text = chunk.text;
 
+  // 检查文本是否为空或只包含空白字符
+  if (!text || !text.trim()) {
+    console.warn(`跳过空白音频块 ${position}: "${text}"`);
+    // 标记为已加载但没有音频数据
+    const silentAudio = createSilentAudio(0.1); // 100ms静音
+    chunk.setLoaded(silentAudio);
+    return silentAudio;
+  }
+
   // then wait for the next one to complete
   chunk.setLoading();
   let audio: ArrayBuffer;
   try {
+    console.log(`开始加载音频块 ${position}: "${text.substring(0, 50)}..."`);
     audio = await chunkLoader.load(text, modelOpts);
+    console.log(`成功加载音频块 ${position}, 大小: ${audio.byteLength} bytes`);
   } catch (e) {
+    console.error(`音频块 ${position} 加载失败:`, e);
     chunk.setFailed(e);
-    throw e;
+    
+    // 对于可重试的错误，不要抛出异常，而是继续处理下一个块
+    if (e instanceof TTSErrorInfo && e.isRetryable) {
+      console.warn(`音频块 ${position} 将稍后重试`);
+      // 重置块状态以便稍后重试
+      setTimeout(() => {
+        if (!isCancelled()) {
+          chunk.reset();
+        }
+      }, 2000);
+      return undefined;
+    }
+    
+    // 对于不可重试的错误，创建一个静音音频块以保持播放连续性
+    console.warn(`为音频块 ${position} 创建静音音频以保持播放连续性`);
+    const silentAudio = createSilentAudio(1.0); // 1秒静音
+    chunk.setLoaded(silentAudio);
+    return silentAudio;
   }
 
   if (isCancelled()) {
@@ -444,6 +473,49 @@ const loadCheck = async (
     return audio;
   }
 };
+
+// 创建静音音频的辅助函数
+function createSilentAudio(durationSeconds: number): ArrayBuffer {
+  // 创建一个简单的WAV格式静音音频
+  const sampleRate = 22050;
+  const numSamples = Math.floor(sampleRate * durationSeconds);
+  const numChannels = 1;
+  const bytesPerSample = 2;
+  
+  const dataSize = numSamples * numChannels * bytesPerSample;
+  const fileSize = 44 + dataSize;
+  
+  const buffer = new ArrayBuffer(fileSize);
+  const view = new DataView(buffer);
+  
+  // WAV header
+  const writeString = (offset: number, string: string) => {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i));
+    }
+  };
+  
+  writeString(0, 'RIFF');
+  view.setUint32(4, fileSize - 8, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * numChannels * bytesPerSample, true);
+  view.setUint16(32, numChannels * bytesPerSample, true);
+  view.setUint16(34, 8 * bytesPerSample, true);
+  writeString(36, 'data');
+  view.setUint32(40, dataSize, true);
+  
+  // 静音数据（全部为0）
+  for (let i = 44; i < fileSize; i++) {
+    view.setUint8(i, 0);
+  }
+  
+  return buffer;
+}
 
 const loadCheckLoop = (
   system: AudioSystem,
@@ -459,6 +531,21 @@ const loadCheckLoop = (
         const activeText = system.audioStore.activeText;
         if (result && activeText && position !== null && !cancelled) {
           activeText.audio.chunks[position].setLoaded(result);
+          
+          // 检查是否为静音音频（空的ArrayBuffer或很小的音频）
+          if (result.byteLength === 0) {
+            console.log(`跳过空音频块 ${position} 的媒体添加`);
+            // 为空音频块设置默认时长
+            const chunk = activeText.audio.chunks[position];
+            if (!chunk.duration) {
+              chunk.duration = 0.1; // 100ms 默认时长
+              chunk.offsetDuration = activeText.audio.chunks
+                .slice(0, position)
+                .reduce((acc, x) => acc + (x.duration || 0), 0);
+            }
+            return inner();
+          }
+          
           return system.audioSink
             .appendMedia(result)
             .then(() => system.audioSink.getAudioBuffer(result))
@@ -472,16 +559,36 @@ const loadCheckLoop = (
                   buff,
                   offsetDuration,
                 );
+                console.log(`音频块 ${position} 设置完成, 时长: ${buff.duration}s, 偏移: ${offsetDuration}s`);
               } else {
+                console.warn(`音频块 ${position} 被中断，重置状态`);
                 chunk.reset(); // something interrupted, so reset
               }
             })
+            .catch((error) => {
+              console.error(`音频块 ${position} 媒体处理失败:`, error);
+              // 即使媒体处理失败，也要继续处理下一个块
+              const chunk = activeText.audio.chunks[position];
+              chunk.setFailed(error);
+            })
             .then(() => inner());
         } else {
+          // 如果没有结果但还有更多块要加载，继续尝试
+          if (position !== null && !cancelled) {
+            console.log(`音频块 ${position} 无结果，继续处理下一个`);
+            return inner();
+          }
           return Promise.resolve();
         }
       },
-    );
+    ).catch((error) => {
+      console.error('loadCheckLoop 出现错误:', error);
+      // 即使出现错误，也要继续循环以处理后续块
+      if (!cancelled) {
+        return new Promise(resolve => setTimeout(resolve, 1000)).then(() => inner());
+      }
+      return Promise.resolve();
+    });
   };
   return CancellablePromise.cancelFn(inner(), () => {
     cancelled = true;

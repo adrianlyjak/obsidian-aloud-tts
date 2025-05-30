@@ -443,6 +443,60 @@ const APIBaseURLComponent: React.FC<{
 const CustomVoices: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
+  const [availableVoices, setAvailableVoices] = React.useState<any[]>([]);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [showAddForm, setShowAddForm] = React.useState(false);
+  const [newVoice, setNewVoice] = React.useState({
+    id: "",
+    name: "",
+    description: "",
+  });
+
+  // 加载可用音色列表
+  const loadVoices = React.useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const voices = await store.getAvailableVoices();
+      setAvailableVoices(voices);
+    } catch (error) {
+      console.error("Failed to load voices:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [store]);
+
+  React.useEffect(() => {
+    loadVoices();
+  }, [loadVoices]);
+
+  const handleAddVoice = async () => {
+    if (!newVoice.id || !newVoice.name) {
+      return;
+    }
+    
+    try {
+      await store.addCustomVoice(newVoice);
+      setNewVoice({
+        id: "",
+        name: "",
+        description: "",
+      });
+      setShowAddForm(false);
+      await loadVoices();
+    } catch (error) {
+      console.error("Failed to add voice:", error);
+    }
+  };
+
+  const handleRemoveVoice = async (voiceId: string) => {
+    try {
+      await store.removeCustomVoice(voiceId);
+      await loadVoices();
+    } catch (error) {
+      console.error("Failed to remove voice:", error);
+    }
+  };
+
   return (
     <>
       <div className="setting-item">
@@ -460,21 +514,147 @@ const CustomVoices: React.FC<{
           />
         </div>
       </div>
+
       <div className="setting-item">
         <div className="setting-item-info">
-          <div className="setting-item-name">Custom OpenAI Voice</div>
-          <div className="setting-item-description">The voice parameter</div>
+          <div className="setting-item-name">Voice</div>
+          <div className="setting-item-description">
+            Select a voice to use. Server voices are auto-fetched, or manually add backend voices if auto-fetch fails.
+          </div>
         </div>
         <div className="setting-item-control">
-          <input
-            type="text"
+          <select
             value={store.settings.ttsVoice}
             onChange={(evt) =>
               store.updateSettings({ ttsVoice: evt.target.value })
             }
+          >
+            {availableVoices.map((voice) => (
+              <option key={voice.id} value={voice.id}>
+                {voice.name} ({voice.id}) {voice.description && `- ${voice.description}`}
+              </option>
+            ))}
+          </select>
+          <IconButton
+            icon="refresh-cw"
+            onClick={loadVoices}
+            disabled={isLoading}
           />
         </div>
       </div>
+
+      <div className="setting-item">
+        <div className="setting-item-info">
+          <div className="setting-item-name">Voice Management</div>
+          <div className="setting-item-description">
+            Add backend voices that are not auto-detected
+          </div>
+        </div>
+        <div className="setting-item-control">
+          <IconButton
+            icon="plus"
+            onClick={() => setShowAddForm(!showAddForm)}
+          />
+        </div>
+      </div>
+
+      {showAddForm && (
+        <div className="setting-item-container">
+          <div className="setting-item">
+            <div className="setting-item-info">
+              <div className="setting-item-name">Voice ID</div>
+              <div className="setting-item-description">Backend voice identifier (e.g., from your TTS service)</div>
+            </div>
+            <div className="setting-item-control">
+              <input
+                type="text"
+                value={newVoice.id}
+                onChange={(evt) =>
+                  setNewVoice({ ...newVoice, id: evt.target.value })
+                }
+                placeholder="e.g., zf_001, alloy, custom_voice_1"
+              />
+            </div>
+          </div>
+
+          <div className="setting-item">
+            <div className="setting-item-info">
+              <div className="setting-item-name">Voice Name</div>
+              <div className="setting-item-description">Display name for the voice</div>
+            </div>
+            <div className="setting-item-control">
+              <input
+                type="text"
+                value={newVoice.name}
+                onChange={(evt) =>
+                  setNewVoice({ ...newVoice, name: evt.target.value })
+                }
+                placeholder="e.g., 中文女声, Alloy Voice"
+              />
+            </div>
+          </div>
+
+          <div className="setting-item">
+            <div className="setting-item-info">
+              <div className="setting-item-name">Description</div>
+              <div className="setting-item-description">Optional description</div>
+            </div>
+            <div className="setting-item-control">
+              <input
+                type="text"
+                value={newVoice.description}
+                onChange={(evt) =>
+                  setNewVoice({ ...newVoice, description: evt.target.value })
+                }
+                placeholder="e.g., 温暖女声, Male voice"
+              />
+            </div>
+          </div>
+
+
+
+          <div className="setting-item">
+            <div className="setting-item-control">
+              <IconButton
+                icon="check"
+                onClick={handleAddVoice}
+                disabled={!newVoice.id || !newVoice.name}
+              />
+              <IconButton
+                icon="x"
+                onClick={() => setShowAddForm(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {store.settings.customVoices.length > 0 && (
+        <div className="setting-item">
+          <div className="setting-item-info">
+            <div className="setting-item-name">Added Voices</div>
+            <div className="setting-item-description">
+              Manually added backend voices
+            </div>
+          </div>
+          <div className="custom-voices-list">
+            {store.settings.customVoices.map((voice) => (
+              <div key={voice.id} className="custom-voice-item">
+                <div className="custom-voice-info">
+                  <div className="custom-voice-name">{voice.name}</div>
+                  <div className="custom-voice-description">
+                    {voice.id} {voice.description && `- ${voice.description}`}
+                  </div>
+                </div>
+                <IconButton
+                  icon="trash"
+                  onClick={() => handleRemoveVoice(voice.id)}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </>
   );
 });

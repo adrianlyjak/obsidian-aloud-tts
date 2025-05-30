@@ -141,17 +141,22 @@ export class ChunkLoader {
     maxAttempts: number = 3,
   ): Promise<ArrayBuffer> {
     try {
+      console.log(`尝试加载音频块 (第${attempt + 1}次): "${track.substring(0, 50)}..."`);
       return await this.loadTrack(track, options);
     } catch (ex) {
       const errorInfo = ex instanceof TTSErrorInfo ? ex : undefined;
       const canRetry =
         attempt < maxAttempts && (errorInfo ? errorInfo.isRetryable : true);
+      
+      console.error(`音频块加载失败 (第${attempt + 1}次):`, ex);
+      
       if (!canRetry) {
+        console.error(`音频块加载最终失败，已尝试 ${attempt + 1} 次`);
         throw ex;
       } else {
-        await new Promise((resolve) =>
-          setTimeout(resolve, 250 * Math.pow(2, attempt)),
-        );
+        const delay = 250 * Math.pow(2, attempt);
+        console.warn(`音频块加载失败，${delay}ms后重试 (第${attempt + 2}次)`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
         return await this.tryLoadTrack(
           track,
           options,

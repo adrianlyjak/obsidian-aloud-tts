@@ -2,6 +2,20 @@ import { action, observable } from "mobx";
 import { TTSErrorInfo, TTSModelOptions, listModels } from "./TTSModel";
 import { debounce } from "../util/misc";
 import { hashString } from "../util/Minhash";
+
+// 自定义音色接口
+export interface CustomVoice {
+  id: string;
+  name: string;
+  description: string;
+  // 注意：referenceAudio和referenceText暂时不在UI中配置
+  // 这些参数将来可能用于高级音色克隆功能
+  referenceAudio?: string;
+  referenceText?: string;
+}
+
+
+
 export type TTSPluginSettings = {
   OPENAI_API_KEY: string;
   OPENAI_API_URL: string;
@@ -16,6 +30,8 @@ export type TTSPluginSettings = {
   showPlayerView: PlayerViewMode;
   version: number;
   audioFolder: string;
+  // 新增：自定义音色列表
+  customVoices: CustomVoice[];
 } & OpenAIModelConfig &
   OpenAICompatibleModelConfig;
 
@@ -84,6 +100,8 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   openaicompat_ttsVoice: "",
   version: 1,
   audioFolder: "aloud",
+  // 新增：自定义音色列表
+  customVoices: [],
 } as const;
 
 export const MARKETING_NAME = "Aloud";
@@ -100,6 +118,11 @@ export interface TTSPluginSettingsStore {
     settings: Partial<TTSPluginSettings>,
   ) => Promise<void>;
   setSpeed(speed: number): void;
+  // 新增：自定义音色管理方法
+  addCustomVoice: (voice: CustomVoice) => Promise<void>;
+  removeCustomVoice: (voiceId: string) => Promise<void>;
+  // 新增：获取可用音色列表（包括服务器音色）
+  getAvailableVoices: () => Promise<CustomVoice[]>;
 }
 
 export async function pluginSettingsStore(
@@ -200,6 +223,56 @@ export async function pluginSettingsStore(
           playbackSpeed: Math.round(speed * 20) / 20,
         });
       },
+      // 新增：添加自定义音色
+      addCustomVoice: async (voice: CustomVoice): Promise<void> => {
+        const existingIndex = store.settings.customVoices.findIndex(
+          (v) => v.id === voice.id,
+        );
+        let updatedVoices: CustomVoice[];
+        
+        if (existingIndex >= 0) {
+          // 更新现有音色
+          updatedVoices = [...store.settings.customVoices];
+          updatedVoices[existingIndex] = voice;
+        } else {
+          // 添加新音色
+          updatedVoices = [...store.settings.customVoices, voice];
+        }
+        
+        await store.updateSettings({ customVoices: updatedVoices });
+      },
+      // 新增：删除自定义音色
+      removeCustomVoice: async (voiceId: string): Promise<void> => {
+        const updatedVoices = store.settings.customVoices.filter(
+          (v) => v.id !== voiceId,
+        );
+        await store.updateSettings({ customVoices: updatedVoices });
+      },
+      // 新增：获取可用音色列表（包括服务器音色）
+      getAvailableVoices: async (): Promise<CustomVoice[]> => {
+        try {
+          // 导入listVoices函数
+          const { listVoices } = await import("./TTSModel");
+          const serverVoices = await listVoices(store.settings);
+          
+          // 转换服务器音色格式
+          const serverVoicesAsCustom: CustomVoice[] = serverVoices.map((voice) => ({
+            id: voice.id,
+            name: voice.name,
+            description: voice.description,
+          }));
+          
+          // 合并服务器音色和自定义音色，去重
+          const customVoicesNotInServer = store.settings.customVoices.filter(
+            (customVoice) => !serverVoices.some((serverVoice) => serverVoice.id === customVoice.id),
+          );
+          
+          return [...serverVoicesAsCustom, ...customVoicesNotInServer];
+        } catch (error) {
+          console.warn("Failed to fetch server voices, using custom voices only:", error);
+          return store.settings.customVoices;
+        }
+      },
     },
     {
       settings: observable,
@@ -207,6 +280,11 @@ export async function pluginSettingsStore(
       apiKeyError: observable,
       setApiKeyValidity: action,
       updateSettings: action,
+      updateModelSpecificSettings: action,
+      setSpeed: action,
+      addCustomVoice: action,
+      removeCustomVoice: action,
+      getAvailableVoices: action,
     },
   );
   store.checkApiKey();
