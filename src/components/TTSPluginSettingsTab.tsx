@@ -452,11 +452,11 @@ const CustomVoices: React.FC<{
     description: "",
   });
 
-  // 加载可用音色列表
+  // 加载可用音色列表（包括远程音色）- 用于手动刷新
   const loadVoices = React.useCallback(async () => {
     setIsLoading(true);
     try {
-      const voices = await store.getAvailableVoices();
+      const voices = await store.getAvailableVoicesWithRemote();
       setAvailableVoices(voices);
     } catch (error) {
       console.error("Failed to load voices:", error);
@@ -465,9 +465,10 @@ const CustomVoices: React.FC<{
     }
   }, [store]);
 
+  // 初始化时只加载本地自定义音色，不调用远程API
   React.useEffect(() => {
-    loadVoices();
-  }, [loadVoices]);
+    setAvailableVoices(store.settings.customVoices);
+  }, [store.settings.customVoices]);
 
   const handleAddVoice = async () => {
     if (!newVoice.id || !newVoice.name) {
@@ -482,7 +483,8 @@ const CustomVoices: React.FC<{
         description: "",
       });
       setShowAddForm(false);
-      await loadVoices();
+      // 重新加载本地音色列表
+      setAvailableVoices(store.settings.customVoices);
     } catch (error) {
       console.error("Failed to add voice:", error);
     }
@@ -491,7 +493,8 @@ const CustomVoices: React.FC<{
   const handleRemoveVoice = async (voiceId: string) => {
     try {
       await store.removeCustomVoice(voiceId);
-      await loadVoices();
+      // 重新加载本地音色列表
+      setAvailableVoices(store.settings.customVoices);
     } catch (error) {
       console.error("Failed to remove voice:", error);
     }
@@ -610,8 +613,6 @@ const CustomVoices: React.FC<{
               />
             </div>
           </div>
-
-
 
           <div className="setting-item">
             <div className="setting-item-control">
