@@ -1,10 +1,14 @@
 {
-  "id": "aloud-tts",
-  "name": "Aloud",
+  "id": "aloud-tts-ai-learning-assistant",
+  "name": "Aloud TTS (AI Learning Assistant)",
   "version": "0.7.0-rc1",
   "minAppVersion": "0.15.0",
-  "description": "Highlight and speak text from your notes. Converts text to speech in real-time using lifelike voices from OpenAI.",
-  "author": "Adrian Lyjak",
-  "authorUrl": "https://github.com/adrianlyjak",
+  "description": "Highlight and speak text from your notes. Converts text to speech in real-time using lifelike voices from OpenAI. Development fork by AI Learning Assistant based on Adrian Lyjak's work.",
+  "author": "AI Learning Assistant Dev (based on Adrian Lyjak's work)",
+  "authorUrl": "https://github.com/ai-learning-assistant-dev",
+  "fundingUrl": {
+    "GitHub Repository": "https://github.com/ai-learning-assistant-dev/obsidian-aloud-tts",
+    "Original Author Repository": "https://github.com/adrianlyjak/obsidian-aloud-tts"
+  },
   "isDesktopOnly": false
 }
