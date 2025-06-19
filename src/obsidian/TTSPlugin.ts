@@ -14,6 +14,8 @@ import {
 import { ObsidianBridge, ObsidianBridgeImpl } from "./ObsidianBridge";
 import { configurableAudioCache } from "./ObsidianPlayer";
 import { openAITextToSpeech } from "../player/TTSModel";
+// 修改src/obsidian/TTSPlugin.ts
+import { TTSService } from "../types/ttsService";
 
 // standard lucide.dev icon, but for some reason not working as a ribbon icon without registering it
 // https://lucide.dev/icons/audio-lines
@@ -189,4 +191,19 @@ export default class TTSPlugin extends Plugin {
     });
     this.bridge = new ObsidianBridgeImpl(this.app, this.player, this.settings);
   }
+
+  public readonly ttsService: TTSService = {
+    playText: async (text: string) => {
+      try {
+        await this.bridge.playDetached(text);
+      } catch (e) {
+        console.error("TTS播放失败", e);
+        throw e;
+      }
+    },
+    
+    isAvailable: () => {
+      return !!this.system && !!this.bridge;
+    }
+  };
 }
