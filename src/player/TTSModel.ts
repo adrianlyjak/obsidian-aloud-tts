@@ -114,10 +114,10 @@ export const humeTextToSpeech: TTSModel = async function humeTextToSpeech(
       ...(contexts && contexts.length > 0 && options.contextMode && {
         context: { utterances: contextUtterances }
       }),
-      utterances: utterance,
+      utterances: [ utterance ],
       format: { type: "mp3" },
       num_generations: 1,
-      split_utterances: false,
+      split_utterances: true,
     }),
   });
   await validate200(headers);
@@ -125,13 +125,12 @@ export const humeTextToSpeech: TTSModel = async function humeTextToSpeech(
 
   // Hume might return multiple generations, we only care about the first one.
   const generation = res.generations[0];
-  if (!generation || !generation.snippets) {
-    console.error("Hume response missing generations or snippets:", res);
-    throw new Error("Hume response missing generations or snippets");
+  if (!generation) {
+    console.error("Hume response missing generations:", res);
+    throw new Error("Hume response missing generations");
   }
-  
-  const snippet = generation.snippets[0];
-  return base64ToArrayBuffer(snippet.audio);
+
+  return base64ToArrayBuffer(generation.audio);
 };
 
 // OpenAI / Compatible API implementation
