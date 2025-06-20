@@ -27,7 +27,7 @@ export function configurableAudioCache(
     async getAudio(
       text: string,
       settings: TTSModelOptions,
-    ): Promise<ArrayBuffer | null> {
+    ): Promise<(ArrayBuffer | null)> {
       return active.getAudio(text, settings);
     },
     async saveAudio(
@@ -58,7 +58,7 @@ export function obsidianFileVault(app: App): AudioCache {
     async getAudio(
       text: string,
       settings: TTSModelOptions,
-    ): Promise<ArrayBuffer | null> {
+    ): Promise<(ArrayBuffer | null)> {
       const str = hashAudioInputs(text, settings);
       const filepath = normalizePath(`/${cachedir}/${str}.mp3`);
       const exists = await vault.adapter.exists(filepath);

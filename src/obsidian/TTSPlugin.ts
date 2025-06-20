@@ -5,6 +5,7 @@ import { TTSSettingTab } from "../components/TTSPluginSettingsTab";
 import { AudioSink, WebAudioSink } from "../player/AudioSink";
 import { AudioStore, loadAudioStore } from "../player/AudioStore";
 import { AudioSystem, createAudioSystem } from "../player/AudioSystem";
+import { ChunkLoader } from "../player/ChunkLoader";
 import {
   MARKETING_NAME,
   MARKETING_NAME_LONG,
@@ -13,8 +14,7 @@ import {
 } from "../player/TTSPluginSettings";
 import { ObsidianBridge, ObsidianBridgeImpl } from "./ObsidianBridge";
 import { configurableAudioCache } from "./ObsidianPlayer";
-import { openAITextToSpeech } from "../player/TTSModel";
-import { humeTextToSpeech } from "../player/TTSModel";
+import { openAITextToSpeech, humeTextToSpeech } from "../player/TTSModel";
 
 // standard lucide.dev icon, but for some reason not working as a ribbon icon without registering it
 // https://lucide.dev/icons/audio-lines
@@ -179,16 +179,14 @@ export default class TTSPlugin extends Plugin {
     this.system = createAudioSystem({
       settings: () => this.settings.settings,
       audioSink: () => audio,
-      audioStore: (sys) =>
-        loadAudioStore({
-          system: sys,
-        }),
+      audioStore: (sys) => loadAudioStore({ system: sys, }),
       storage: () => cache,
-      ttsModel: () => (
-        this.settings.settings.modelProvider === "hume" ?
+      ttsModel: (system) => (
+        system.settings.modelProvider === "hume" ?
           humeTextToSpeech :
           openAITextToSpeech
       ),
+      chunkLoader: (system) => new ChunkLoader({ system }),
       config: () => ({
         backgroundLoaderIntervalMillis: 1000,
       }),
