@@ -28,7 +28,7 @@ jobs:
 
           ok=false
           for b in $branches; do
-            if [[ "$b" == "master" ]] || [[ "$b" == release/* ]] || [[ "$b" == "YaQia_dev" ]]; then
+            if [[ "$b" == "master" ]] || [[ "$b" == release/* ]] || [[ "$b" == YaQia_dev* ]]; then
               ok=true
               break
             fi
