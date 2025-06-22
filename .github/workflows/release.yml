@@ -23,16 +23,15 @@ jobs:
       - name: Enable Corepack
         run: |
           corepack enable
-          corepack prepare pnpm@latest-8 --activate
 
       - name: Build plugin
         run: |
-          pnpm install
-          pnpm run lint
-          pnpm run format:check
-          pnpm run test
-          pnpm run web:build
-          pnpm run build
+          npm install
+          npm run lint
+          npm run format:check
+          npm run test
+          npm run web:build
+          npm run build
 
       # 上传构建产物
       - name: Upload build artifacts
