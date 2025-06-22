@@ -55,7 +55,7 @@ export class AudioTextChunk {
     this.offsetDuration = undefined;
     this.retryCount = 0;
     this.lastFailureTime = undefined;
-    
+
     mobx.makeObservable(this, {
       rawText: observable,
       text: observable,
@@ -105,21 +105,24 @@ export class AudioTextChunk {
     this.failed = true;
     this.retryCount++;
     this.lastFailureTime = Date.now();
-    
+
     if (failureInfo instanceof TTSErrorInfo) {
       this.failureInfo = failureInfo;
     }
     this.loading = false;
-    
-    console.warn(`音频块失败 (第${this.retryCount}次): "${this.text.substring(0, 30)}..."`, failureInfo);
+
+    console.warn(
+      `音频块失败 (第${this.retryCount}次): "${this.text.substring(0, 30)}..."`,
+      failureInfo,
+    );
   }
-  
+
   setLoading() {
     this.loading = true;
     this.failed = undefined;
     this.failureInfo = undefined;
   }
-  
+
   setLoaded(audio: ArrayBuffer) {
     this.audio = audio;
     this.loading = false;
@@ -128,7 +131,7 @@ export class AudioTextChunk {
     this.retryCount = 0;
     this.lastFailureTime = undefined;
   }
-  
+
   setAudioBuffer(audioBuffer: AudioBuffer, offsetDuration: number) {
     this.audioBuffer = audioBuffer;
     this.duration = audioBuffer.duration;
@@ -138,15 +141,18 @@ export class AudioTextChunk {
   canRetry(): boolean {
     const maxRetries = 3;
     const retryDelayMs = 5000; // 5秒后才能重试
-    
+
     if (this.retryCount >= maxRetries) {
       return false;
     }
-    
-    if (this.lastFailureTime && Date.now() - this.lastFailureTime < retryDelayMs) {
+
+    if (
+      this.lastFailureTime &&
+      Date.now() - this.lastFailureTime < retryDelayMs
+    ) {
       return false;
     }
-    
+
     return true;
   }
 

@@ -474,7 +474,7 @@ const CustomVoices: React.FC<{
     if (!newVoice.id || !newVoice.name) {
       return;
     }
-    
+
     try {
       await store.addCustomVoice(newVoice);
       setNewVoice({
@@ -522,7 +522,8 @@ const CustomVoices: React.FC<{
         <div className="setting-item-info">
           <div className="setting-item-name">Voice</div>
           <div className="setting-item-description">
-            Select a voice to use. Server voices are auto-fetched, or manually add backend voices if auto-fetch fails.
+            Select a voice to use. Server voices are auto-fetched, or manually
+            add backend voices if auto-fetch fails.
           </div>
         </div>
         <div className="setting-item-control">
@@ -534,7 +535,8 @@ const CustomVoices: React.FC<{
           >
             {availableVoices.map((voice) => (
               <option key={voice.id} value={voice.id}>
-                {voice.name} ({voice.id}) {voice.description && `- ${voice.description}`}
+                {voice.name} ({voice.id}){" "}
+                {voice.description && `- ${voice.description}`}
               </option>
             ))}
           </select>
@@ -566,7 +568,9 @@ const CustomVoices: React.FC<{
           <div className="setting-item">
             <div className="setting-item-info">
               <div className="setting-item-name">Voice ID</div>
-              <div className="setting-item-description">Backend voice identifier (e.g., from your TTS service)</div>
+              <div className="setting-item-description">
+                Backend voice identifier (e.g., from your TTS service)
+              </div>
             </div>
             <div className="setting-item-control">
               <input
@@ -583,7 +587,9 @@ const CustomVoices: React.FC<{
           <div className="setting-item">
             <div className="setting-item-info">
               <div className="setting-item-name">Voice Name</div>
-              <div className="setting-item-description">Display name for the voice</div>
+              <div className="setting-item-description">
+                Display name for the voice
+              </div>
             </div>
             <div className="setting-item-control">
               <input
@@ -600,7 +606,9 @@ const CustomVoices: React.FC<{
           <div className="setting-item">
             <div className="setting-item-info">
               <div className="setting-item-name">Description</div>
-              <div className="setting-item-description">Optional description</div>
+              <div className="setting-item-description">
+                Optional description
+              </div>
             </div>
             <div className="setting-item-control">
               <input
@@ -621,10 +629,7 @@ const CustomVoices: React.FC<{
                 onClick={handleAddVoice}
                 disabled={!newVoice.id || !newVoice.name}
               />
-              <IconButton
-                icon="x"
-                onClick={() => setShowAddForm(false)}
-              />
+              <IconButton icon="x" onClick={() => setShowAddForm(false)} />
             </div>
           </div>
         </div>

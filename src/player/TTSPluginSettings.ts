@@ -14,8 +14,6 @@ export interface CustomVoice {
   referenceText?: string;
 }
 
-
-
 export type TTSPluginSettings = {
   OPENAI_API_KEY: string;
   OPENAI_API_URL: string;
@@ -141,46 +139,57 @@ export async function pluginSettingsStore(
         this.apiKeyError = error;
       },
       checkApiKey: debounce(async () => {
-        console.log('开始检查API key...');
-        
+        console.log("开始检查API key...");
+
         // 根据模型提供商读取正确的API Key和URL
         let apiKey: string;
         let apiUrl: string;
-        
+
         if (store.settings.modelProvider === "openaicompat") {
           apiKey = store.settings.openaicompat_apiKey;
-          apiUrl = store.settings.openaicompat_apiBase || store.settings.OPENAI_API_URL;
+          apiUrl =
+            store.settings.openaicompat_apiBase ||
+            store.settings.OPENAI_API_URL;
         } else {
-          apiKey = store.settings.openai_apiKey || store.settings.OPENAI_API_KEY;
+          apiKey =
+            store.settings.openai_apiKey || store.settings.OPENAI_API_KEY;
           apiUrl = store.settings.OPENAI_API_URL;
         }
-        
-        console.log('模型提供商:', store.settings.modelProvider);
-        console.log('API URL:', apiUrl);
-        console.log('API Key存在:', !!apiKey);
-        
-        if (
-          apiUrl &&
-          apiUrl !== REAL_OPENAI_API_URL
-        ) {
-          console.log('检测到自定义API URL，类型:', apiUrl);
+
+        console.log("模型提供商:", store.settings.modelProvider);
+        console.log("API URL:", apiUrl);
+        console.log("API Key存在:", !!apiKey);
+
+        if (apiUrl && apiUrl !== REAL_OPENAI_API_URL) {
+          console.log("检测到自定义API URL，类型:", apiUrl);
           // 对于自定义API URL，如果API key为空，假设是本地部署不需要认证
           if (!apiKey) {
-            console.log('无API key，假设为本地部署');
-            store.setApiKeyValidity(true, "Local deployment (no API key required)");
+            console.log("无API key，假设为本地部署");
+            store.setApiKeyValidity(
+              true,
+              "Local deployment (no API key required)",
+            );
           } else {
-            console.log('有API key，尝试验证...');
+            console.log("有API key，尝试验证...");
             // 如果提供了API key，尝试验证
             store.setApiKeyValidity(undefined, undefined);
             try {
               await listModels(store.settings);
-              console.log('API key验证成功');
+              console.log("API key验证成功");
               store.setApiKeyValidity(true, undefined);
             } catch (ex: unknown) {
-              console.error("Could not validate API key for custom endpoint", ex);
+              console.error(
+                "Could not validate API key for custom endpoint",
+                ex,
+              );
               let message = "Cannot connect to custom API endpoint";
               if (ex instanceof TTSErrorInfo) {
-                console.log('TTSErrorInfo详情:', ex.status, ex.httpErrorCode, ex.errorDetails);
+                console.log(
+                  "TTSErrorInfo详情:",
+                  ex.status,
+                  ex.httpErrorCode,
+                  ex.errorDetails,
+                );
                 if (ex.openAIErrorCode() === "invalid_api_key") {
                   message = "Invalid API key for custom endpoint";
                 } else {
@@ -190,12 +199,12 @@ export async function pluginSettingsStore(
                   }
                 }
               }
-              console.log('API key验证失败，错误:', message);
+              console.log("API key验证失败，错误:", message);
               store.setApiKeyValidity(false, message);
             }
           }
         } else {
-          console.log('使用OpenAI官方API');
+          console.log("使用OpenAI官方API");
           if (!apiKey) {
             store.setApiKeyValidity(
               false,
@@ -280,7 +289,7 @@ export async function pluginSettingsStore(
           (v) => v.id === voice.id,
         );
         let updatedVoices: CustomVoice[];
-        
+
         if (existingIndex >= 0) {
           // 更新现有音色
           updatedVoices = [...store.settings.customVoices];
@@ -289,7 +298,7 @@ export async function pluginSettingsStore(
           // 添加新音色
           updatedVoices = [...store.settings.customVoices, voice];
         }
-        
+
         await store.updateSettings({ customVoices: updatedVoices });
       },
       // 新增：删除自定义音色
@@ -310,22 +319,30 @@ export async function pluginSettingsStore(
           // 导入listVoices函数
           const { listVoices } = await import("./TTSModel");
           const serverVoices = await listVoices(store.settings);
-          
+
           // 转换服务器音色格式
-          const serverVoicesAsCustom: CustomVoice[] = serverVoices.map((voice) => ({
-            id: voice.id,
-            name: voice.name,
-            description: voice.description,
-          }));
-          
+          const serverVoicesAsCustom: CustomVoice[] = serverVoices.map(
+            (voice) => ({
+              id: voice.id,
+              name: voice.name,
+              description: voice.description,
+            }),
+          );
+
           // 合并服务器音色和自定义音色，去重
           const customVoicesNotInServer = store.settings.customVoices.filter(
-            (customVoice) => !serverVoices.some((serverVoice) => serverVoice.id === customVoice.id),
+            (customVoice) =>
+              !serverVoices.some(
+                (serverVoice) => serverVoice.id === customVoice.id,
+              ),
           );
-          
+
           return [...serverVoicesAsCustom, ...customVoicesNotInServer];
         } catch (error) {
-          console.warn("Failed to fetch server voices, using custom voices only:", error);
+          console.warn(
+            "Failed to fetch server voices, using custom voices only:",
+            error,
+          );
           return store.settings.customVoices;
         }
       },

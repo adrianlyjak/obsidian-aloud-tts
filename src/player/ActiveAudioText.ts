@@ -118,25 +118,29 @@ export class ActiveAudioTextImpl implements ActiveAudioText {
       return;
     }
     let next = this.position + 1;
-    
+
     // 跳过失败的音频块，但最多跳过5个连续失败的块
     let skipCount = 0;
     while (next < this.audio.chunks.length && skipCount < 5) {
       const chunk = this.audio.chunks[next];
       if (chunk.failed && !chunk.loading) {
-        console.warn(`跳过失败的音频块 ${next}: "${chunk.text.substring(0, 30)}..."`);
+        console.warn(
+          `跳过失败的音频块 ${next}: "${chunk.text.substring(0, 30)}..."`,
+        );
         next++;
         skipCount++;
       } else {
         break;
       }
     }
-    
+
     if (next >= this.audio.chunks.length) {
       next = -1;
     }
-    
-    console.log(`从位置 ${this.position} 跳转到 ${next}${skipCount > 0 ? ` (跳过了${skipCount}个失败块)` : ''}`);
+
+    console.log(
+      `从位置 ${this.position} 跳转到 ${next}${skipCount > 0 ? ` (跳过了${skipCount}个失败块)` : ""}`,
+    );
     this.position = next;
   }
 
@@ -150,28 +154,32 @@ export class ActiveAudioTextImpl implements ActiveAudioText {
         next = 0;
       }
     }
-    
+
     // 跳过失败的音频块，但最多跳过5个连续失败的块
     let skipCount = 0;
     while (next >= 0 && skipCount < 5) {
       const chunk = this.audio.chunks[next];
       if (chunk.failed && !chunk.loading) {
-        console.warn(`向前跳过失败的音频块 ${next}: "${chunk.text.substring(0, 30)}..."`);
+        console.warn(
+          `向前跳过失败的音频块 ${next}: "${chunk.text.substring(0, 30)}..."`,
+        );
         next--;
         skipCount++;
       } else {
         break;
       }
     }
-    
+
     if (next < 0) {
       next = 0;
     }
-    
-    console.log(`从位置 ${this.position} 向前跳转到 ${next}${skipCount > 0 ? ` (跳过了${skipCount}个失败块)` : ''}`);
+
+    console.log(
+      `从位置 ${this.position} 向前跳转到 ${next}${skipCount > 0 ? ` (跳过了${skipCount}个失败块)` : ""}`,
+    );
     this.position = next;
   }
-  
+
   setPosition(position: number): void {
     // 确保位置在有效范围内
     if (position < -1) {
@@ -179,7 +187,7 @@ export class ActiveAudioTextImpl implements ActiveAudioText {
     } else if (position >= this.audio.chunks.length) {
       position = -1;
     }
-    
+
     console.log(`设置播放位置: ${this.position} -> ${position}`);
     this.position = position;
   }
@@ -190,12 +198,12 @@ export function buildTrack(
   chunkType: "sentence" | "paragraph" = "sentence",
 ): AudioText {
   const maxChunkLength = 300; // 设置最大块长度为300字符
-  
+
   const splits =
     chunkType === "sentence"
-      ? splitSentences(opts.text, { 
+      ? splitSentences(opts.text, {
           minLength: opts.minChunkLength ?? 20,
-          maxLength: maxChunkLength 
+          maxLength: maxChunkLength,
         })
       : splitParagraphs(opts.text);
 
@@ -204,14 +212,14 @@ export function buildTrack(
   for (const s of splits) {
     // 跳过空白块和无实际内容的块
     if (s.trim().length === 0) continue;
-    
+
     // 额外检查：确保文本块包含可读内容（不仅仅是标点符号）
     const hasContent = /[\u4e00-\u9fff\w]/.test(s); // 包含中文字符或字母数字
     if (!hasContent) {
       console.log(`跳过无实际内容的文本块: "${s}"`);
       continue;
     }
-    
+
     const end = start + s.length;
     const chunk: AudioTextChunk = new AudioTextChunk({
       rawText: s,
@@ -221,9 +229,11 @@ export function buildTrack(
     start = end;
     chunks.push(chunk);
   }
-  
-  console.log(`文本已分割为 ${chunks.length} 个块，最大块长度限制: ${maxChunkLength} 字符`);
-  
+
+  console.log(
+    `文本已分割为 ${chunks.length} 个块，最大块长度限制: ${maxChunkLength} 字符`,
+  );
+
   return observable({
     id: randomId(),
     filename: opts.filename,

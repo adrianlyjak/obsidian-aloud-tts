@@ -117,8 +117,6 @@ export const PlayerView = observer(
   },
 );
 
-
-
 const EditPlaybackSpeedButton: React.FC<{
   settings: TTSPluginSettingsStore;
 }> = observer(({ settings }) => {
