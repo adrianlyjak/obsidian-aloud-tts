@@ -66,7 +66,7 @@ export function splitSentences(
       if (char && /[。！？；]/.test(char)) {
         // 如果下一个字符是引号、括号等，包含进来
         let endIndex = i + 1;
-        while (endIndex < remaining.length && /[""''）】』」》〉]/.test(remaining[endIndex])) {
+        while (endIndex < remaining.length && /[""''）】』」》〉\s]/.test(remaining[endIndex])) {
           endIndex++;
         }
         buff = remaining.slice(0, endIndex);
@@ -126,7 +126,8 @@ export function splitSentences(
     
     // 添加到结果中（确保有实际可读内容）
     if (hasReadableContent(cleanedBuff)) {
-      sentences.push(cleanedBuff);
+      // sentences.push(cleanedBuff);
+      sentences.push(buff);
     }
   }
   
