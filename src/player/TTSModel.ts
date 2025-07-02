@@ -1,4 +1,4 @@
-import { REAL_OPENAI_API_URL, TTSPluginSettings, CustomVoice } from "./TTSPluginSettings";
+import { REAL_OPENAI_API_URL, TTSPluginSettings } from "./TTSPluginSettings";
 
 /**
  * options used by the audio model. Some options are used as a cache key, such that changes to the options
