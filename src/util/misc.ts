@@ -156,8 +156,8 @@ function hasReadableContent(text: string): boolean {
   }
   
   // 移除所有空白字符和常见标点符号后，检查是否还有内容
-  const contentOnly = text.replace(/[\s\n\r\t""''""''（）()【】\[\]《》<>「」『』、，,。.！!？?；;：:…—–-]/g, '');
-  
+  // const contentOnly = text.replace(/[\s\n\r\t""''""''（）()【】\[\]《》<>「」『』、，,。.！!？?；;：:…—–-]/g, '');
+  const contentOnly = text.replace(/[\s\p{P}\p{Z}]/gu, ''); 
   // 如果还有字符剩余，说明有可读内容
   return contentOnly.length > 0;
 }
