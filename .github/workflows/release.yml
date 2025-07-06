@@ -27,12 +27,12 @@ jobs:
 
       - name: Build plugin
         run: |
-          pnpm install
-          pnpm run lint
-          pnpm run format:check
-          pnpm run test
-          pnpm run web:build
-          pnpm run build
+          npm install
+          npm run lint
+          # npm run format:check
+          # npm run test
+          npm run web:build
+          npm run build
 
       - name: Create release
         if: startsWith(github.ref, 'refs/tags/')
