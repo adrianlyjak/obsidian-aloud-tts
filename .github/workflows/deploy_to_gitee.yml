@@ -111,7 +111,7 @@ jobs:
           repo_name="${GITHUB_REPOSITORY#*/}"       # 提取仓库名部分
 
           # 移除仓库名的 "obsidian-" 前缀
-          processed_repo_name="${repo_name#obsidian-}" 
+          processed_repo_name="ala-${repo_name#obsidian-}" 
 
           # 创建目标目录 (owner/processed_repo_name)
           mkdir -p "gitee-repo/$owner/$processed_repo_name"
