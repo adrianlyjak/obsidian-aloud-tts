@@ -253,17 +253,46 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     const player: AudioStore = this.audio;
     const from = editor.getCursor("from");
     let to = editor.getCursor("to");
-    let isTooShort = false;
-    if (extendShort) {
-      const text = editor.getRange(from, to);
-      isTooShort = !text.trim().match(/\s+/);
+    // 移除自动扩展逻辑，直接使用用户选择的范围
+    // let to = editor.getCursor("to");
+    // let isTooShort = false;
+    // if (extendShort) {
+    //   const text = editor.getRange(from, to);
+    //   isTooShort = !text.trim().match(/\s+/);
+    // }
+    // if ((from.ch === to.ch && from.line === to.line) || isTooShort) {
+    //   to = {
+    //     line: editor.lastLine(),
+    //     ch: editor.getLine(editor.lastLine()).length,
+    //   };
+    // }
+    // 当没有选择文本时，自动扩展到当前段落结尾
+    if (from.line === to.line && from.ch === to.ch) {
+      const currentLineText = editor.getLine(from.line);
+      const lineEnd = currentLineText.length;
+      
+      // 如果已经在行尾，则检查下一行是否属于同一段落
+      if (from.ch === lineEnd) {
+        const nextLine = from.line + 1;
+        if (nextLine < editor.lineCount()) {
+          const nextLineText = editor.getLine(nextLine);
+          // 下一行非空且不是列表项/代码块等特殊格式，则视为同一段落
+          if (nextLineText.trim() !== "" && !nextLineText.match(/^\s*[-*+\d>]|```/)) {
+            to = {
+              line: nextLine,
+              ch: nextLineText.length
+            };
+          }
+        }
+      } else {
+        // 直接扩展到当前行结尾
+        to = {
+          line: from.line,
+          ch: lineEnd
+        };
+      }
     }
-    if ((from.ch === to.ch && from.line === to.line) || isTooShort) {
-      to = {
-        line: editor.lastLine(),
-        ch: editor.getLine(editor.lastLine()).length,
-      };
-    }
+
     const start = editor.getRange({ line: 0, ch: 0 }, from).length;
 
     const selection = editor.getRange(from, to);
