@@ -106,11 +106,20 @@ jobs:
       # 同步文件
       - name: Sync files to Gitee
         run: |
-          mkdir -p gitee-repo/"${{ github.repository }}"
+          # 分离 owner 和 repo 名称
+          owner="${GITHUB_REPOSITORY%/*}"          # 提取 owner 部分
+          repo_name="${GITHUB_REPOSITORY#*/}"       # 提取仓库名部分
+
+          # 移除仓库名的 "obsidian-" 前缀
+          processed_repo_name="ala-${repo_name#obsidian-}" 
+
+          # 创建目标目录 (owner/processed_repo_name)
+          mkdir -p "gitee-repo/$owner/$processed_repo_name"
+
           # 复制构建文件
-          cp artifacts/main.js gitee-repo/"${{ github.repository }}"
-          cp artifacts/styles.css gitee-repo/"${{ github.repository }}"
-          cp artifacts/manifest.json gitee-repo/"${{ github.repository }}"
+          cp artifacts/main.js "gitee-repo/$owner/$processed_repo_name/"
+          cp artifacts/styles.css "gitee-repo/$owner/$processed_repo_name/"
+          cp artifacts/manifest.json "gitee-repo/$owner/$processed_repo_name/"
 
           cd gitee-repo
 
@@ -119,8 +128,8 @@ jobs:
             echo "没有文件变更"
           else
             echo "检测到文件变更，准备提交..."
-            # 保证时区正确
-            export TZ='<UTC+8>-8'
+            # 设置时区为上海（北京时间）
+            export TZ='Asia/Shanghai'
             git add .
             git commit -m "自动同步: $(date +'%Y-%m-%d %H:%M:%S')"
 
