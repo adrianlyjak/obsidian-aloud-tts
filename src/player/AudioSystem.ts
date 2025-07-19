@@ -1,8 +1,8 @@
 import { AudioCache } from "./AudioCache";
 import { AudioSink } from "./AudioSink";
 import { AudioStore } from "./AudioStore";
-import { TTSModel } from "./TTSModel";
-import { TTSPluginSettings, DEFAULT_SETTINGS } from "./TTSPluginSettings";
+import { TTSModel } from "../models/tts-model";
+import { TTSPluginSettings } from "./TTSPluginSettings";
 import { ChunkLoader } from "./ChunkLoader";
 
 // Configuration options for the AudioSystem

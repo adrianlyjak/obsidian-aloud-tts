@@ -1,16 +1,12 @@
 import { action, observable } from "mobx";
-import { TTSErrorInfo, TTSModelOptions, listOpenAIModels } from "./TTSModel";
+import { TTSModelOptions } from "../models/tts-model";
 import { debounce } from "../util/misc";
 import { hashStrings } from "../util/Minhash";
+import { OPENAI_API_URL } from "../models/openai";
+import { REGISTRY } from "../models/registry";
+
 export type TTSPluginSettings = {
-  API_KEY: string;
-  API_URL: string;
   modelProvider: ModelProvider;
-  model: string;
-  ttsVoice?: string;
-  sourceType: string;
-  instructions?: string;
-  contextMode: boolean;
   chunkType: "sentence" | "paragraph";
   playbackSpeed: number;
   cacheType: "local" | "vault";
@@ -18,43 +14,57 @@ export type TTSPluginSettings = {
   showPlayerView: PlayerViewMode;
   version: number;
   audioFolder: string;
-} & (
-  GeminiModelConfig &
+} & (GeminiModelConfig &
   HumeModelConfig &
   OpenAIModelConfig &
-  OpenAICompatModelConfig
-);
+  OpenAICompatModelConfig);
 
 export interface GeminiModelConfig {
+  /** the API key to use */
   gemini_apiKey: string;
+  /** the model to use (tts vs tts-hd etc.*/
   gemini_ttsModel: string;
+  /** the voice string id to use. Required */
   gemini_ttsVoice: string;
+  /** the instructions to use for voice quality. Only applicable to gpt-4o-mini-tts */
   gemini_ttsInstructions?: string;
+  /** whether to include previous utterances in the instructions/context */
   gemini_contextMode: boolean;
 }
 
 export interface HumeModelConfig {
+  /** the API key to use */
   hume_apiKey: string;
+  /** the voice UUID to use. I think required */
   hume_ttsVoice?: string;
+  /** user defined voices or shared voices */
   hume_sourceType: string;
+  /** the instructions to use for voice quality */
   hume_ttsInstructions?: string;
+  /** whether to include previous utterances in the instructions/context */
   hume_contextMode: boolean;
 }
 
 export interface OpenAIModelConfig {
+  /** the API key to use */
   openai_apiKey: string;
+  /** the model to use (tts vs tts-hd etc.*/
   openai_ttsModel: string;
+  /** the voice string id to use. Required */
   openai_ttsVoice: string;
+  /** the instructions to use for voice quality. Only applicable to gpt-4o-mini-tts */
   openai_ttsInstructions?: string;
-  openai_contextMode: boolean;
 }
 
 export interface OpenAICompatModelConfig {
+  /** the API key to use. Not required */
   openaicompat_apiKey: string;
+  /** the backend openai compatible API URL to use */
   openaicompat_apiBase: string;
+  /** the model to use. Depends on the backend.*/
   openaicompat_ttsModel: string;
+  /** the voice string id to use. Required. Depends on the backend. */
   openaicompat_ttsVoice: string;
-  openaicompat_contextMode: false;
 }
 
 export const playViewModes = [
@@ -71,27 +81,24 @@ export function isPlayerViewMode(value: unknown): value is PlayerViewMode {
 }
 
 export function voiceHash(options: TTSModelOptions): string {
-  return hashStrings(
-    [options.apiUri + (options.model || "") + options.voice + (options.instructions || "")],
-  )[0].toString();
+  return hashStrings([
+    options.apiUri +
+      (options.model || "") +
+      options.voice +
+      (options.instructions || ""),
+  ])[0].toString();
 }
 
-export const GEMINI_API_URL = "https://generativelanguage.googleapis.com";
-export const HUME_API_URL = "https://api.hume.ai";
-export const OPENAI_API_URL = "https://api.openai.com";
-
-export const modelProviders = ["gemini", "hume", "openai", "openaicompat"] as const;
+export const modelProviders = [
+  "gemini",
+  "hume",
+  "openai",
+  "openaicompat",
+] as const;
 export type ModelProvider = (typeof modelProviders)[number];
 
 export const DEFAULT_SETTINGS: TTSPluginSettings = {
-  API_KEY: "",
-  API_URL: "",
   modelProvider: "openai",
-  model: "gpt-4o-mini-tts",
-  ttsVoice: "shimmer",
-  sourceType: "",
-  instructions: undefined,
-  contextMode: false,
   chunkType: "sentence",
   playbackSpeed: 1.0,
   cacheDurationMillis: 1000 * 60 * 60 * 24 * 7, // 7 days
@@ -114,15 +121,13 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   openai_ttsModel: "gpt-4o-mini-tts",
   openai_ttsVoice: "shimmer",
   openai_ttsInstructions: undefined,
-  openai_contextMode: false,
   // openaicompat
   openaicompat_apiKey: "",
   openaicompat_apiBase: "",
   openaicompat_ttsModel: "",
   openaicompat_ttsVoice: "",
-  openaicompat_contextMode: false,
 
-  version: 1,
+  version: 2,
   audioFolder: "aloud",
 } as const;
 
@@ -156,53 +161,24 @@ export async function pluginSettingsStore(
         this.apiKeyError = error;
       },
       checkApiKey: debounce(async () => {
-        if (
-          store.settings.API_URL &&
-          store.settings.API_URL !== GEMINI_API_URL &&
-          store.settings.API_URL !== HUME_API_URL &&
-          store.settings.API_URL !== OPENAI_API_URL
-        ) {
-          store.setApiKeyValidity(true);
-        } else if (!store.settings.API_KEY) {
-          store.setApiKeyValidity(
-            false,
-            `Please enter an API key in the "${MARKETING_NAME_LONG}" plugin settings`,
-          );
-        } else if (store.settings.modelProvider === "openai") {
-          store.setApiKeyValidity(undefined, undefined);
-
-          try {
-            await listOpenAIModels(store.settings);
-            store.setApiKeyValidity(true, undefined);
-          } catch (ex: unknown) {
-            console.error("Could not validate API key", ex);
-            let message = "Cannot connect to OpenAI";
-            if (ex instanceof TTSErrorInfo) {
-              if (ex.ttsErrorCode() === "invalid_api_key") {
-                message =
-                  "Invalid API key! Enter a valid API key in the plugin settings";
-              } else {
-                const msg = ex.ttsJsonMessage();
-                if (msg) {
-                  message = msg;
-                }
-              }
-            }
-            store.setApiKeyValidity(false, message);
-          }
-        } else {
-          store.setApiKeyValidity(true);
-        }
+        store.setApiKeyValidity(undefined, undefined);
+        const error = await REGISTRY[
+          store.settings.modelProvider
+        ].validateConnection(store.settings);
+        store.setApiKeyValidity(error ? false : true, error);
       }, 500),
       updateSettings: async (
         update: Partial<TTSPluginSettings>,
       ): Promise<void> => {
-        const keyBefore = store.settings.API_KEY;
-        const apiBefore = store.settings.API_URL;
+        const model = REGISTRY[store.settings.modelProvider];
+        const optionsBefore = model.convertToOptions(store.settings);
+        const providerBefore = store.settings.modelProvider;
         Object.assign(store.settings, update);
+        const optionsAfter = model.convertToOptions(store.settings);
         if (
-          keyBefore !== store.settings.API_KEY ||
-          apiBefore !== store.settings.API_URL
+          optionsBefore.apiKey !== optionsAfter.apiKey ||
+          optionsBefore.apiUri !== optionsAfter.apiUri ||
+          providerBefore !== store.settings.modelProvider
         ) {
           await store.checkApiKey();
         }
@@ -216,54 +192,8 @@ export async function pluginSettingsStore(
           ...store.settings,
           ...settings,
         };
-        let additionalSettings: Partial<TTSPluginSettings>;
-        switch (provider) {
-          case "gemini":
-            additionalSettings = {
-              API_KEY: merged.gemini_apiKey,
-              API_URL: GEMINI_API_URL,
-              ttsVoice: merged.gemini_ttsVoice,
-              instructions: merged.gemini_ttsInstructions || undefined,
-              model: merged.gemini_ttsModel,
-              contextMode: merged.gemini_contextMode,
-            }
-            break;
-          case "hume":
-            additionalSettings = {
-              API_KEY: merged.hume_apiKey,
-              API_URL: HUME_API_URL,
-              ttsVoice: merged.hume_ttsVoice || undefined,
-              sourceType: merged.hume_sourceType,
-              instructions: merged.hume_ttsInstructions || undefined,
-              contextMode: merged.hume_contextMode,
-            }
-            break;
-          case "openai":
-            additionalSettings = {
-              API_KEY: merged.openai_apiKey,
-              API_URL: OPENAI_API_URL,
-              ttsVoice: merged.openai_ttsVoice,
-              instructions: merged.openai_ttsInstructions || undefined,
-              model: merged.openai_ttsModel,
-              contextMode: merged.openai_contextMode,
-            };
-            break;
-          case "openaicompat":
-            additionalSettings = {
-              API_KEY: merged.openaicompat_apiKey,
-              API_URL: merged.openaicompat_apiBase,
-              ttsVoice: merged.openaicompat_ttsVoice,
-              instructions: undefined,
-              model: merged.openaicompat_ttsModel,
-              contextMode: merged.openaicompat_contextMode, // Assuming this is always false
-            };
-            break;
-          default:
-            additionalSettings = {};
-        }
         await store.updateSettings({
-          ...settings,
-          ...additionalSettings,
+          ...merged,
           modelProvider: provider,
         });
       },
@@ -298,70 +228,49 @@ const parsePluginSettings = (toParse: unknown): TTSPluginSettings => {
   if (data.version < 1) {
     data = migrateToVersion1(data);
   }
+  if (data.version < 2) {
+    data = migrateToVersion2(data);
+  }
   return data;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function migrateToVersion1(data: any): any {
-  const isGemini = data.API_URL === GEMINI_API_URL;
-  const isHume = data.API_URL === HUME_API_URL;
-  const isOpenAI = data.API_URL === OPENAI_API_URL;
-  const isCustom = !!data.API_URL && (
-    !isGemini &&
-    !isHume &&
-    !isOpenAI
-  );
-
-  let providerSettings = {};
-  let modelProvider: ModelProvider = "openai";
-
-  if (isGemini) {
-    modelProvider = "gemini";
-    providerSettings = {
-      gemini_apiKey: data.API_KEY,
-      gemini_ttsModel: data.model,
-      gemini_ttsVoice: data.ttsVoice,
-      gemini_contextMode: data.contextMode,
-    };
-  } else if (isHume) {
-    modelProvider = "hume";
-    providerSettings = {
-      hume_apiKey: data.API_KEY,
-      hume_ttsVoice: data.ttsVoice,
-      hume_sourceType: data.sourceType,
-      hume_contextMode: data.contextMode,
-    };
-  } else if (isOpenAI) {
-    modelProvider = "openai";
-    providerSettings = {
-      openai_apiKey: data.API_KEY,
-      openai_ttsModel: data.model,
-      openai_ttsVoice: data.ttsVoice,
-      openai_contextMode: data.contextMode,
-    };
-  } else if (isCustom) {
-    modelProvider = "openaicompat";
-    providerSettings = {
-      openaicompat_apiKey: data.API_KEY,
-      openaicompat_apiBase: data.API_URL,
-      openaicompat_ttsModel: data.model,
-      openaicompat_ttsVoice: data.ttsVoice,
-      openaicompat_contextMode: data.contextMode,
-    };
-  } else {
-    modelProvider = "openai";
-    providerSettings = {
-      openai_apiKey: data.API_KEY,
-      openai_ttsModel: data.model,
-      openai_ttsVoice: data.ttsVoice,
-      openai_contextMode: data.contextMode,
-    };
-  }
-
+  // extract the openai_apiKey and openai_apiBase fields
+  const isCustom =
+    !!data.OPENAI_API_URL && data.OPENAI_API_URL !== OPENAI_API_URL;
   return {
     ...data,
-    modelProvider: modelProvider,
-    ...providerSettings,
+    modelProvider: isCustom ? "openaicompat" : "openai",
+    openaicompat_apiKey: isCustom ? data.OPENAI_API_KEY : "",
+    openaicompat_apiBase: isCustom ? data.OPENAI_API_URL : "",
+    openaicompat_ttsModel: isCustom ? data.model : "",
+    openaicompat_ttsVoice: isCustom ? data.ttsVoice : "",
+    openai_apiKey: !isCustom
+      ? data.OPENAI_API_KEY
+      : DEFAULT_SETTINGS.openai_apiKey,
+    openai_ttsModel: !isCustom ? data.model : DEFAULT_SETTINGS.openai_ttsModel,
+    openai_ttsVoice: !isCustom
+      ? data.ttsVoice
+      : DEFAULT_SETTINGS.openai_ttsVoice,
+
     version: 1,
   };
+}
+
+// Dropped the shared fields, those can be computed dynamically,
+// and added 2 new models (hume and gemini)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function migrateToVersion2(data: any): any {
+  // remove shared fields
+  const {
+    OPENAI_API_URL, // eslint-disable-line @typescript-eslint/no-unused-vars
+    OPENAI_API_KEY, // eslint-disable-line @typescript-eslint/no-unused-vars
+    model, // eslint-disable-line @typescript-eslint/no-unused-vars
+    ttsVoice, // eslint-disable-line @typescript-eslint/no-unused-vars
+    instructions, // eslint-disable-line @typescript-eslint/no-unused-vars
+    ...rest
+  } = data;
+  // add any fields that were missing before
+  return { ...DEFAULT_SETTINGS, ...rest, version: 2 };
 }

@@ -168,7 +168,7 @@ export class LshIndex {
  * This is a simple hash function to convert strings into numerical values.
  */
 export function hashStrings(str: string[]): number[] {
-  let hash = [];
+  const hash = [];
   for (let i = 0; i < str.length; i++) {
     hash[i] = 0;
     for (let j = 0; j < str[i].length; j++) {
@@ -179,4 +179,8 @@ export function hashStrings(str: string[]): number[] {
     hash[i] += MAX_HASH;
   }
   return hash;
+}
+
+export function hashString(str: string): number {
+  return hashStrings([str])[0];
 }

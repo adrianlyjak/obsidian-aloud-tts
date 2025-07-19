@@ -1,6 +1,6 @@
 import cleanMarkup from "../util/cleanMarkdown";
 import { CancellablePromise } from "./CancellablePromise";
-import { TTSErrorInfo } from "./TTSModel";
+import { TTSErrorInfo } from "../models/tts-model";
 import * as mobx from "mobx";
 import { action, observable } from "mobx";
 

@@ -1,6 +1,6 @@
 import { openDB, DBSchema, IDBPDatabase } from "idb";
 import { AudioCache, hashAudioInputs } from "../player/AudioCache";
-import { TTSModelOptions } from "../player/TTSModel";
+import { TTSModelOptions } from "../models/tts-model";
 
 interface AudioCacheDB extends DBSchema {
   audio: {

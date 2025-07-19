@@ -10,7 +10,7 @@ import { AudioStore } from "../player/AudioStore";
 import { AudioVisualizer } from "./AudioVisualizer";
 import { IconButton, IconSpan, Spinner } from "./IconButton";
 import { EditorView } from "@codemirror/view";
-import { TTSErrorInfo } from "../player/TTSModel";
+import { TTSErrorInfo } from "../models/tts-model";
 import { setTooltip } from "obsidian";
 
 export const PlayerView = observer(

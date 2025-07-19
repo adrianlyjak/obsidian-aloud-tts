@@ -4,7 +4,6 @@ import { AudioSink } from "./AudioSink";
 import { AudioSystem } from "./AudioSystem";
 import { AudioTextChunk } from "./AudioTextChunk";
 import { ChunkLoader } from "./ChunkLoader";
-import { toModelOptions } from "./TTSModel";
 import { CancellablePromise } from "./CancellablePromise";
 
 /**
@@ -257,10 +256,15 @@ export class ChunkPlayer {
   }
 
   _whenSettingsChange(): CancellablePromise<"settings-changed"> {
-    const init = JSON.stringify(toModelOptions(this.system.settings));
+    const init = JSON.stringify(
+      this.system.ttsModel.convertToOptions(this.system.settings),
+    );
     return CancellablePromise.from(
       mobx.when(
-        () => JSON.stringify(toModelOptions(this.system.settings)) !== init,
+        () =>
+          JSON.stringify(
+            this.system.ttsModel.convertToOptions(this.system.settings),
+          ) !== init,
       ),
     ).thenCancellable(() => "settings-changed");
   }
@@ -415,7 +419,7 @@ const loadCheck = async (
   }
 
   // kick off the preload
-  const modelOpts = toModelOptions(system.settings);
+  const modelOpts = system.ttsModel.convertToOptions(system.settings);
   for (const index of indexes) {
     const chunk = system.audioStore.activeText!.audio.chunks[index];
     if (chunk?.text.trim()) {

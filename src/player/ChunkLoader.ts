@@ -1,6 +1,6 @@
 import * as mobx from "mobx";
 import { AudioSystem } from "./AudioSystem";
-import { TTSErrorInfo, TTSModelOptions, toModelOptions } from "./TTSModel";
+import { TTSErrorInfo, TTSModelOptions } from "../models/tts-model";
 
 /** manages loading and caching of tracks */
 export class ChunkLoader {
@@ -57,7 +57,9 @@ export class ChunkLoader {
     );
     if (alreadyLoaded) {
       // Update requested time to prevent garbage collection if needed
-      const cached = this.localCache.find(x => x.text === text && mobx.comparer.structural(x.options, options));
+      const cached = this.localCache.find(
+        (x) => x.text === text && mobx.comparer.structural(x.options, options),
+      );
       if (cached) cached.requestedTime = Date.now();
       return;
     }
@@ -78,24 +80,26 @@ export class ChunkLoader {
     position?: number,
   ): Promise<ArrayBuffer> {
     const existing = this.localCache.find(
-      (x) =>
-        x.text === text &&
-        mobx.comparer.structural(x.options, options) // Use structural comparison
+      (x) => x.text === text && mobx.comparer.structural(x.options, options), // Use structural comparison
     );
 
     if (existing) {
       existing.requestedTime = Date.now();
       return existing.result;
     } else {
-      const audioTextChunks = (position ? 
-        this.system.audioStore.activeText?.audio.chunks.slice(0, Math.max(0, position))
-      : undefined);
+      // select the last 3 chunks of the active text. Perhaps make this somehow configurable
+      const audioTextChunks = position
+        ? this.system.audioStore.activeText?.audio.chunks.slice(
+            position - 3,
+            position,
+          )
+        : undefined;
       const contexts = audioTextChunks?.map((x) => x.text);
 
       const audio = this.createCachedAudio(
         text,
         options,
-        this.system.settings.contextMode ? contexts : undefined
+        options.contextMode ? contexts : undefined,
       );
       this.localCache.push(audio);
       return audio.result;
@@ -110,7 +114,6 @@ export class ChunkLoader {
     this.backgroundQueue = [];
     this.backgroundActiveCount = 0;
   }
-
 
   private createCachedAudio(
     text: string,
@@ -174,6 +177,7 @@ export class ChunkLoader {
     try {
       return await this.loadTrack(track, options, contexts);
     } catch (ex) {
+      console.log("error loading track", ex);
       const errorInfo = ex instanceof TTSErrorInfo ? ex : undefined;
       const canRetry =
         attempt < maxAttempts && (errorInfo ? errorInfo.isRetryable : true);
@@ -202,14 +206,20 @@ export class ChunkLoader {
   ): Promise<ArrayBuffer> {
     // copy the settings to make sure audio isn't stored under under the wrong key
     // if the settings are changed while request is in flight
-    const stored: ArrayBuffer | null = 
-      await this.system.storage.getAudio(text, options);
+    const stored: ArrayBuffer | null = await this.system.storage.getAudio(
+      text,
+      options,
+    );
     if (stored) {
       return stored;
     } else {
-      // Regenerate options from CURRENT settings before making the API call
-      const currentOptions = toModelOptions(this.system.settings);
-      const buff = await this.system.ttsModel(text, options, contexts);
+      // likely some race conditions here, if the options have changed since the request was enqueued
+      const buff = await this.system.ttsModel.call(
+        text,
+        options,
+        contexts ?? [],
+        this.system.settings,
+      );
       await this.system.storage.saveAudio(text, options, buff);
       return buff;
     }
@@ -248,8 +258,8 @@ export function IntervalDaemon(
       try {
         shouldContinue = doWork();
       } catch (ex) {
-         // Decide whether to stop or continue based on error? For now, assume continue.
-         shouldContinue = true;
+        // Decide whether to stop or continue based on error? For now, assume continue.
+        shouldContinue = true;
       }
       if (shouldContinue) {
         timer = setInterval(() => {
@@ -257,8 +267,8 @@ export function IntervalDaemon(
           try {
             shouldContinueInterval = doWork();
           } catch (ex) {
-             // Decide whether to stop or continue based on error? For now, assume continue.
-             shouldContinueInterval = true;
+            // Decide whether to stop or continue based on error? For now, assume continue.
+            shouldContinueInterval = true;
           }
           if (!shouldContinueInterval) {
             processor.stop();

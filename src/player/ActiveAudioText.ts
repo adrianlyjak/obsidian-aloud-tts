@@ -4,7 +4,7 @@ import { randomId, splitParagraphs, splitSentences } from "../util/misc";
 import { AudioSystem } from "./AudioSystem";
 import { ChunkPlayer } from "./ChunkPlayer";
 import { onMultiTextChanged } from "./onMultiTextChanged";
-import { TTSErrorInfo } from "./TTSModel";
+import { TTSErrorInfo } from "../models/tts-model";
 import { AudioText, AudioTextChunk, AudioTextOptions } from "./AudioTextChunk";
 
 export interface TextEdit {
@@ -62,7 +62,14 @@ export class ActiveAudioTextImpl implements ActiveAudioText {
     }
     const error =
       this.currentChunk.failureInfo ??
-      new TTSErrorInfo("unknown", { message: "an unknown error occurred" });
+      new TTSErrorInfo("unknown", {
+        error: {
+          message: "an unknown error occurred",
+          type: "unknown",
+          code: "unknown",
+          param: undefined,
+        },
+      });
     return error;
   }
 
