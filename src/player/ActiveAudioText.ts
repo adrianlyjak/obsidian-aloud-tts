@@ -4,7 +4,7 @@ import { randomId, splitParagraphs, splitSentences } from "../util/misc";
 import { AudioSystem } from "./AudioSystem";
 import { ChunkPlayer } from "./ChunkPlayer";
 import { onMultiTextChanged } from "./onMultiTextChanged";
-import { TTSErrorInfo } from "./TTSModel";
+import { TTSErrorInfo } from "../models/tts-model";
 import { AudioText, AudioTextChunk, AudioTextOptions } from "./AudioTextChunk";
 
 export interface TextEdit {

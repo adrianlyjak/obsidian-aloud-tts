@@ -4,7 +4,7 @@ import { AudioSink } from "./AudioSink";
 import { AudioSystem } from "./AudioSystem";
 import { AudioTextChunk } from "./AudioTextChunk";
 import { ChunkLoader } from "./ChunkLoader";
-import { toModelOptions } from "./TTSModel";
+import { toModelOptions } from "../models/registry";
 import { CancellablePromise } from "./CancellablePromise";
 
 /**

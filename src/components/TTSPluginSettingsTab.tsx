@@ -6,7 +6,6 @@ import { AudioStore } from "../player/AudioStore";
 import {
   ModelProvider,
   PlayerViewMode,
-  OPENAI_API_URL,
   MARKETING_NAME,
   TTSPluginSettingsStore,
   isPlayerViewMode,
@@ -15,6 +14,8 @@ import {
 } from "../player/TTSPluginSettings";
 import { IconButton, IconSpan, Spinner } from "./IconButton";
 import { TTSErrorInfoDetails, TTSErrorInfoView } from "./PlayerView";
+import { OPENAI_API_URL } from "../models/openai";
+import { hasNamedVoice } from "src/models/registry";
 
 export class TTSSettingTab extends PluginSettingTab {
   settings: TTSPluginSettingsStore;
@@ -74,7 +75,7 @@ const TTSSettingsTabComponent: React.FC<{
       <ModelSwitcher store={store} />
       {store.settings.modelProvider === "gemini" && (
         <>
-        <h1>Google Gemini</h1>
+          <h1>Google Gemini</h1>
           <GeminiApiKeyComponent store={store} />
           <GeminiModelComponent store={store} />
           <GeminiVoiceComponent store={store} />
@@ -82,7 +83,7 @@ const TTSSettingsTabComponent: React.FC<{
           <GeminiContextModeComponent store={store} />
         </>
       )}
-      {store.settings.modelProvider === "hume" &&(
+      {store.settings.modelProvider === "hume" && (
         <>
           <h1>Hume</h1>
           <HumeApiKeyComponent store={store} />
@@ -94,12 +95,11 @@ const TTSSettingsTabComponent: React.FC<{
       )}
       {store.settings.modelProvider === "openai" && (
         <>
-        <h1>OpenAI</h1>
+          <h1>OpenAI</h1>
           <OpenAIApiKeyComponent store={store} />
           <OpenAIModelComponent store={store} />
           <OpenAIVoiceComponent store={store} />
           <OpenAITTSInstructionsComponent store={store} />
-          <OpenAIContextModeComponent store={store} />
         </>
       )}
       {store.settings.modelProvider === "openaicompat" && (
@@ -164,7 +164,9 @@ const ModelSwitcher: React.FC<{
         <OptionSelect
           options={modelProviders.map((v) => ({ label: labels[v], value: v }))}
           value={store.settings.modelProvider}
-          onChange={(v) => store.updateModelSpecificSettings(v as ModelProvider, {})}
+          onChange={(v) =>
+            store.updateModelSpecificSettings(v as ModelProvider, {})
+          }
         />
       </div>
     </div>
@@ -442,23 +444,24 @@ const TestVoiceComponent: React.FC<{
   const isLoading = player.activeText?.isLoading;
   const playSample = React.useCallback(() => {
     if (!isPlaying) {
-      if (store.settings.modelProvider === "hume") {
-        const text = `Hi, I'm Hume AI. I'm a virtual text to speech assistant.`;
-        player.startPlayer({
-          text,
-          filename: "sample " + store.settings.ttsVoice,
-          start: 0,
-          end: text.length,
-        });
+      let text;
+      let filename;
+      if (
+        !store.settings.ttsVoice ||
+        !hasNamedVoice(store.settings.modelProvider)
+      ) {
+        text = `Hi, I'm a virtual text to speech assistant.`;
+        filename = "sample";
       } else {
-        const text = `Hi, I'm ${store.settings.ttsVoice}. I'm a virtual text to speech assistant.`;
-        player.startPlayer({
-          text,
-          filename: "sample " + store.settings.ttsVoice,
-          start: 0,
-          end: text.length,
-        });
+        text = `Hi, I'm ${store.settings.ttsVoice}. I'm a virtual text to speech assistant.`;
+        filename = "sample " + store.settings.ttsVoice;
       }
+      player.startPlayer({
+        text,
+        filename,
+        start: 0,
+        end: text.length,
+      });
       if (!isActive) {
         setActive(true);
       }
@@ -497,56 +500,119 @@ interface Model {
   supportsInstructions?: boolean;
 }
 
-const GeminiApiKeyComponent: React.FC<{
+interface ApiKeyComponentProps {
   store: TTSPluginSettingsStore;
-}> = observer(({ store }) => {
-  const [showPassword, setShowPassword] = React.useState(false);
+  provider: ModelProvider;
+  fieldName: keyof TTSPluginSettingsStore["settings"];
+  displayName: string;
+  helpUrl?: string;
+  helpText?: React.ReactNode;
+  showValidation?: boolean;
+}
 
-  let validIcon: string;
-  switch (store.apiKeyValid) {
-    case true:
-      validIcon = "check";
-      break;
-    case false:
-      validIcon = "alert-circle";
-      break;
-    default:
-      validIcon = "loader";
-      break;
-  }
+const ApiKeyComponent: React.FC<ApiKeyComponentProps> = observer(
+  ({
+    store,
+    provider,
+    fieldName,
+    displayName,
+    helpUrl,
+    helpText,
+    showValidation = false,
+  }) => {
+    const [showPassword, setShowPassword] = React.useState(false);
 
-  const onChange: React.ChangeEventHandler<HTMLInputElement> =
-    React.useCallback((v: React.ChangeEvent<HTMLInputElement>) => {
-      store.updateModelSpecificSettings("gemini", {
-        gemini_apiKey: v.target.value,
-      });
-    }, []);
-  return (
-    <div className="setting-item">
-      <div className="setting-item-info">
-        <div className="setting-item-name">Gemini API key</div>
-        <div className="setting-item-description">
-          Your Gemini API key. You can create one{" "}
-          <a href="https://aistudio.google.com/apikey" target="_blank">
+    let validIcon: string | null = null;
+    if (showValidation) {
+      switch (store.apiKeyValid) {
+        case true:
+          validIcon = "check";
+          break;
+        case false:
+          validIcon = "alert-circle";
+          break;
+        default:
+          validIcon = "loader";
+          break;
+      }
+    }
+    const errorMessage = store.apiKeyError;
+
+    const onChange: React.ChangeEventHandler<HTMLInputElement> =
+      React.useCallback(
+        (v: React.ChangeEvent<HTMLInputElement>) => {
+          store.updateModelSpecificSettings(provider, {
+            [fieldName]: v.target.value,
+          });
+        },
+        [provider, fieldName, store],
+      );
+
+    const description =
+      helpText ||
+      (helpUrl ? (
+        <>
+          Your {displayName}. You can create one{" "}
+          <a href={helpUrl} target="_blank">
             here
           </a>
           .
+        </>
+      ) : (
+        `Your ${displayName}`
+      ));
+
+    return (
+      <div className="setting-item">
+        <div className="setting-item-info">
+          <div className="setting-item-name">{displayName}</div>
+          <div className="setting-item-description">{description}</div>
+        </div>
+        <div className="setting-item-control">
+          {validIcon &&
+            (validIcon === "loader" ? (
+              <Spinner />
+            ) : (
+              <IconSpan
+                icon={validIcon}
+                tooltip={
+                  validIcon === "alert-circle" ? errorMessage : undefined
+                }
+              />
+            ))}
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="API Key"
+            value={store.settings[fieldName] as string}
+            onChange={onChange}
+            className={
+              showValidation && validIcon === "alert-circle"
+                ? "tts-error-input"
+                : ""
+            }
+          />
+          <IconButton
+            icon={showPassword ? "eye-off" : "eye"}
+            onClick={() => setShowPassword(!showPassword)}
+          />
         </div>
       </div>
-      <div className="setting-item-control">
-        {validIcon === "loader" ? <Spinner /> : <IconSpan icon={validIcon} />}
-        <input
-          type={showPassword ? "text" : "password"}
-          placeholder="API Key"
-          value={store.settings.gemini_apiKey}
-          onChange={onChange}
-        />
-        <IconButton
-          icon={showPassword ? "eye-off" : "eye"}
-          onClick={() => setShowPassword(!showPassword)}
-        />
-      </div>
-    </div>
+    );
+  },
+);
+
+const GeminiApiKeyComponent: React.FC<{
+  store: TTSPluginSettingsStore;
+}> = observer(({ store }) => {
+  return (
+    <ApiKeyComponent
+      store={store}
+      provider="gemini"
+      fieldName="gemini_apiKey"
+      displayName="Gemini API key"
+      helpUrl="https://aistudio.google.com/apikey"
+      showValidation={true}
+    />
   );
 });
 
@@ -554,12 +620,12 @@ const DEFAULT_GEMINI_MODELS: Model[] = [
   {
     label: "Gemini 2.5 Flash Preview Text-to-Speech",
     value: "gemini-2.5-flash-preview-tts",
-    supportsInstructions: true
+    supportsInstructions: true,
   },
   {
     label: "Gemini 2.5 Pro Preview Text-to-Speech",
     value: "gemini-2.5-pro-preview-tts",
-    supportsInstructions: true
+    supportsInstructions: true,
   },
 ] as const;
 
@@ -599,82 +665,82 @@ const GeminiVoiceComponent: React.FC<{
   }
   const DEFAULT_GEMINI_VOICES: Voice[] = [
     {
-      label: "Zephyr -- Bright",
+      label: "Zephyr — Bright",
       value: "Zephyr",
       models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
     },
     {
-      label: "Puck -- Upbeat",
+      label: "Puck — Upbeat",
       value: "Puck",
       models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
     },
     {
-      label: "Charon -- Informative",
+      label: "Charon — Informative",
       value: "Charon",
       models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
     },
     {
-      label: "Kore -- Firm",
+      label: "Kore — Firm",
       value: "Kore",
       models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
     },
     {
-      label: "Fenrir -- Excitable",
+      label: "Fenrir — Excitable",
       value: "Fenrir",
       models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
     },
     {
-      label: "Leda -- Youthful",
+      label: "Leda — Youthful",
       value: "Leda",
       models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
     },
     {
-      label: "Orus -- Firm",
+      label: "Orus — Firm",
       value: "Orus",
       models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
     },
     {
-      label: "Aoede -- Breezy",
+      label: "Aoede — Breezy",
       value: "Aoede",
       models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
     },
     {
-      label: "Callirhoe -- Easy-going",
-      value: "Callirhoe",
+      label: "Callirrhoe — Easy-going",
+      value: "Callirrhoe",
       models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
     },
     {
-      label: "Autonoe -- Bright",
+      label: "Autonoe — Bright",
       value: "Autonoe",
       models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
     },
     {
-      label: "Enceladus -- Breathy",
+      label: "Enceladus — Breathy",
       value: "Enceladus",
       models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
     },
     {
-      label: "Iapetus -- Clear",
+      label: "Iapetus — Clear",
       value: "Iapetus",
       models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
     },
     {
-      label: "Umbriel -- Easy-going",
+      label: "Umbriel — Easy-going",
       value: "Umbriel",
       models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
     },
     {
-      label: "Algieba -- Smooth",
+      label: "Algieba — Smooth",
       value: "Algieba",
       models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
     },
     {
-      label: "Despina -- Smooth",
+      label: "Despina — Smooth",
       value: "Despina",
       models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
     },
     {
-      label: "Erinome -- Clear",
+      label: "Erinome — Clear",
       value: "Erinome",
       models: ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"],
     },
@@ -763,22 +829,29 @@ const GeminiTTSInstructionsComponent: React.FC<{
 const GeminiContextModeComponent: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
-  const onChange: React.ChangeEventHandler<HTMLInputElement> = React.useCallback(
-    (evt) => {
-      store.updateModelSpecificSettings("gemini", {
-        gemini_contextMode: evt.target.checked,
-      });
-    },
-    [store],
-  );
+  const onChange: React.ChangeEventHandler<HTMLInputElement> =
+    React.useCallback(
+      (evt) => {
+        store.updateModelSpecificSettings("gemini", {
+          gemini_contextMode: evt.target.checked,
+        });
+      },
+      [store],
+    );
   return (
     <div className="setting-item">
       <div className="setting-item-info">
         <div className="setting-item-name">Context Mode</div>
-        <div className="setting-item-description">Enable context mode to improve coherence across sentences.</div>
+        <div className="setting-item-description">
+          Enable context mode to improve coherence across sentences.
+        </div>
       </div>
       <div className="setting-item-control">
-        <input type="checkbox" checked={store.settings.gemini_contextMode} onChange={onChange} />
+        <input
+          type="checkbox"
+          checked={store.settings.gemini_contextMode}
+          onChange={onChange}
+        />
       </div>
     </div>
   );
@@ -787,88 +860,133 @@ const GeminiContextModeComponent: React.FC<{
 const HumeApiKeyComponent: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
-  const [showPassword, setShowPassword] = React.useState(false);
-  const onChange: React.ChangeEventHandler<HTMLInputElement> =
-    React.useCallback((v: React.ChangeEvent<HTMLInputElement>) => {
-      store.updateModelSpecificSettings("hume", {
-        hume_apiKey: v.target.value,
-      });
-    }, []);
   return (
-    <div className="setting-item">
-      <div className="setting-item-info">
-        <div className="setting-item-name">Hume API key</div>
-        <div className="setting-item-description">
+    <ApiKeyComponent
+      store={store}
+      provider="hume"
+      fieldName="hume_apiKey"
+      displayName="Hume API key"
+      helpText={
+        <>
           Your Hume API key. You can get one{" "}
           <a href="https://platform.hume.ai/settings/keys" target="_blank">
             here
           </a>
           .
-        </div>
-      </div>
-      <div className="setting-item-control">
-        <input
-          type={showPassword ? "text" : "password"}
-          placeholder="API Key"
-          value={store.settings.hume_apiKey}
-          onChange={onChange}
-        />
-        <IconButton icon={showPassword ? "eye-off" : "eye"} onClick={() => setShowPassword(!showPassword)} />
-      </div>
-    </div>
+        </>
+      }
+      showValidation={true}
+    />
   );
 });
 
-const HumeProviderComponent: React.FC<{ store: TTSPluginSettingsStore }> = observer(({ store }) => {
-  const providerOptions = [
-    { label: "Hume", value: "HUME_AI" },
-    { label: "Custom Voice", value: "CUSTOM_VOICE" },
-  ];
-  const onChange = React.useCallback(
-    (v: string) => {
-      store.updateModelSpecificSettings("hume", {
-        hume_sourceType: v,
-      });
-    },
-    [store],
-  );
-  return (
-    <div className="setting-item">
-      <div className="setting-item-info">
-        <div className="setting-item-name">Provider</div>
-        <div className="setting-item-description">
-          Choose between Hume's preset voices or your own custom voices.
+const HumeProviderComponent: React.FC<{ store: TTSPluginSettingsStore }> =
+  observer(({ store }) => {
+    const providerOptions = [
+      { label: "Hume", value: "HUME_AI" },
+      { label: "Custom Voice", value: "CUSTOM_VOICE" },
+    ];
+    const onChange = React.useCallback(
+      (v: string) => {
+        store.updateModelSpecificSettings("hume", {
+          hume_sourceType: v,
+        });
+      },
+      [store],
+    );
+    return (
+      <div className="setting-item">
+        <div className="setting-item-info">
+          <div className="setting-item-name">Provider</div>
+          <div className="setting-item-description">
+            Choose between Hume's preset voices or your own custom voices.
+          </div>
+        </div>
+        <div className="setting-item-control">
+          <OptionSelect
+            options={providerOptions}
+            value={store.settings.hume_sourceType}
+            onChange={onChange}
+          />
         </div>
       </div>
-      <div className="setting-item-control">
-        <OptionSelect
-          options={providerOptions}
-          value={store.settings.hume_sourceType}
-          onChange={onChange}
-        />
-      </div>
-    </div>
-  );
-});
+    );
+  });
 
 const HumeVoiceComponent: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
+  function isValidUUID(uuid: string) {
+    if (!uuid) {
+      return true; // Allow empty string
+    }
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
+  }
+
+  const [state, setState] = React.useState({
+    raw: store.settings.hume_ttsVoice ?? "",
+    valid: isValidUUID(store.settings.hume_ttsVoice ?? ""),
+  });
+
+  React.useEffect(() => {
+    const currentValue = store.settings.hume_ttsVoice ?? "";
+    if (currentValue !== state.raw) {
+      setState({
+        raw: currentValue,
+        valid: isValidUUID(currentValue),
+      });
+    }
+  }, [store.settings.hume_ttsVoice]);
+
+  const onChange: React.ChangeEventHandler<HTMLInputElement> =
+    React.useCallback(
+      (v: React.ChangeEvent<HTMLInputElement>) => {
+        const value = v.target.value;
+        const valid = isValidUUID(value);
+        setState({
+          raw: value,
+          valid,
+        });
+        if (valid || !value) {
+          store.updateModelSpecificSettings("hume", {
+            hume_ttsVoice: value,
+          });
+        }
+      },
+      [store],
+    );
+
   return (
-    <div className="setting-item">
-      <div className="setting-item-info">
-        <div className="setting-item-name">Hume Voice ID</div>
-        <div className="setting-item-description">The Hume Voice ID to use</div>
+    <>
+      <div className="setting-item">
+        <div className="setting-item-info">
+          <div className="setting-item-name">Hume Voice ID</div>
+          <div className="setting-item-description">
+            The Hume Voice ID to use{" "}
+          </div>
+        </div>
+        <div className="setting-item-control">
+          <input
+            type="text"
+            value={state.raw}
+            onChange={onChange}
+            placeholder="e.g. 550e8400-e29b-41d4-a716-446655440000"
+            className={!state.valid ? "tts-error-input" : ""}
+          />
+        </div>
       </div>
-      <input type="text"
-        value={store.settings.hume_ttsVoice}
-        onChange={
-          (v) => store.updateModelSpecificSettings("hume", {
-            hume_ttsVoice: v.target.value
-          }
-        )}
-      />
-    </div>);
+      {!state.valid && state.raw && (
+        <div
+          className="setting-item-description tts-error-text"
+          style={{ marginBottom: "0.5rem" }}
+        >
+          Please enter a valid UUID format
+        </div>
+      )}
+    </>
+  );
 });
 
 const HumeTTSInstructionsComponent: React.FC<{
@@ -907,22 +1025,29 @@ const HumeTTSInstructionsComponent: React.FC<{
 const HumeContextModeComponent: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
-  const onChange: React.ChangeEventHandler<HTMLInputElement> = React.useCallback(
-    (evt) => {
-      store.updateModelSpecificSettings("hume", {
-        hume_contextMode: evt.target.checked,
-      });
-    },
-    [store],
-  );
+  const onChange: React.ChangeEventHandler<HTMLInputElement> =
+    React.useCallback(
+      (evt) => {
+        store.updateModelSpecificSettings("hume", {
+          hume_contextMode: evt.target.checked,
+        });
+      },
+      [store],
+    );
   return (
     <div className="setting-item">
       <div className="setting-item-info">
         <div className="setting-item-name">Context Mode</div>
-        <div className="setting-item-description">Enable context mode to improve coherence across sentences.</div>
+        <div className="setting-item-description">
+          Enable context mode to improve coherence across sentences.
+        </div>
       </div>
       <div className="setting-item-control">
-        <input type="checkbox" checked={store.settings.hume_contextMode} onChange={onChange} />
+        <input
+          type="checkbox"
+          checked={store.settings.hume_contextMode}
+          onChange={onChange}
+        />
       </div>
     </div>
   );
@@ -931,58 +1056,24 @@ const HumeContextModeComponent: React.FC<{
 const OpenAIApiKeyComponent: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
-  const [showPassword, setShowPassword] = React.useState(false);
-
-  let validIcon: string;
-  switch (store.apiKeyValid) {
-    case true:
-      validIcon = "check";
-      break;
-    case false:
-      validIcon = "alert-circle";
-      break;
-    default:
-      validIcon = "loader";
-      break;
-  }
-
-  const onChange: React.ChangeEventHandler<HTMLInputElement> =
-    React.useCallback((v: React.ChangeEvent<HTMLInputElement>) => {
-      store.updateModelSpecificSettings("openai", {
-        openai_apiKey: v.target.value,
-      });
-    }, []);
   return (
-    <div className="setting-item">
-      <div className="setting-item-info">
-        <div className="setting-item-name">OpenAI API key</div>
-        <div className="setting-item-description">
-          Your OpenAI API key. You can create one{" "}
-          <a href="https://platform.openai.com/api-keys" target="_blank">
-            here
-          </a>
-          .
-        </div>
-      </div>
-      <div className="setting-item-control">
-        {validIcon === "loader" ? <Spinner /> : <IconSpan icon={validIcon} />}
-        <input
-          type={showPassword ? "text" : "password"}
-          placeholder="API Key"
-          value={store.settings.openai_apiKey}
-          onChange={onChange}
-        />
-        <IconButton
-          icon={showPassword ? "eye-off" : "eye"}
-          onClick={() => setShowPassword(!showPassword)}
-        />
-      </div>
-    </div>
+    <ApiKeyComponent
+      store={store}
+      provider="openai"
+      fieldName="openai_apiKey"
+      displayName="OpenAI API key"
+      helpUrl="https://platform.openai.com/api-keys"
+      showValidation={true}
+    />
   );
 });
 
 const DEFAULT_OPENAI_MODELS: Model[] = [
-  { label: "gpt-4o-mini-tts", value: "gpt-4o-mini-tts", supportsInstructions: true },
+  {
+    label: "gpt-4o-mini-tts",
+    value: "gpt-4o-mini-tts",
+    supportsInstructions: true,
+  },
   { label: "tts-1", value: "tts-1" },
   { label: "tts-1-hd", value: "tts-1-hd" },
 ] as const;
@@ -1035,7 +1126,7 @@ const OpenAIVoiceComponent: React.FC<{
     {
       label: "Ballad",
       value: "ballad",
-      models: ["gpt-4o-mini-tts"]
+      models: ["gpt-4o-mini-tts"],
     },
     {
       label: "Coral",
@@ -1075,7 +1166,7 @@ const OpenAIVoiceComponent: React.FC<{
     {
       label: "Verse",
       value: "verse",
-      models: ["gpt-4o-mini-tts"]
+      models: ["gpt-4o-mini-tts"],
     },
   ] as const;
 
@@ -1159,67 +1250,23 @@ const OpenAITTSInstructionsComponent: React.FC<{
   );
 });
 
-const OpenAIContextModeComponent: React.FC<{
-  store: TTSPluginSettingsStore;
-}> = observer(({ store }) => {
-  const onChange: React.ChangeEventHandler<HTMLInputElement> = React.useCallback(
-    (evt) => {
-      store.updateModelSpecificSettings("openai", {
-        openai_contextMode: evt.target.checked,
-      });
-    },
-    [store],
-  );
-  return (
-    <div className="setting-item">
-      <div className="setting-item-info">
-        <div className="setting-item-name">Context Mode</div>
-        <div className="setting-item-description">Enable context mode to improve coherence across sentences.</div>
-      </div>
-      <div className="setting-item-control">
-        <input type="checkbox" checked={store.settings.openai_contextMode} onChange={onChange} />
-      </div>
-    </div>
-  );
-});
-
 const OpenAICompatibleApiKeyComponent: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
-  const [showPassword, setShowPassword] = React.useState(false);
-
-  const onChange: React.ChangeEventHandler<HTMLInputElement> =
-    React.useCallback((v: React.ChangeEvent<HTMLInputElement>) => {
-      store.updateSettings({ openaicompat_apiKey: v.target.value });
-    }, []);
   return (
-    <div className="setting-item">
-      <div className="setting-item-info">
-        <div className="setting-item-name">API key</div>
-        <div className="setting-item-description">
-          A Bearer token for your API
-        </div>
-      </div>
-      <div className="setting-item-control">
-        <input
-          type={showPassword ? "text" : "password"}
-          placeholder="API Key"
-          value={store.settings.openaicompat_apiKey}
-          onChange={onChange}
-        />
-        <IconButton
-          icon={showPassword ? "eye-off" : "eye"}
-          onClick={() => setShowPassword(!showPassword)}
-        />
-      </div>
-    </div>
+    <ApiKeyComponent
+      store={store}
+      provider="openaicompat"
+      fieldName="openaicompat_apiKey"
+      displayName="API key"
+      helpText="A Bearer token for your API"
+    />
   );
 });
 
 const OpenAICompatibleAPIBaseURLComponent: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
-
   function isValidURL(url: string) {
     if (!url) {
       return true;

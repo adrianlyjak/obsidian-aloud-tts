@@ -3,10 +3,8 @@ import {
   pluginSettingsStore,
   DEFAULT_SETTINGS,
   TTSPluginSettings,
-  GEMINI_API_URL,
-  HUME_API_URL,
-  OPENAI_API_URL,
 } from "./TTSPluginSettings";
+import { OPENAI_API_URL } from "../models/openai";
 
 describe("pluginSettingsStore", () => {
   vi.mock("obsidian", () => ({
@@ -46,58 +44,7 @@ describe("pluginSettingsStore", () => {
 
     expect(store.settings).toMatchObject(expectedSettings);
   });
-  it("should migrate data (gemini base url) to version 1 format", async () => {
-    const baseData = {
-      API_KEY: "test-key",
-      API_URL: GEMINI_API_URL,
-      model: "test-model",
-      ttsVoice: "test-voice",
-      contextMode: false,
-    };
-    const loadData = async () => baseData;
-    const saveData = async (data: unknown) => {};
 
-    const store = await pluginSettingsStore(loadData, saveData);
-
-    const expectedSettings: TTSPluginSettings = {
-      ...DEFAULT_SETTINGS,
-      ...baseData,
-      modelProvider: "gemini",
-      gemini_apiKey: baseData.API_KEY,
-      gemini_ttsModel: baseData.model,
-      gemini_ttsVoice: baseData.ttsVoice,
-      gemini_contextMode: baseData.contextMode,
-      version: 1,
-    };
-
-    expect(store.settings).toMatchObject(expectedSettings);
-  });
-  it("should migrate data (hume base url) to version 1 format", async () => {
-    const baseData = {
-      API_KEY: "test-key",
-      API_URL: HUME_API_URL,
-      ttsVoice: "test-voice",
-      sourceType: "TEST_SOURCE",
-      contextMode: false,
-    };
-    const loadData = async () => baseData;
-    const saveData = async (data: unknown) => {};
-
-    const store = await pluginSettingsStore(loadData, saveData);
-
-    const expectedSettings: TTSPluginSettings = {
-      ...DEFAULT_SETTINGS,
-      ...baseData,
-      modelProvider: "hume",
-      hume_apiKey: baseData.API_KEY,
-      hume_ttsVoice: baseData.ttsVoice,
-      hume_sourceType: baseData.sourceType,
-      hume_contextMode: baseData.contextMode,
-      version: 1,
-    };
-
-    expect(store.settings).toMatchObject(expectedSettings);
-  });
   it("should migrate data (openai base url) to version 1 format", async () => {
     const baseData = {
       API_KEY: "test-key",
@@ -118,7 +65,6 @@ describe("pluginSettingsStore", () => {
       openai_apiKey: baseData.API_KEY,
       openai_ttsModel: baseData.model,
       openai_ttsVoice: baseData.ttsVoice,
-      openai_contextMode: baseData.contextMode,
       version: 1,
     };
 
@@ -315,7 +261,6 @@ describe("pluginSettingsStore", () => {
       openai_apiKey: "new-test-key",
       openai_ttsModel: "new-test-model",
       openai_ttsVoice: "new-test-voice",
-      openai_contextMode: false,
     });
     expect(store.settings.API_KEY).toEqual("new-test-key");
     expect(store.settings.model).toEqual("new-test-model");
@@ -339,7 +284,6 @@ describe("pluginSettingsStore", () => {
       openai_apiKey: "new-test-key",
       openai_ttsModel: "new-test-model",
       openai_ttsVoice: "new-test-voice",
-      openai_contextMode: false,
     });
     expect(store.settings.API_KEY).toEqual("new-test-key");
     expect(store.settings.model).toEqual("new-test-model");
@@ -364,7 +308,6 @@ describe("pluginSettingsStore", () => {
       openai_apiKey: "new-test-key",
       openai_ttsModel: "new-test-model",
       openai_ttsVoice: "new-test-voice",
-      openai_contextMode: false,
     });
     expect(store.settings.API_KEY).toEqual("new-test-key");
     expect(store.settings.model).toEqual("new-test-model");
@@ -389,7 +332,6 @@ describe("pluginSettingsStore", () => {
       openaicompat_apiBase: "https://api.example.com",
       openaicompat_ttsModel: "new-test-model",
       openaicompat_ttsVoice: "new-test-voice",
-      openaicompat_contextMode: false,
     });
     expect(store.settings.API_KEY).toEqual("new-test-key");
     expect(store.settings.API_URL).toEqual("https://api.example.com");
@@ -415,7 +357,6 @@ describe("pluginSettingsStore", () => {
       openaicompat_apiBase: "https://api.example.com",
       openaicompat_ttsModel: "new-test-model",
       openaicompat_ttsVoice: "new-test-voice",
-      openaicompat_contextMode: false,
     });
     expect(store.settings.API_KEY).toEqual("new-test-key");
     expect(store.settings.API_URL).toEqual("https://api.example.com");
@@ -441,7 +382,6 @@ describe("pluginSettingsStore", () => {
       openaicompat_apiBase: "https://api.example.com",
       openaicompat_ttsModel: "new-test-model",
       openaicompat_ttsVoice: "new-test-voice",
-      openaicompat_contextMode: false,
     });
     expect(store.settings.API_KEY).toEqual("new-test-key");
     expect(store.settings.API_URL).toEqual("https://api.example.com");

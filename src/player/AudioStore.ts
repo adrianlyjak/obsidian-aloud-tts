@@ -6,7 +6,7 @@ import {
   buildTrack,
 } from "./ActiveAudioText";
 import { AudioSystem } from "./AudioSystem";
-import { toModelOptions } from "./TTSModel";
+import { toModelOptions } from "../models/registry";
 import { AudioText, AudioTextOptions } from "./AudioTextChunk";
 
 /** High level track changer interface */
@@ -65,7 +65,10 @@ class AudioStoreImpl implements AudioStore {
   }
 
   async exportAudio(text: string): Promise<ArrayBuffer> {
-    return await this.system.ttsModel(text, toModelOptions(this.system.settings));
+    return await this.system.ttsModel.call(
+      text,
+      toModelOptions(this.system.settings),
+    );
   }
 
   _backgroundProcesses: { shutdown: () => void }[] = [];

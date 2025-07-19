@@ -3,7 +3,7 @@ import { describe, expect, test, vi, beforeEach, afterEach } from "vitest";
 import { AudioCache, memoryStorage } from "./AudioCache";
 import { AudioSink, TrackStatus } from "./AudioSink";
 import { AudioStore, loadAudioStore } from "./AudioStore";
-import { TTSModel, TTSModelOptions } from "./TTSModel";
+import { TTSModel, TTSModelOptions } from "../models/tts-model";
 import { DEFAULT_SETTINGS, TTSPluginSettings } from "./TTSPluginSettings";
 import { ActiveAudioText } from "./ActiveAudioText";
 import { createAudioSystem } from "./AudioSystem";
@@ -782,7 +782,7 @@ function createStore({
         system: sys,
       });
     },
-    chunkLoader: (sys) => (new ChunkLoader({ system: sys })),
+    chunkLoader: (sys) => new ChunkLoader({ system: sys }),
   });
   return system.audioStore;
 }
