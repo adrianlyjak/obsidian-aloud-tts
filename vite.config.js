@@ -10,5 +10,8 @@ export default defineConfig({
     alias: {
       obsidian: path.resolve(__dirname, "__mocks__/obsidian.ts"),
     },
+    coverage: {
+      include: ["src/**/*"]
+    },
   },
 });

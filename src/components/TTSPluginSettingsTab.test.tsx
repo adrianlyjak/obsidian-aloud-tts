@@ -1,197 +1,247 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
-import { observable } from "mobx";
-import { observer } from "mobx-react-lite";
-import { OptionSelect } from "./settings/option-select";
-import { DEFAULT_SETTINGS, ModelProvider, modelProviders } from "../player/TTSPluginSettings";
+import { TTSSettingsTabComponent } from "./TTSSettingsTabComponent";
+import { AudioStore, loadAudioStore } from "../player/AudioStore";
+import { TTSPluginSettingsStore, pluginSettingsStore, DEFAULT_SETTINGS, modelProviders } from "../player/TTSPluginSettings";
+import { createAudioSystem } from "../player/AudioSystem";
+import { ChunkLoader } from "../player/ChunkLoader";
+import { memoryStorage } from "../player/AudioCache";
+import { AudioSink, TrackStatus } from "../player/AudioSink";
+import { TTSModel, TTSModelOptions } from "../models/tts-model";
+import * as mobx from "mobx";
 
-// Test utility component for model switching
-const TestModelSwitcher: React.FC<{
-  value: ModelProvider;
-  onChange: (value: ModelProvider) => void;
-}> = observer(({ value, onChange }) => {
-  const labels: Record<ModelProvider, string> = {
-    gemini: "Google Gemini",
-    hume: "Hume",
-    openai: "OpenAI", 
-    openaicompat: "OpenAI Compatible",
+// Mock components that have obsidian dependencies
+vi.mock("./IconButton", () => ({
+  IconButton: ({ children, onClick }: any) => <button onClick={onClick}>{children}</button>,
+  IconSpan: ({ children }: any) => <span>{children}</span>,
+  Spinner: () => <div>Loading...</div>,
+}));
+
+vi.mock("./PlayerView", () => ({
+  TTSErrorInfoView: () => <div>Error View</div>,
+  TTSErrorInfoDetails: () => <div>Error Details</div>,
+}));
+
+// Mock provider settings components to avoid complex dependencies
+vi.mock("./settings/gemini", () => ({
+  GeminiSettings: ({ store }: any) => <div data-testid="gemini-settings">Gemini Settings for {store.settings.modelProvider}</div>,
+}));
+
+vi.mock("./settings/hume", () => ({
+  HumeSettings: ({ store }: any) => <div data-testid="hume-settings">Hume Settings for {store.settings.modelProvider}</div>,
+}));
+
+vi.mock("./settings/openai", () => ({
+  OpenAISettings: ({ store }: any) => <div data-testid="openai-settings">OpenAI Settings for {store.settings.modelProvider}</div>,
+}));
+
+vi.mock("./settings/openai-like", () => ({
+  OpenAICompatibleSettings: ({ store }: any) => <div data-testid="openaicompat-settings">OpenAI Compatible Settings for {store.settings.modelProvider}</div>,
+}));
+
+// Create a fake audio element
+function FakeHTMLAudioElement() {
+  return {
+    play: vi.fn(),
+    pause: vi.fn(),
+    load: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    currentTime: 0,
+    duration: 0,
+    paused: true,
+    ended: false,
   };
+}
 
-  return (
-    <div>
-      <label htmlFor="model-select">Model Provider</label>
-      <OptionSelect
-        options={modelProviders.map((v) => ({ label: labels[v], value: v }))}
-        value={value}
-        onChange={(v) => onChange(v as ModelProvider)}
-      />
-    </div>
-  );
-});
+const emptyAudioBuffer = {
+  length: 0,
+  duration: 0,
+  numberOfChannels: 0,
+  sampleRate: 144000,
+} as AudioBuffer;
 
-// Create a test settings component that shows different content based on provider
-const TestProviderSettings: React.FC<{
-  provider: ModelProvider;
-}> = ({ provider }) => {
-  return (
-    <div>
-      <div data-testid="provider-name">{provider}</div>
-      {provider === "openai" && <div data-testid="openai-settings">OpenAI API Key</div>}
-      {provider === "gemini" && <div data-testid="gemini-settings">Gemini API Key</div>}
-      {provider === "hume" && <div data-testid="hume-settings">Hume API Key</div>}
-      {provider === "openaicompat" && <div data-testid="openaicompat-settings">API Base URL</div>}
-    </div>
+// Create a fake audio sink for testing (based on AudioStore.test.ts)
+class FakeAudioSink implements AudioSink {
+  currentData: ArrayBuffer | undefined = undefined;
+  isPlaying: boolean = false;
+  isComplete: boolean = false;
+  getAudioBuffer: (ab: ArrayBuffer) => Promise<AudioBuffer>;
+  audios: ArrayBuffer[] = [];
+  audio = FakeHTMLAudioElement() as any;
+  
+  constructor({
+    getAudioBuffer = () => Promise.resolve(emptyAudioBuffer),
+  }: {
+    getAudioBuffer?: (ab: ArrayBuffer) => Promise<AudioBuffer>;
+  } = {}) {
+    this.getAudioBuffer = getAudioBuffer;
+    mobx.makeObservable(this, {
+      currentData: mobx.observable,
+      isPlaying: mobx.observable,
+      currentTime: mobx.observable,
+      isComplete: mobx.observable,
+      switchMedia: mobx.action,
+      play: mobx.action,
+      pause: mobx.action,
+      setComplete: mobx.action,
+      trackStatus: mobx.computed,
+    });
+  }
+  
+  currentTime: number = 0;
+  
+  mediaComplete(): Promise<void> {
+    throw new Error("Method not implemented.");
+  }
+
+  setComplete(): void {
+    this.isComplete = true;
+  }
+
+  async switchMedia(data: ArrayBuffer): Promise<void> {
+    const wasComplete = this.isPlaying && this.isComplete;
+    this.isComplete = false;
+    this.currentData = data;
+    if (wasComplete) {
+      this.play();
+    }
+  }
+  
+  async appendMedia(data: ArrayBuffer): Promise<void> {
+    this.audios.push(data);
+  }
+  
+  setRate(rate: number): void {}
+  
+  play(): void {
+    this.isPlaying = true;
+  }
+  
+  pause(): void {
+    this.isPlaying = false;
+  }
+  
+  async stop(): Promise<void> {
+    this.isPlaying = false;
+    this.isComplete = false;
+    this.currentTime = 0;
+  }
+  
+  get trackStatus(): TrackStatus {
+    if (this.isComplete) return "complete";
+    if (this.isPlaying) return "playing";
+    return "paused";
+  }
+
+  async restart(): Promise<void> {
+    this.currentTime = 0;
+    this.isComplete = false;
+    if (this.isPlaying) {
+      this.play();
+    }
+  }
+
+  async clearMedia(): Promise<void> {
+    this.currentData = undefined;
+    this.audios = [];
+    this.isComplete = false;
+  }
+}
+
+// Create a fake TTS model for testing (based on AudioStore.test.ts)
+function createModel(): TTSModel {
+  return {
+    call: async (txt: string, _: TTSModelOptions) => {
+      return new ArrayBuffer(txt.length);
+    },
+    validateConnection: async () => undefined,
+    convertToOptions: () => ({
+      model: "fake",
+      contextMode: false,
+    }),
+  };
+}
+
+// Helper to create test stores
+async function createTestStores() {
+  const audioStore = createAudioStore();
+  const settingsStore = await createSettingsStore();
+  return { audioStore, settingsStore };
+}
+
+function createAudioStore(): AudioStore {
+  const system = createAudioSystem({
+    storage: () => memoryStorage(),
+    audioSink: () => new FakeAudioSink(),
+    ttsModel: () => createModel(),
+    settings: () => DEFAULT_SETTINGS,
+    config: () => ({ backgroundLoaderIntervalMillis: 10 }),
+    audioStore: (sys) => loadAudioStore({ system: sys }),
+    chunkLoader: (sys) => new ChunkLoader({ system: sys }),
+  });
+  return system.audioStore;
+}
+
+async function createSettingsStore(): Promise<TTSPluginSettingsStore> {
+  return await pluginSettingsStore(
+    async () => ({}), // loadData
+    async () => {}, // saveData
   );
-};
+}
 
 describe("TTSPluginSettingsTab", () => {
-  describe("OptionSelect Component", () => {
-    it("should render without crashing", () => {
-      const mockOnChange = vi.fn();
-      
-      render(
-        <TestModelSwitcher
-          value="openai"
-          onChange={mockOnChange}
-        />
-      );
+  let stores: { audioStore: AudioStore; settingsStore: TTSPluginSettingsStore };
 
-      expect(screen.getByText("Model Provider")).toBeInTheDocument();
-      expect(screen.getByDisplayValue("OpenAI")).toBeInTheDocument();
-    });
-
-    it("should call onChange when selection changes", async () => {
-      const user = userEvent.setup();
-      const mockOnChange = vi.fn();
-      
-      render(
-        <TestModelSwitcher
-          value="openai"
-          onChange={mockOnChange}
-        />
-      );
-
-      const select = screen.getByDisplayValue("OpenAI");
-      await user.selectOptions(select, "gemini");
-
-      expect(mockOnChange).toHaveBeenCalledWith("gemini");
-    });
-
-    it("should display all available model providers", () => {
-      const mockOnChange = vi.fn();
-      
-      render(
-        <TestModelSwitcher
-          value="openai"
-          onChange={mockOnChange}
-        />
-      );
-
-      const select = screen.getByDisplayValue("OpenAI");
-      
-      // Check that all options are available
-      expect(select).toContainHTML("OpenAI");
-      expect(select.parentElement).toContainHTML("Google Gemini");
-      expect(select.parentElement).toContainHTML("Hume");
-      expect(select.parentElement).toContainHTML("OpenAI Compatible");
-    });
+  beforeEach(async () => {
+    stores = await createTestStores();
   });
 
-  describe("Provider-specific Settings", () => {
-    it("should render OpenAI settings correctly", () => {
-      render(<TestProviderSettings provider="openai" />);
-      
-      expect(screen.getByTestId("provider-name")).toHaveTextContent("openai");
-      expect(screen.getByTestId("openai-settings")).toHaveTextContent("OpenAI API Key");
-      expect(screen.queryByTestId("gemini-settings")).not.toBeInTheDocument();
-    });
+  it("should render settings and switch between all providers", async () => {
+    const user = userEvent.setup();
 
-    it("should render Gemini settings correctly", () => {
-      render(<TestProviderSettings provider="gemini" />);
-      
-      expect(screen.getByTestId("provider-name")).toHaveTextContent("gemini");
-      expect(screen.getByTestId("gemini-settings")).toHaveTextContent("Gemini API Key");
-      expect(screen.queryByTestId("openai-settings")).not.toBeInTheDocument();
-    });
+    render(
+      <TTSSettingsTabComponent
+        store={stores.settingsStore}
+        player={stores.audioStore}
+      />
+    );
 
-    it("should render Hume settings correctly", () => {
-      render(<TestProviderSettings provider="hume" />);
-      
-      expect(screen.getByTestId("provider-name")).toHaveTextContent("hume");
-      expect(screen.getByTestId("hume-settings")).toHaveTextContent("Hume API Key");
-      expect(screen.queryByTestId("openai-settings")).not.toBeInTheDocument();
-    });
+    // Should render main elements
+    expect(screen.getByText("Aloud")).toBeDefined();
+    expect(screen.getByText("Model Provider")).toBeDefined();
+    expect(screen.getByText("Test Voice")).toBeDefined();
 
-    it("should render OpenAI Compatible settings correctly", () => {
-      render(<TestProviderSettings provider="openaicompat" />);
+    // Switch through all providers to maximize coverage
+    const select = screen.getByDisplayValue("OpenAI");
+    
+    for (const provider of modelProviders) {
+      await user.selectOptions(select, provider);
       
-      expect(screen.getByTestId("provider-name")).toHaveTextContent("openaicompat");
-      expect(screen.getByTestId("openaicompat-settings")).toHaveTextContent("API Base URL");
-      expect(screen.queryByTestId("openai-settings")).not.toBeInTheDocument();
-    });
-
-    it("should switch between providers without crashing", () => {
-      const providers: ModelProvider[] = ["openai", "gemini", "hume", "openaicompat"];
+      // Each provider switch should trigger the update function
+      expect(stores.settingsStore.settings.modelProvider).toBe(provider);
       
-      providers.forEach(provider => {
-        const { unmount } = render(<TestProviderSettings provider={provider} />);
-        
-        expect(screen.getByTestId("provider-name")).toHaveTextContent(provider);
-        
-        // Should render without errors
-        expect(screen.getByTestId("provider-name")).toBeInTheDocument();
-        
-        unmount();
-      });
-    });
-  });
-
-  describe("Integration Test", () => {
-    it("should update settings store when switching providers", async () => {
-      const user = userEvent.setup();
-      
-      // Create observable settings
-      const settings = observable({
-        ...DEFAULT_SETTINGS,
-        modelProvider: "openai" as ModelProvider,
-      });
-      
-      const mockUpdateSettings = vi.fn();
-      
-      // Combined component that shows both switcher and settings
-      const TestApp: React.FC = observer(() => {
-        return (
-          <div>
-            <TestModelSwitcher
-              value={settings.modelProvider}
-              onChange={(provider) => {
-                settings.modelProvider = provider;
-                mockUpdateSettings(provider);
-              }}
-            />
-            <TestProviderSettings provider={settings.modelProvider} />
-          </div>
-        );
-      });
-      
-      render(<TestApp />);
-
-      // Initially should show OpenAI
-      expect(screen.getByDisplayValue("OpenAI")).toBeInTheDocument();
-      expect(screen.getByTestId("openai-settings")).toBeInTheDocument();
-
-      // Switch to Gemini
-      const select = screen.getByDisplayValue("OpenAI");
-      await user.selectOptions(select, "gemini");
-
-      // Should call update function
-      expect(mockUpdateSettings).toHaveBeenCalledWith("gemini");
-      
-      // Should show Gemini settings
-      expect(screen.getByTestId("gemini-settings")).toBeInTheDocument();
-      expect(screen.queryByTestId("openai-settings")).not.toBeInTheDocument();
-    });
+      // Verify the correct provider-specific settings are rendered
+      switch (provider) {
+        case "gemini":
+          expect(screen.getByTestId("gemini-settings")).toBeDefined();
+          expect(screen.getByText("Gemini Settings for gemini")).toBeDefined();
+          break;
+        case "hume":
+          expect(screen.getByTestId("hume-settings")).toBeDefined();
+          expect(screen.getByText("Hume Settings for hume")).toBeDefined();
+          break;
+        case "openai":
+          expect(screen.getByTestId("openai-settings")).toBeDefined();
+          expect(screen.getByText("OpenAI Settings for openai")).toBeDefined();
+          break;
+        case "openaicompat":
+          expect(screen.getByTestId("openaicompat-settings")).toBeDefined();
+          expect(screen.getByText("OpenAI Compatible Settings for openaicompat")).toBeDefined();
+          break;
+      }
+    }
   });
 }); 
