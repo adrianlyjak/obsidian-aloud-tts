@@ -99,13 +99,13 @@ describe("pluginSettingsStore", () => {
       modelProvider: "openai",
       // Legacy shared fields that should be removed
       OPENAI_API_KEY: "legacy-key",
-      OPENAI_API_URL: "legacy-url", 
+      OPENAI_API_URL: "legacy-url",
       model: "legacy-model",
       ttsVoice: "legacy-voice",
       instructions: "legacy-instructions",
       // Provider-specific fields that should be preserved
       openai_apiKey: "correct-key",
-      openai_ttsModel: "correct-model", 
+      openai_ttsModel: "correct-model",
       openai_ttsVoice: "correct-voice",
       gemini_apiKey: "gemini-key",
       gemini_ttsModel: "gemini-model",
@@ -125,21 +125,23 @@ describe("pluginSettingsStore", () => {
     expect(store.settings).not.toHaveProperty("model");
     expect(store.settings).not.toHaveProperty("ttsVoice");
     expect(store.settings).not.toHaveProperty("instructions");
-    
+
     // Should preserve provider-specific settings
     expect(store.settings.openai_apiKey).toBe("correct-key");
     expect(store.settings.openai_ttsModel).toBe("correct-model");
     expect(store.settings.openai_ttsVoice).toBe("correct-voice");
     expect(store.settings.gemini_apiKey).toBe("gemini-key");
     expect(store.settings.gemini_ttsModel).toBe("gemini-model");
-    
+
     // Should preserve other settings
     expect(store.settings.modelProvider).toBe("openai");
     expect(store.settings.chunkType).toBe("paragraph");
     expect(store.settings.playbackSpeed).toBe(1.5);
-    
+
     // Should have default values for any missing fields
-    expect(store.settings.gemini_ttsVoice).toBe(DEFAULT_SETTINGS.gemini_ttsVoice);
+    expect(store.settings.gemini_ttsVoice).toBe(
+      DEFAULT_SETTINGS.gemini_ttsVoice,
+    );
     expect(store.settings.hume_apiKey).toBe(DEFAULT_SETTINGS.hume_apiKey);
   });
 

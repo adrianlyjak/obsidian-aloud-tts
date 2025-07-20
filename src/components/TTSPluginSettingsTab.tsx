@@ -14,7 +14,7 @@ import {
 } from "../player/TTSPluginSettings";
 import { IconButton, IconSpan, Spinner } from "./IconButton";
 import { TTSErrorInfoDetails, TTSErrorInfoView } from "./PlayerView";
-import { hasNamedVoice, REGISTRY } from "src/models/registry";
+import { hasNamedVoice, REGISTRY } from "../models/registry";
 import { GeminiSettings } from "./settings/gemini";
 import { HumeSettings } from "./settings/hume";
 import { OpenAISettings } from "./settings/openai";

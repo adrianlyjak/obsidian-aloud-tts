@@ -7,6 +7,7 @@ import {
 } from "./tts-model";
 import { validate200 } from "./tts-model";
 import { base64ToArrayBuffer } from "../util/misc";
+import { TTSPluginSettings } from "../player/TTSPluginSettings";
 
 export const HUME_API_URL = "https://api.hume.ai";
 
@@ -32,7 +33,8 @@ export const humeTextToSpeech: TTSModel = {
 export async function humeCallTextToSpeech(
   text: string,
   options: TTSModelOptions,
-  contexts?: string[],
+  contexts: string[],
+  settings: TTSPluginSettings,
 ): Promise<ArrayBuffer> {
   // Construct the utterances array for the Hume API request
   const utterance: {

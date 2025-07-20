@@ -1,5 +1,5 @@
 import React from "react";
-import { TTSPluginSettingsStore } from "src/player/TTSPluginSettings";
+import { TTSPluginSettingsStore } from "../../player/TTSPluginSettings";
 import { observer } from "mobx-react-lite";
 import { ApiKeyComponent } from "./api-key-component";
 import {

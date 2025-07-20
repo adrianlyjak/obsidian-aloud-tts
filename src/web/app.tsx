@@ -252,7 +252,12 @@ const SimplePlayer: FC<{ settingsStore: TTSPluginSettingsStore }> = observer(
         const text = `Speaking of connections, I think that's another important aspect of embracing uncertainty. When we're open to new experiences and perspectives, we're more likely to form meaningful connections with others. We're more likely to listen, to learn, and to grow together.`;
         const model = REGISTRY[settingsStore.settings.modelProvider];
         const options = model.convertToOptions(settingsStore.settings);
-        const audio = await model.call(text, options);
+        const audio = await model.call(
+          text,
+          options,
+          [],
+          settingsStore.settings,
+        );
         await sink.switchMedia(audio);
         setSink(sink);
       });

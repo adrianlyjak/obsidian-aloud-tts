@@ -1,9 +1,9 @@
+import { observer } from "mobx-react-lite";
 import React from "react";
 import {
   ModelProvider,
   TTSPluginSettingsStore,
 } from "../../player/TTSPluginSettings";
-import { observer } from "mobx-react-lite";
 import { IconButton, IconSpan, Spinner } from "../IconButton";
 
 export interface ApiKeyComponentProps {
@@ -106,27 +106,3 @@ export const ApiKeyComponent: React.FC<ApiKeyComponentProps> = observer(
     );
   },
 );
-
-const OptionSelect: React.FC<{
-  options: readonly { label: string; value: string }[];
-  value: string;
-  onChange: (v: string) => void;
-}> = ({ options, value, onChange }) => {
-  const isUnknown = options.find((o) => o.value === value) === undefined;
-  const unknownValue = isUnknown && !!value ? [{ label: value, value }] : [];
-  return (
-    <>
-      <select
-        className="dropdown"
-        value={value}
-        onChange={(evt) => onChange(evt.target.value)}
-      >
-        {options.concat(unknownValue).map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </>
-  );
-};

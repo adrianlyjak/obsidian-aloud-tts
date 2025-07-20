@@ -62,7 +62,14 @@ export class ActiveAudioTextImpl implements ActiveAudioText {
     }
     const error =
       this.currentChunk.failureInfo ??
-      new TTSErrorInfo("unknown", { message: "an unknown error occurred" });
+      new TTSErrorInfo("unknown", {
+        error: {
+          message: "an unknown error occurred",
+          type: "unknown",
+          code: "unknown",
+          param: undefined,
+        },
+      });
     return error;
   }
 

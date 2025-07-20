@@ -101,6 +101,11 @@ describe("AudioStore", () => {
       });
       const tts = vi.mockObject(createModel());
       tts.call.mockReturnValue(Promise.resolve(new ArrayBuffer(0)));
+      tts.convertToOptions = vi.fn().mockReturnValue({
+        model: "gpt-4o-mini-tts",
+        voice: "shimmer",
+        contextMode: false,
+      });
       const text =
         "First there was one bottle top. Then there were two bottle tops. Penultimately there were three bottle tops. Finally there were four bottle tops.";
       const active = await createActiveTrack(
@@ -148,7 +153,6 @@ describe("AudioStore", () => {
       tts.convertToOptions = vi
         .fn()
         .mockImplementation((settings: TTSPluginSettings): TTSModelOptions => {
-          console.log("convertToOptions", settings);
           return {
             model: settings.openai_ttsModel,
             voice: settings.openai_ttsVoice,
@@ -231,6 +235,11 @@ describe("AudioStore", () => {
       const duration = 5;
       const tts = vi.mockObject(createModel());
       tts.call.mockReturnValue(Promise.resolve(new ArrayBuffer(0)));
+      tts.convertToOptions = vi.fn().mockReturnValue({
+        model: "gpt-4o-mini-tts",
+        voice: "shimmer",
+        contextMode: false,
+      });
       const sink = new FakeAudioSink({
         getAudioBuffer: async () => ({ duration }) as AudioBuffer,
       });
@@ -263,8 +272,8 @@ describe("AudioStore", () => {
       // Verify that the text has been updated in the third chunk
       expect(aat.audio.chunks[2].rawText).toContain("New ");
 
-      expect(ttsCalls).toHaveLength(4);
-      expect(ttsCalls[3]).toMatch(/^New /);
+      expect(tts.call.mock.calls.length).toEqual(4);
+      expect(tts.call.mock.calls[3][0]).toMatch(/^New /);
     });
 
     test("should update the tracks' positions forward when the text is added before", async () => {

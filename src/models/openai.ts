@@ -52,7 +52,8 @@ export const openAITextToSpeech: TTSModel = {
 export async function openAICallTextToSpeech(
   text: string,
   options: TTSModelOptions,
-  contexts?: string[],
+  contexts: string[],
+  settings: TTSPluginSettings,
 ): Promise<ArrayBuffer> {
   const headers = await fetch(
     (options.apiUri || OPENAI_API_URL) + "/v1/audio/speech",

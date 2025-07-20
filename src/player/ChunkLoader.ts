@@ -99,7 +99,7 @@ export class ChunkLoader {
       const audio = this.createCachedAudio(
         text,
         options,
-        this.system.settings.contextMode ? contexts : undefined,
+        options.contextMode ? contexts : undefined,
       );
       this.localCache.push(audio);
       return audio.result;
@@ -177,6 +177,7 @@ export class ChunkLoader {
     try {
       return await this.loadTrack(track, options, contexts);
     } catch (ex) {
+      console.log("error loading track", ex);
       const errorInfo = ex instanceof TTSErrorInfo ? ex : undefined;
       const canRetry =
         attempt < maxAttempts && (errorInfo ? errorInfo.isRetryable : true);
@@ -213,7 +214,12 @@ export class ChunkLoader {
       return stored;
     } else {
       // likely some race conditions here, if the options have changed since the request was enqueued
-      const buff = await this.system.ttsModel.call(text, options, contexts);
+      const buff = await this.system.ttsModel.call(
+        text,
+        options,
+        contexts ?? [],
+        this.system.settings,
+      );
       await this.system.storage.saveAudio(text, options, buff);
       return buff;
     }

@@ -28,7 +28,7 @@ export const OptionSelectSetting: React.FC<OptionSelectSettingProps> = observer(
           [fieldName]: value,
         });
       },
-      [store, provider, fieldName]
+      [store, provider, fieldName],
     );
 
     return (
@@ -46,7 +46,7 @@ export const OptionSelectSetting: React.FC<OptionSelectSettingProps> = observer(
         </div>
       </div>
     );
-  }
+  },
 );
 
 // Text input setting with optional validation
@@ -62,7 +62,15 @@ export interface TextInputSettingProps extends BaseSettingProps {
 }
 
 export const TextInputSetting: React.FC<TextInputSettingProps> = observer(
-  ({ name, description, store, provider, fieldName, placeholder, validation }) => {
+  ({
+    name,
+    description,
+    store,
+    provider,
+    fieldName,
+    placeholder,
+    validation,
+  }) => {
     const currentValue = store.settings[fieldName] as string;
     const [state, setState] = React.useState({
       raw: currentValue,
@@ -78,24 +86,25 @@ export const TextInputSetting: React.FC<TextInputSettingProps> = observer(
       }
     }, [currentValue, validation]);
 
-    const onChange: React.ChangeEventHandler<HTMLInputElement> = React.useCallback(
-      (evt) => {
-        const value = evt.target.value;
-        const valid = !validation || validation.validate(value);
-        setState({ raw: value, valid });
+    const onChange: React.ChangeEventHandler<HTMLInputElement> =
+      React.useCallback(
+        (evt) => {
+          const value = evt.target.value;
+          const valid = !validation || validation.validate(value);
+          setState({ raw: value, valid });
 
-        if (valid || !value) {
-          if (provider) {
-            store.updateModelSpecificSettings(provider, {
-              [fieldName]: value,
-            });
-          } else {
-            store.updateSettings({ [fieldName]: value });
+          if (valid || !value) {
+            if (provider) {
+              store.updateModelSpecificSettings(provider, {
+                [fieldName]: value,
+              });
+            } else {
+              store.updateSettings({ [fieldName]: value });
+            }
           }
-        }
-      },
-      [store, provider, fieldName, validation]
-    );
+        },
+        [store, provider, fieldName, validation],
+      );
 
     return (
       <>
@@ -124,7 +133,7 @@ export const TextInputSetting: React.FC<TextInputSettingProps> = observer(
         )}
       </>
     );
-  }
+  },
 );
 
 // Textarea setting for instructions
@@ -138,15 +147,25 @@ export interface TextareaSettingProps extends BaseSettingProps {
 }
 
 export const TextareaSetting: React.FC<TextareaSettingProps> = observer(
-  ({ name, description, store, provider, fieldName, placeholder, rows = 3, disabled = false }) => {
-    const onChange: React.ChangeEventHandler<HTMLTextAreaElement> = React.useCallback(
-      (evt) => {
-        store.updateModelSpecificSettings(provider, {
-          [fieldName]: evt.target.value,
-        });
-      },
-      [store, provider, fieldName]
-    );
+  ({
+    name,
+    description,
+    store,
+    provider,
+    fieldName,
+    placeholder,
+    rows = 3,
+    disabled = false,
+  }) => {
+    const onChange: React.ChangeEventHandler<HTMLTextAreaElement> =
+      React.useCallback(
+        (evt) => {
+          store.updateModelSpecificSettings(provider, {
+            [fieldName]: evt.target.value,
+          });
+        },
+        [store, provider, fieldName],
+      );
 
     const value = disabled ? "" : (store.settings[fieldName] as string);
 
@@ -166,7 +185,7 @@ export const TextareaSetting: React.FC<TextareaSettingProps> = observer(
         />
       </div>
     );
-  }
+  },
 );
 
 // Checkbox setting for boolean values
@@ -178,14 +197,15 @@ export interface CheckboxSettingProps extends BaseSettingProps {
 
 export const CheckboxSetting: React.FC<CheckboxSettingProps> = observer(
   ({ name, description, store, provider, fieldName }) => {
-    const onChange: React.ChangeEventHandler<HTMLInputElement> = React.useCallback(
-      (evt) => {
-        store.updateModelSpecificSettings(provider, {
-          [fieldName]: evt.target.checked,
-        });
-      },
-      [store, provider, fieldName]
-    );
+    const onChange: React.ChangeEventHandler<HTMLInputElement> =
+      React.useCallback(
+        (evt) => {
+          store.updateModelSpecificSettings(provider, {
+            [fieldName]: evt.target.checked,
+          });
+        },
+        [store, provider, fieldName],
+      );
 
     return (
       <div className="setting-item">
@@ -202,5 +222,5 @@ export const CheckboxSetting: React.FC<CheckboxSettingProps> = observer(
         </div>
       </div>
     );
-  }
-); 
+  },
+);

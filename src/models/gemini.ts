@@ -7,6 +7,7 @@ import {
   TTSModel,
   TTSModelOptions,
 } from "./tts-model";
+import { TTSPluginSettings } from "../player/TTSPluginSettings";
 
 export const GEMINI_API_URL = "https://generativelanguage.googleapis.com";
 
@@ -136,7 +137,8 @@ function mapGenAIError(error: unknown): TTSErrorInfo {
 export async function geminiCallTextToSpeech(
   text: string,
   options: TTSModelOptions,
-  contexts?: string[],
+  contexts: string[],
+  settings: TTSPluginSettings,
 ): Promise<ArrayBuffer> {
   const ai = new GoogleGenAI({ apiKey: options.apiKey });
   let response: GenerateContentResponse;

@@ -246,9 +246,13 @@ function migrateToVersion1(data: any): any {
     openaicompat_apiBase: isCustom ? data.OPENAI_API_URL : "",
     openaicompat_ttsModel: isCustom ? data.model : "",
     openaicompat_ttsVoice: isCustom ? data.ttsVoice : "",
-    openai_apiKey: !isCustom ? data.OPENAI_API_KEY : DEFAULT_SETTINGS.openai_apiKey,
+    openai_apiKey: !isCustom
+      ? data.OPENAI_API_KEY
+      : DEFAULT_SETTINGS.openai_apiKey,
     openai_ttsModel: !isCustom ? data.model : DEFAULT_SETTINGS.openai_ttsModel,
-    openai_ttsVoice: !isCustom ? data.ttsVoice : DEFAULT_SETTINGS.openai_ttsVoice,
+    openai_ttsVoice: !isCustom
+      ? data.ttsVoice
+      : DEFAULT_SETTINGS.openai_ttsVoice,
 
     version: 1,
   };
@@ -260,11 +264,11 @@ function migrateToVersion1(data: any): any {
 function migrateToVersion2(data: any): any {
   // remove shared fields
   const {
-    OPENAI_API_URL,
-    OPENAI_API_KEY,
-    model,
-    ttsVoice,
-    instructions,
+    OPENAI_API_URL, // eslint-disable-line @typescript-eslint/no-unused-vars
+    OPENAI_API_KEY, // eslint-disable-line @typescript-eslint/no-unused-vars
+    model, // eslint-disable-line @typescript-eslint/no-unused-vars
+    ttsVoice, // eslint-disable-line @typescript-eslint/no-unused-vars
+    instructions, // eslint-disable-line @typescript-eslint/no-unused-vars
     ...rest
   } = data;
   // add any fields that were missing before

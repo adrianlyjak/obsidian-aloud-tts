@@ -3,6 +3,45 @@ import {
   TTSPluginSettings,
 } from "../player/TTSPluginSettings";
 
+// Interface for batch text-to-speech requests
+export interface TTSModel {
+  /** Calls text to speech, returning an mp3 buffer of the audio (TODO! support other formats) */
+  call(
+    text: string,
+    options: TTSModelOptions,
+    contexts: string[],
+    settings: TTSPluginSettings,
+  ): Promise<ArrayBuffer>;
+
+  /** Returns an error message if the connection is not valid, otherwise undefined */
+  validateConnection(settings: TTSPluginSettings): Promise<string | undefined>;
+
+  /**
+   * Utility that reads the model provider specific settings (e.g. prefixed fields), and returns a record
+   * of shared settings to apply, when this provider is selected. E.g. read openai_apiKey and openai_apiUrl,
+   * and return { API_KEY: openai_apiKey, API_URL: openai_apiUrl } */
+  convertToOptions(settings: TTSPluginSettings): TTSModelOptions;
+}
+
+/**
+ * Convert the various provider settings into a generic view.
+ * Don't put random crap here, the different models can still read directly from the settings for obscure cases.
+ */
+export interface TTSModelOptions {
+  /** The model name to use */
+  model: string;
+  /** The voice to use. Often Depends on the model. */
+  voice?: string;
+  /** The instructions to use for voice quality. Only applicable to some models */
+  instructions?: string;
+  /** Whether to include previous utterances in the instructions/context */
+  contextMode: boolean;
+  /** The base API URL to use, if there isn't a default */
+  apiUri?: string;
+  /** The API key to use. Not required for all models. */
+  apiKey?: string;
+}
+
 export class TTSErrorInfo extends Error {
   status: string;
   httpErrorCode?: number;
@@ -34,45 +73,6 @@ export class TTSErrorInfo extends Error {
   ttsErrorCode(): string | undefined {
     return this.errorDetails?.error?.code;
   }
-}
-
-/**
- * Convert the various provider settings into a generic view.
- * Don't put random crap here, the different models can still read directly from the settings for obscure cases.
- */
-export interface TTSModelOptions {
-  /** The model name to use */
-  model: string;
-  /** The voice to use. Often Depends on the model. */
-  voice?: string;
-  /** The instructions to use for voice quality. Only applicable to some models */
-  instructions?: string;
-  /** Whether to include previous utterances in the instructions/context */
-  contextMode: boolean;
-  /** The base API URL to use, if there isn't a default */
-  apiUri?: string;
-  /** The API key to use. Not required for all models. */
-  apiKey?: string;
-}
-
-// Interface for batch text-to-speech requests
-export interface TTSModel {
-  /** Calls text to speech, returning an mp3 buffer of the audio (TODO! support other formats) */
-  call(
-    text: string,
-    options: TTSModelOptions,
-    contexts?: string[],
-    settings?: TTSPluginSettings,
-  ): Promise<ArrayBuffer>;
-
-  /** Returns an error message if the connection is not valid, otherwise undefined */
-  validateConnection(settings: TTSPluginSettings): Promise<string | undefined>;
-
-  /**
-   * Utility that reads the model provider specific settings (e.g. prefixed fields), and returns a record
-   * of shared settings to apply, when this provider is selected. E.g. read openai_apiKey and openai_apiUrl,
-   * and return { API_KEY: openai_apiKey, API_URL: openai_apiUrl } */
-  convertToOptions(settings: TTSPluginSettings): TTSModelOptions;
 }
 
 export async function validate200(

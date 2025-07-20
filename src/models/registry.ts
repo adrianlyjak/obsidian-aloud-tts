@@ -1,5 +1,5 @@
-import { ModelProvider, TTSPluginSettings } from "../player/TTSPluginSettings";
-import { TTSModel, TTSModelOptions } from "./tts-model";
+import { ModelProvider } from "../player/TTSPluginSettings";
+import { TTSModel } from "./tts-model";
 import { openAITextToSpeech } from "./openai";
 import { geminiTextToSpeech } from "./gemini";
 import { humeTextToSpeech } from "./hume";
