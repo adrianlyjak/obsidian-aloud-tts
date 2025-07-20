@@ -131,9 +131,11 @@ const OpenAIVoiceComponent: React.FC<{
     if (voices.find((v) => v.value === store.settings.openai_ttsVoice)) {
       return;
     }
-    store.updateModelSpecificSettings("openai", {
-      openai_ttsVoice: voices[0].value,
-    });
+    if (voices.length > 0) {
+      store.updateModelSpecificSettings("openai", {
+        openai_ttsVoice: voices[0].value,
+      });
+    }
   }, [store.settings.openai_ttsVoice, voices]);
 
   return (
