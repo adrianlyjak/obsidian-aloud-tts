@@ -1,10 +1,10 @@
 import { openAICallTextToSpeech } from "./openai";
-import { TTSModel } from "./tts-model";
+import { TTSModel, TTSModelOptions } from "./tts-model";
 
 export const openaiLikeTextToSpeech: TTSModel = {
   call: openAICallTextToSpeech,
   validateConnection: async (settings) => undefined,
-  convertToOptions: (settings) => {
+  convertToOptions: (settings): TTSModelOptions => {
     return {
       apiKey: settings.openaicompat_apiKey,
       apiUri: settings.openaicompat_apiBase,

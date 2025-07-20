@@ -45,7 +45,8 @@ export async function humeCallTextToSpeech(
     voice: options.voice
       ? {
           id: options.voice,
-          provider: options.sourceType.toUpperCase(),
+          /** overloads the sourceType into the model field */
+          provider: options.model.toUpperCase(),
         }
       : undefined,
     description: options.instructions,

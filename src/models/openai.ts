@@ -37,11 +37,11 @@ export const openAITextToSpeech: TTSModel = {
     }
     return undefined;
   },
-  convertToOptions: (settings) => {
+  convertToOptions: (settings): TTSModelOptions => {
     return {
       apiKey: settings.openai_apiKey,
       apiUri: OPENAI_API_URL,
-      ttsVoice: settings.openai_ttsVoice,
+      voice: settings.openai_ttsVoice,
       instructions: settings.openai_ttsInstructions || undefined,
       model: settings.openai_ttsModel,
       contextMode: false, // not supported
@@ -55,7 +55,7 @@ export async function openAICallTextToSpeech(
   contexts?: string[],
 ): Promise<ArrayBuffer> {
   const headers = await fetch(
-    options.apiUri || OPENAI_API_URL + "/v1/audio/speech",
+    (options.apiUri || OPENAI_API_URL) + "/v1/audio/speech",
     {
       headers: {
         Authorization: "Bearer " + options.apiKey,
