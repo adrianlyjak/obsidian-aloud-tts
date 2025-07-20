@@ -20,15 +20,8 @@ export const REGISTRY: Record<ModelProvider, TTSModel> = {
 export function toModelOptions(
   pluginSettings: TTSPluginSettings,
 ): TTSModelOptions {
-  return {
-    model: pluginSettings.model,
-    voice: pluginSettings.ttsVoice || undefined,
-    sourceType: pluginSettings.sourceType,
-    instructions: pluginSettings.instructions || undefined,
-    contextMode: pluginSettings.contextMode ?? false,
-    apiUri: pluginSettings.API_URL,
-    apiKey: pluginSettings.API_KEY,
-  };
+  return REGISTRY[pluginSettings.modelProvider].convertToOptions(pluginSettings);
+  
 }
 
 export function hasNamedVoice(provider: ModelProvider): boolean {

@@ -66,9 +66,7 @@ export interface TTSModel {
    * Utility that reads the model provider specific settings (e.g. prefixed fields), and returns a record
    * of shared settings to apply, when this provider is selected. E.g. read openai_apiKey and openai_apiUrl,
    * and return { API_KEY: openai_apiKey, API_URL: openai_apiUrl } */
-  applyModelSpecificSettings(
-    settings: TTSPluginSettings,
-  ): Partial<TTSPluginSettings>;
+  convertToOptions(settings: TTSPluginSettings): TTSModelOptions;
 }
 
 export async function validate200(

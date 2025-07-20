@@ -180,3 +180,7 @@ export function hashStrings(str: string[]): number[] {
   }
   return hash;
 }
+
+export function hashString(str: string): number {
+  return hashStrings([str])[0];
+}

@@ -6,14 +6,7 @@ import { OPENAI_API_URL } from "../models/openai";
 import { REGISTRY } from "../models/registry";
 
 export type TTSPluginSettings = {
-  API_KEY: string;
-  API_URL: string;
   modelProvider: ModelProvider;
-  model: string;
-  ttsVoice?: string;
-  sourceType: string;
-  instructions?: string;
-  contextMode?: boolean;
   chunkType: "sentence" | "paragraph";
   playbackSpeed: number;
   cacheType: "local" | "vault";
@@ -27,32 +20,50 @@ export type TTSPluginSettings = {
   OpenAICompatModelConfig);
 
 export interface GeminiModelConfig {
+  /** the API key to use */ 
   gemini_apiKey: string;
+  /** the model to use (tts vs tts-hd etc.*/
   gemini_ttsModel: string;
+  /** the voice string id to use. Required */
   gemini_ttsVoice: string;
+  /** the instructions to use for voice quality. Only applicable to gpt-4o-mini-tts */
   gemini_ttsInstructions?: string;
+  /** whether to include previous utterances in the instructions/context */
   gemini_contextMode: boolean;
 }
 
 export interface HumeModelConfig {
+  /** the API key to use */
   hume_apiKey: string;
+  /** the voice UUID to use. I think required */
   hume_ttsVoice?: string;
+  /** user defined voices or shared voices */
   hume_sourceType: string;
+  /** the instructions to use for voice quality */
   hume_ttsInstructions?: string;
+  /** whether to include previous utterances in the instructions/context */
   hume_contextMode: boolean;
 }
 
 export interface OpenAIModelConfig {
+  /** the API key to use */
   openai_apiKey: string;
+  /** the model to use (tts vs tts-hd etc.*/
   openai_ttsModel: string;
+  /** the voice string id to use. Required */
   openai_ttsVoice: string;
+  /** the instructions to use for voice quality. Only applicable to gpt-4o-mini-tts */
   openai_ttsInstructions?: string;
 }
 
 export interface OpenAICompatModelConfig {
+  /** the API key to use. Not required */
   openaicompat_apiKey: string;
+  /** the backend openai compatible API URL to use */
   openaicompat_apiBase: string;
+  /** the model to use. Depends on the backend.*/
   openaicompat_ttsModel: string;
+  /** the voice string id to use. Required. Depends on the backend. */
   openaicompat_ttsVoice: string;
 }
 
@@ -87,14 +98,8 @@ export const modelProviders = [
 export type ModelProvider = (typeof modelProviders)[number];
 
 export const DEFAULT_SETTINGS: TTSPluginSettings = {
-  API_KEY: "",
-  API_URL: "",
+
   modelProvider: "openai",
-  model: "gpt-4o-mini-tts",
-  ttsVoice: "shimmer",
-  sourceType: "",
-  instructions: undefined,
-  contextMode: false,
   chunkType: "sentence",
   playbackSpeed: 1.0,
   cacheDurationMillis: 1000 * 60 * 60 * 24 * 7, // 7 days
@@ -123,7 +128,7 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   openaicompat_ttsModel: "",
   openaicompat_ttsVoice: "",
 
-  version: 1,
+  version: 2,
   audioFolder: "aloud",
 } as const;
 
@@ -250,5 +255,17 @@ function migrateToVersion1(data: any): any {
           openai_ttsVoice: data.ttsVoice,
         }),
     version: 1,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function migrateToVersion2(data: any): any {
+  const {
+    OPENAI_API_URL,
+    OPENAI_API_KEY,
+  }
+  return {
+    ...data,
+    version: 2,
   };
 }
