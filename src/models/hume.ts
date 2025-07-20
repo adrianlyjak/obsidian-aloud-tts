@@ -64,7 +64,7 @@ export async function humeCallTextToSpeech(
 
   const headers = await fetch(`${HUME_API_URL}/v0/tts`, {
     headers: {
-      "X-Hume-Api-Key": options.apiKey,
+      "X-Hume-Api-Key": options.apiKey || "",
       "Content-Type": "application/json",
     },
     method: "POST",
@@ -80,7 +80,7 @@ export async function humeCallTextToSpeech(
       split_utterances: true,
     }),
   });
-  await validate200(headers);
+  await validate200Hume(headers);
   const res = await headers.json();
 
   // Hume might return multiple generations, we only care about the first one.
@@ -94,16 +94,8 @@ export async function humeCallTextToSpeech(
 }
 
 async function validateApiKeyHume(apiKey: string): Promise<string | undefined> {
-  const headers = await fetch(
-    `${HUME_API_URL}/v0/tts/voices?provider=HUME_AI`,
-    {
-      headers: {
-        "X-Hume-Api-Key": apiKey,
-      },
-    },
-  );
   try {
-    await validate200Hume(headers);
+    await listModels("HUME_AI", apiKey, 1);
     return undefined;
   } catch (error) {
     if (error instanceof TTSErrorInfo) {
@@ -114,6 +106,27 @@ async function validateApiKeyHume(apiKey: string): Promise<string | undefined> {
     }
     return "Unknown error";
   }
+}
+
+export async function listModels(
+  provider: "HUME_AI" | "CUSTOM_VOICE",
+  apiKey: string,
+  pageSize: number = 100,
+): Promise<{ id: string; name: string }[]> {
+  const headers = await fetch(
+    `${HUME_API_URL}/v0/tts/voices?provider=${provider}&page_size=${pageSize}`,
+    {
+      headers: {
+        "X-Hume-Api-Key": apiKey,
+      },
+    },
+  );
+  await validate200Hume(headers);
+  const res = await headers.json();
+  return res.voices_page.map((voice: { id: string; name: string }) => ({
+    id: voice.id,
+    name: voice.name,
+  }));
 }
 
 const validate200Hume = async (response: Response) => {

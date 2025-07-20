@@ -2,7 +2,11 @@ import React from "react";
 import { TTSPluginSettingsStore } from "src/player/TTSPluginSettings";
 import { observer } from "mobx-react-lite";
 import { ApiKeyComponent } from "./api-key-component";
-import { OptionSelect } from "./option-select";
+import {
+  OptionSelectSetting,
+  TextareaSetting,
+  CheckboxSetting,
+} from "./setting-components";
 
 export function GeminiSettings({ store }: { store: TTSPluginSettingsStore }) {
   return (
@@ -16,6 +20,7 @@ export function GeminiSettings({ store }: { store: TTSPluginSettingsStore }) {
     </>
   );
 }
+
 const GeminiApiKeyComponent: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
@@ -31,12 +36,7 @@ const GeminiApiKeyComponent: React.FC<{
   );
 });
 
-interface GeminiModel {
-  label: string;
-  value: string;
-}
-
-const DEFAULT_GEMINI_MODELS: GeminiModel[] = [
+const DEFAULT_GEMINI_MODELS = [
   {
     label: "Gemini 2.5 Flash Preview Text-to-Speech",
     value: "gemini-2.5-flash-preview-tts",
@@ -51,37 +51,21 @@ const GeminiModelComponent: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
   return (
-    <div className="setting-item">
-      <div className="setting-item-info">
-        <div className="setting-item-name">Model</div>
-        <div className="setting-item-description">
-          The Gemini TTS model to use
-        </div>
-      </div>
-      <div className="setting-item-control">
-        <OptionSelect
-          options={DEFAULT_GEMINI_MODELS}
-          value={store.settings.gemini_ttsModel}
-          onChange={(v) =>
-            store.updateModelSpecificSettings("gemini", {
-              gemini_ttsModel: v,
-            })
-          }
-        />
-      </div>
-    </div>
+    <OptionSelectSetting
+      name="Model"
+      description="The Gemini TTS model to use"
+      store={store}
+      provider="gemini"
+      fieldName="gemini_ttsModel"
+      options={DEFAULT_GEMINI_MODELS}
+    />
   );
 });
 
 const GeminiVoiceComponent: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
-  interface Voice {
-    label: string;
-    value: string;
-    models: string[];
-  }
-  const DEFAULT_GEMINI_VOICES: Voice[] = [
+  const DEFAULT_GEMINI_VOICES = [
     {
       label: "Zephyr — Bright",
       value: "Zephyr",
@@ -166,7 +150,7 @@ const GeminiVoiceComponent: React.FC<{
 
   const voices = React.useMemo(() => {
     return DEFAULT_GEMINI_VOICES.filter((v) =>
-      v.models.includes(store.settings.gemini_ttsModel),
+      v.models.includes(store.settings.gemini_ttsModel as any),
     );
   }, [store.settings.gemini_ttsModel]);
 
@@ -180,86 +164,43 @@ const GeminiVoiceComponent: React.FC<{
   }, [store.settings.gemini_ttsVoice, voices]);
 
   return (
-    <div className="setting-item">
-      <div className="setting-item-info">
-        <div className="setting-item-name">Voice</div>
-        <div className="setting-item-description">The voice option to use</div>
-      </div>
-      <div className="setting-item-control">
-        <OptionSelect
-          options={DEFAULT_GEMINI_VOICES}
-          value={store.settings.gemini_ttsVoice}
-          onChange={(v) =>
-            store.updateModelSpecificSettings("gemini", {
-              gemini_ttsVoice: v,
-            })
-          }
-        />
-      </div>
-    </div>
+    <OptionSelectSetting
+      name="Voice"
+      description="The voice option to use"
+      store={store}
+      provider="gemini"
+      fieldName="gemini_ttsVoice"
+      options={DEFAULT_GEMINI_VOICES}
+    />
   );
 });
 
 const GeminiTTSInstructionsComponent: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
-  const onChange: React.ChangeEventHandler<HTMLTextAreaElement> =
-    React.useCallback((evt) => {
-      store.updateModelSpecificSettings("gemini", {
-        gemini_ttsInstructions: evt.target.value,
-      });
-    }, []);
-
-  const instructions = store.settings.gemini_ttsInstructions;
-
   return (
-    <div className="setting-item tts-settings-block">
-      <div className="setting-item-info">
-        <div className="setting-item-name">Voice Instructions</div>
-        <div className="setting-item-description">
-          Optional instructions to customize the tone and style of the voice
-          (only supported by some models)
-        </div>
-      </div>
-      <textarea
-        value={instructions}
-        disabled={disabled}
-        onChange={onChange}
-        placeholder="Example: Speak in a whisper"
-        rows={3}
-        className="tts-instructions-textarea"
-      />
-    </div>
+    <TextareaSetting
+      name="Voice Instructions"
+      description="Optional instructions to customize the tone and style of the voice"
+      store={store}
+      provider="gemini"
+      fieldName="gemini_ttsInstructions"
+      placeholder="Example: Speak in a whisper"
+      rows={3}
+    />
   );
 });
 
 const GeminiContextModeComponent: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
-  const onChange: React.ChangeEventHandler<HTMLInputElement> =
-    React.useCallback(
-      (evt) => {
-        store.updateModelSpecificSettings("gemini", {
-          gemini_contextMode: evt.target.checked,
-        });
-      },
-      [store],
-    );
   return (
-    <div className="setting-item">
-      <div className="setting-item-info">
-        <div className="setting-item-name">Context Mode</div>
-        <div className="setting-item-description">
-          Enable context mode to improve coherence across sentences.
-        </div>
-      </div>
-      <div className="setting-item-control">
-        <input
-          type="checkbox"
-          checked={store.settings.gemini_contextMode}
-          onChange={onChange}
-        />
-      </div>
-    </div>
+    <CheckboxSetting
+      name="Context Mode"
+      description="Enable context mode to improve coherence across sentences."
+      store={store}
+      provider="gemini"
+      fieldName="gemini_contextMode"
+    />
   );
 });
