@@ -34,13 +34,16 @@ if (releaseCandidate) {
 pkg.version = targetVersion;
 writeFileSync("package.json", JSON.stringify(pkg, null, 2));
 
-// read minAppVersion from manifest.json and bump version to target version
-const manifest = JSON.parse(readFileSync("manifest.json", "utf8"));
-const { minAppVersion } = manifest;
-manifest.version = targetVersion;
-writeFileSync("manifest.json", JSON.stringify(manifest, null, 2));
+// Only update manifest.json and versions.json for full releases, not pre-releases
+if (!releaseCandidate) {
+  // read minAppVersion from manifest.json and bump version to target version
+  const manifest = JSON.parse(readFileSync("manifest.json", "utf8"));
+  const { minAppVersion } = manifest;
+  manifest.version = targetVersion;
+  writeFileSync("manifest.json", JSON.stringify(manifest, null, 2));
 
-// update versions.json with target version and minAppVersion from manifest.json
-const versions = JSON.parse(readFileSync("versions.json", "utf8"));
-versions[targetVersion] = minAppVersion;
-writeFileSync("versions.json", JSON.stringify(versions, null, 2));
+  // update versions.json with target version and minAppVersion from manifest.json
+  const versions = JSON.parse(readFileSync("versions.json", "utf8"));
+  versions[targetVersion] = manifest.minAppVersion;
+  writeFileSync("versions.json", JSON.stringify(versions, null, 2));
+}
