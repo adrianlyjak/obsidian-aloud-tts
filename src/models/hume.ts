@@ -1,6 +1,6 @@
 import {
   ErrorMessage,
-  requireApiKey,
+  REQUIRE_API_KEY,
   TTSErrorInfo,
   TTSModel,
   TTSModelOptions,
@@ -13,19 +13,17 @@ export const HUME_API_URL = "https://api.hume.ai";
 export const humeTextToSpeech: TTSModel = {
   call: humeCallTextToSpeech,
   validateConnection: async (settings) => {
-    const error = requireApiKey(settings);
-    if (error) {
-      return error;
+    if (!settings.hume_apiKey) {
+      return REQUIRE_API_KEY;
     }
     return await validateApiKeyHume(settings.hume_apiKey);
   },
-  applyModelSpecificSettings: (settings) => {
+  convertToOptions: (settings): TTSModelOptions => {
     return {
-      API_KEY: settings.hume_apiKey,
-      API_URL: HUME_API_URL,
-      ttsVoice: settings.hume_ttsVoice || undefined,
-      sourceType: settings.hume_sourceType,
-      instructions: settings.hume_ttsInstructions || undefined,
+      apiKey: settings.hume_apiKey,
+      model: settings.hume_sourceType,
+      voice: settings.hume_ttsVoice,
+      instructions: settings.hume_ttsInstructions,
       contextMode: settings.hume_contextMode,
     };
   },

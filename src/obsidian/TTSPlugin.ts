@@ -204,8 +204,8 @@ function ProxiedTTSModel(settings: TTSPluginSettings): TTSModel {
     validateConnection: (settings: TTSPluginSettings) => {
       return getModel().validateConnection(settings);
     },
-    applyModelSpecificSettings: (settings: TTSPluginSettings) => {
-      return getModel().applyModelSpecificSettings(settings);
+    convertToOptions: (settings: TTSPluginSettings) => {
+      return getModel().convertToOptions(settings);
     },
   };
 }

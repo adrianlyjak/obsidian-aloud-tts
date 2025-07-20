@@ -14,7 +14,7 @@ import { useEffect, useState, type FC, useCallback, useRef } from "react";
 import { observer } from "mobx-react-lite";
 import { createAudioSystem } from "../player/AudioSystem";
 import { ChunkLoader } from "../player/ChunkLoader";
-import { REGISTRY, toModelOptions } from "../models/registry";
+import { REGISTRY } from "../models/registry";
 
 /**
  *
@@ -251,7 +251,7 @@ const SimplePlayer: FC<{ settingsStore: TTSPluginSettingsStore }> = observer(
       WebAudioSink.create().then(async (sink) => {
         const text = `Speaking of connections, I think that's another important aspect of embracing uncertainty. When we're open to new experiences and perspectives, we're more likely to form meaningful connections with others. We're more likely to listen, to learn, and to grow together.`;
         const model = REGISTRY[settingsStore.settings.modelProvider];
-        const options = toModelOptions(settingsStore.settings);
+        const options = model.convertToOptions(settingsStore.settings);
         const audio = await model.call(text, options);
         await sink.switchMedia(audio);
         setSink(sink);

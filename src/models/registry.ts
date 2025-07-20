@@ -12,18 +12,6 @@ export const REGISTRY: Record<ModelProvider, TTSModel> = {
   openaicompat: openaiLikeTextToSpeech,
 };
 
-/**
- * Awkward tension here between the applyModelSpecificSettings and this.
- * This should probably just be embedded into the TTSModel interface as a single model options converter,
- * and the reliance on the shared options should go away.
- */
-export function toModelOptions(
-  pluginSettings: TTSPluginSettings,
-): TTSModelOptions {
-  return REGISTRY[pluginSettings.modelProvider].convertToOptions(pluginSettings);
-  
-}
-
 export function hasNamedVoice(provider: ModelProvider): boolean {
   return provider !== "hume" && provider !== "openaicompat";
 }

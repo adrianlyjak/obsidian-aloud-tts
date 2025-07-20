@@ -37,17 +37,22 @@ export class TTSErrorInfo extends Error {
 }
 
 /**
- * options used by the audio model. Some options are used as a cache key, such that changes to the options
- * will cause audio to reload
+ * Convert the various provider settings into a generic view.
+ * Don't put random crap here, the different models can still read directly from the settings for obscure cases.
  */
 export interface TTSModelOptions {
+  /** The model name to use */
   model: string;
+  /** The voice to use. Often Depends on the model. */
   voice?: string;
-  sourceType: string;
+  /** The instructions to use for voice quality. Only applicable to some models */
   instructions?: string;
+  /** Whether to include previous utterances in the instructions/context */
   contextMode: boolean;
-  apiUri: string;
-  apiKey: string;
+  /** The base API URL to use, if there isn't a default */
+  apiUri?: string;
+  /** The API key to use. Not required for all models. */
+  apiKey?: string;
 }
 
 // Interface for batch text-to-speech requests
@@ -57,6 +62,7 @@ export interface TTSModel {
     text: string,
     options: TTSModelOptions,
     contexts?: string[],
+    settings?: TTSPluginSettings,
   ): Promise<ArrayBuffer>;
 
   /** Returns an error message if the connection is not valid, otherwise undefined */
@@ -108,9 +114,4 @@ export type ErrorMessage = {
   };
 };
 
-export function requireApiKey(settings: TTSPluginSettings): string | undefined {
-  if (!settings.API_KEY) {
-    return `Please enter an API key in the "${MARKETING_NAME_LONG}" plugin settings`;
-  }
-  return undefined;
-}
+export const REQUIRE_API_KEY = `Please enter an API key in the "${MARKETING_NAME_LONG}" plugin settings`;

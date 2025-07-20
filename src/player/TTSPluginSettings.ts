@@ -20,7 +20,7 @@ export type TTSPluginSettings = {
   OpenAICompatModelConfig);
 
 export interface GeminiModelConfig {
-  /** the API key to use */ 
+  /** the API key to use */
   gemini_apiKey: string;
   /** the model to use (tts vs tts-hd etc.*/
   gemini_ttsModel: string;
@@ -98,7 +98,6 @@ export const modelProviders = [
 export type ModelProvider = (typeof modelProviders)[number];
 
 export const DEFAULT_SETTINGS: TTSPluginSettings = {
-
   modelProvider: "openai",
   chunkType: "sentence",
   playbackSpeed: 1.0,
@@ -171,13 +170,14 @@ export async function pluginSettingsStore(
       updateSettings: async (
         update: Partial<TTSPluginSettings>,
       ): Promise<void> => {
-        const keyBefore = store.settings.API_KEY;
-        const apiBefore = store.settings.API_URL;
+        const model = REGISTRY[store.settings.modelProvider];
+        const optionsBefore = model.convertToOptions(store.settings);
         const providerBefore = store.settings.modelProvider;
         Object.assign(store.settings, update);
+        const optionsAfter = model.convertToOptions(store.settings);
         if (
-          keyBefore !== store.settings.API_KEY ||
-          apiBefore !== store.settings.API_URL ||
+          optionsBefore.apiKey !== optionsAfter.apiKey ||
+          optionsBefore.apiUri !== optionsAfter.apiUri ||
           providerBefore !== store.settings.modelProvider
         ) {
           await store.checkApiKey();
@@ -192,11 +192,8 @@ export async function pluginSettingsStore(
           ...store.settings,
           ...settings,
         };
-        const additionalSettings =
-          REGISTRY[provider].applyModelSpecificSettings(merged);
         await store.updateSettings({
           ...merged,
-          ...additionalSettings,
           modelProvider: provider,
         });
       },
@@ -231,6 +228,9 @@ const parsePluginSettings = (toParse: unknown): TTSPluginSettings => {
   if (data.version < 1) {
     data = migrateToVersion1(data);
   }
+  if (data.version < 2) {
+    data = migrateToVersion2(data);
+  }
   return data;
 };
 
@@ -242,30 +242,31 @@ function migrateToVersion1(data: any): any {
   return {
     ...data,
     modelProvider: isCustom ? "openaicompat" : "openai",
-    ...(isCustom
-      ? {
-          openaicompat_apiKey: data.OPENAI_API_KEY,
-          openaicompat_apiBase: data.OPENAI_API_URL,
-          openaicompat_ttsModel: data.model,
-          openaicompat_ttsVoice: data.ttsVoice,
-        }
-      : {
-          openai_apiKey: data.OPENAI_API_KEY,
-          openai_ttsModel: data.model,
-          openai_ttsVoice: data.ttsVoice,
-        }),
+    openaicompat_apiKey: isCustom ? data.OPENAI_API_KEY : "",
+    openaicompat_apiBase: isCustom ? data.OPENAI_API_URL : "",
+    openaicompat_ttsModel: isCustom ? data.model : "",
+    openaicompat_ttsVoice: isCustom ? data.ttsVoice : "",
+    openai_apiKey: !isCustom ? data.OPENAI_API_KEY : DEFAULT_SETTINGS.openai_apiKey,
+    openai_ttsModel: !isCustom ? data.model : DEFAULT_SETTINGS.openai_ttsModel,
+    openai_ttsVoice: !isCustom ? data.ttsVoice : DEFAULT_SETTINGS.openai_ttsVoice,
+
     version: 1,
   };
 }
 
+// Dropped the shared fields, those can be computed dynamically,
+// and added 2 new models (hume and gemini)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function migrateToVersion2(data: any): any {
+  // remove shared fields
   const {
     OPENAI_API_URL,
     OPENAI_API_KEY,
-  }
-  return {
-    ...data,
-    version: 2,
-  };
+    model,
+    ttsVoice,
+    instructions,
+    ...rest
+  } = data;
+  // add any fields that were missing before
+  return { ...DEFAULT_SETTINGS, ...rest, version: 2 };
 }

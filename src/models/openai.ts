@@ -1,7 +1,7 @@
 import { TTSPluginSettings } from "../player/TTSPluginSettings";
 import {
   ErrorMessage,
-  requireApiKey,
+  REQUIRE_API_KEY,
   TTSErrorInfo,
   TTSModel,
   TTSModelOptions,
@@ -13,9 +13,8 @@ export const OPENAI_API_URL = "https://api.openai.com";
 export const openAITextToSpeech: TTSModel = {
   call: openAICallTextToSpeech,
   validateConnection: async (settings) => {
-    const error = requireApiKey(settings);
-    if (error) {
-      return error;
+    if (!settings.openai_apiKey) {
+      return REQUIRE_API_KEY;
     }
 
     try {
@@ -38,14 +37,14 @@ export const openAITextToSpeech: TTSModel = {
     }
     return undefined;
   },
-  applyModelSpecificSettings: (settings) => {
+  convertToOptions: (settings) => {
     return {
-      API_KEY: settings.openai_apiKey,
-      API_URL: OPENAI_API_URL,
+      apiKey: settings.openai_apiKey,
+      apiUri: OPENAI_API_URL,
       ttsVoice: settings.openai_ttsVoice,
       instructions: settings.openai_ttsInstructions || undefined,
       model: settings.openai_ttsModel,
-      contextMode: false,
+      contextMode: false, // not supported
     };
   },
 };
@@ -56,7 +55,7 @@ export async function openAICallTextToSpeech(
   contexts?: string[],
 ): Promise<ArrayBuffer> {
   const headers = await fetch(
-    orDefaultOpenAI(options.apiUri) + "/v1/audio/speech",
+    options.apiUri || OPENAI_API_URL + "/v1/audio/speech",
     {
       headers: {
         Authorization: "Bearer " + options.apiKey,
@@ -83,23 +82,16 @@ export async function openAICallTextToSpeech(
   return bf;
 }
 
-function orDefaultOpenAI(maybeUrl: string): string {
-  return maybeUrl.replace(/\/$/, "") || OPENAI_API_URL;
-}
-
 export async function listOpenAIModels(
   settings: TTSPluginSettings,
 ): Promise<string[]> {
-  const headers = await fetch(
-    orDefaultOpenAI(settings.API_URL) + "/v1/models",
-    {
-      method: "GET",
-      headers: {
-        Authorization: "Bearer " + settings.API_KEY,
-        "Content-Type": "application/json",
-      },
+  const headers = await fetch(OPENAI_API_URL + "/v1/models", {
+    method: "GET",
+    headers: {
+      Authorization: "Bearer " + settings.openai_apiKey,
+      "Content-Type": "application/json",
     },
-  );
+  });
   await validate200OpenAI(headers);
   const models = await headers.json();
   return models.data as string[];

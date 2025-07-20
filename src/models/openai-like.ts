@@ -4,14 +4,14 @@ import { TTSModel } from "./tts-model";
 export const openaiLikeTextToSpeech: TTSModel = {
   call: openAICallTextToSpeech,
   validateConnection: async (settings) => undefined,
-  applyModelSpecificSettings: (settings) => {
+  convertToOptions: (settings) => {
     return {
-      API_KEY: settings.openaicompat_apiKey,
-      API_URL: settings.openaicompat_apiBase,
-      ttsVoice: settings.openaicompat_ttsVoice,
+      apiKey: settings.openaicompat_apiKey,
+      apiUri: settings.openaicompat_apiBase,
+      voice: settings.openaicompat_ttsVoice,
       instructions: undefined,
       model: settings.openaicompat_ttsModel,
-      contextMode: settings.openaicompat_contextMode, // Assuming this is always false
+      contextMode: false, // not supported
     };
   },
 };

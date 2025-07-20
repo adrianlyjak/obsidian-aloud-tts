@@ -2,7 +2,7 @@ import { Content, GenerateContentResponse, GoogleGenAI } from "@google/genai";
 import { pcmBufferToMp3Buffer } from "../util/audioProcessing";
 import { base64ToArrayBuffer } from "../util/misc";
 import {
-  requireApiKey,
+  REQUIRE_API_KEY,
   TTSErrorInfo,
   TTSModel,
   TTSModelOptions,
@@ -13,18 +13,16 @@ export const GEMINI_API_URL = "https://generativelanguage.googleapis.com";
 export const geminiTextToSpeech: TTSModel = {
   call: geminiCallTextToSpeech,
   validateConnection: async (settings) => {
-    const error = requireApiKey(settings);
-    if (error) {
-      return error;
+    if (!settings.gemini_apiKey) {
+      return REQUIRE_API_KEY;
     }
     return await validateApiKeyGemini(settings.gemini_apiKey);
   },
-  applyModelSpecificSettings: (settings) => {
+  convertToOptions: (settings): TTSModelOptions => {
     return {
-      API_KEY: settings.gemini_apiKey,
-      API_URL: GEMINI_API_URL,
-      ttsVoice: settings.gemini_ttsVoice,
-      instructions: settings.gemini_ttsInstructions || undefined,
+      apiKey: settings.gemini_apiKey,
+      voice: settings.gemini_ttsVoice,
+      instructions: settings.gemini_ttsInstructions,
       model: settings.gemini_ttsModel,
       contextMode: settings.gemini_contextMode,
     };
