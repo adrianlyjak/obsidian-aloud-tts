@@ -1,12 +1,16 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { geminiTextToSpeech, validateApiKeyGemini, geminiCallTextToSpeech } from "./gemini";
+import {
+  geminiTextToSpeech,
+  validateApiKeyGemini,
+  geminiCallTextToSpeech,
+} from "./gemini";
 import { DEFAULT_SETTINGS } from "../player/TTSPluginSettings";
 
 // Create mock functions for Google GenAI
 const mockList = vi.fn();
 const mockGenerateContent = vi.fn();
 
-// Mock the Google GenAI module 
+// Mock the Google GenAI module
 vi.mock("@google/genai", () => ({
   GoogleGenAI: vi.fn(() => ({
     models: {
@@ -106,7 +110,7 @@ describe("Gemini Model", () => {
         ...DEFAULT_SETTINGS,
         gemini_apiKey: "",
       });
-      
+
       expect(result).toContain("API key");
     });
 
@@ -121,7 +125,7 @@ describe("Gemini Model", () => {
       };
 
       const options = geminiTextToSpeech.convertToOptions(testSettings);
-      
+
       expect(options.contextMode).toBe(true);
       expect(options.instructions).toBe("Speak with emotion");
       expect(options.voice).toBe("Zephyr");
@@ -132,7 +136,9 @@ describe("Gemini Model", () => {
   describe("Gemini Error Mapping", () => {
     it("should handle ClientError with JSON content", () => {
       // Create a mock ClientError that mimics the actual error structure
-      const error = new Error("got status: 400 . {\"error\":{\"message\":\"API_KEY_INVALID\",\"status\":\"INVALID_ARGUMENT\"}}");
+      const error = new Error(
+        'got status: 400 . {"error":{"message":"API_KEY_INVALID","status":"INVALID_ARGUMENT"}}',
+      );
       error.name = "ClientError";
 
       // The error should be processed by mapGenAIError in the actual call
@@ -149,13 +155,13 @@ describe("Gemini Model", () => {
 
     it("should extract status code from error message", () => {
       const errorMessages = [
-        "got status: 400 . {\"error\":\"bad request\"}",
-        "got status: 401 . {\"error\":\"unauthorized\"}",
-        "got status: 429 . {\"error\":\"rate limited\"}",
-        "got status: 500 . {\"error\":\"server error\"}"
+        'got status: 400 . {"error":"bad request"}',
+        'got status: 401 . {"error":"unauthorized"}',
+        'got status: 429 . {"error":"rate limited"}',
+        'got status: 500 . {"error":"server error"}',
       ];
 
-      errorMessages.forEach(message => {
+      errorMessages.forEach((message) => {
         const statusMatch = message.match(/got status: (\d+)/);
         expect(statusMatch).not.toBeNull();
         if (statusMatch) {
@@ -167,9 +173,10 @@ describe("Gemini Model", () => {
     });
 
     it("should parse JSON from error message", () => {
-      const errorMessage = "got status: 400 . {\"error\":{\"message\":\"API_KEY_INVALID\",\"status\":\"INVALID_ARGUMENT\"}}";
+      const errorMessage =
+        'got status: 400 . {"error":{"message":"API_KEY_INVALID","status":"INVALID_ARGUMENT"}}';
       const jsonMatch = errorMessage.match(/got status: \d+ \. (.+)$/);
-      
+
       expect(jsonMatch).not.toBeNull();
       if (jsonMatch) {
         try {
@@ -185,14 +192,15 @@ describe("Gemini Model", () => {
     it("should identify API key validation scenarios", () => {
       const apiKeyErrors = [
         "API_KEY_INVALID: The provided API key is invalid",
-        "got status: 400 . {\"error\":{\"message\":\"API_KEY_INVALID\"}}",
-        "Invalid API key provided"
+        'got status: 400 . {"error":{"message":"API_KEY_INVALID"}}',
+        "Invalid API key provided",
       ];
 
-      apiKeyErrors.forEach(errorMsg => {
-        const hasApiKeyError = errorMsg.includes("API_KEY_INVALID") || 
-                              errorMsg.includes("Invalid API key") ||
-                              errorMsg.includes("invalid") && errorMsg.includes("key");
+      apiKeyErrors.forEach((errorMsg) => {
+        const hasApiKeyError =
+          errorMsg.includes("API_KEY_INVALID") ||
+          errorMsg.includes("Invalid API key") ||
+          (errorMsg.includes("invalid") && errorMsg.includes("key"));
         expect(hasApiKeyError).toBe(true);
       });
     });
@@ -203,53 +211,67 @@ describe("Gemini Model", () => {
       mockList.mockResolvedValue([{ name: "gemini-pro" }]);
 
       const result = await validateApiKeyGemini("test-key");
-      
+
       expect(mockList).toHaveBeenCalled();
       expect(result).toBeUndefined(); // undefined means success
     });
 
     it("should handle API key invalid error", async () => {
-      const error = new Error("got status: 400 . {\"error\":{\"message\":\"API_KEY_INVALID\",\"status\":\"INVALID_ARGUMENT\"}}");
+      const error = new Error(
+        'got status: 400 . {"error":{"message":"API_KEY_INVALID","status":"INVALID_ARGUMENT"}}',
+      );
       error.name = "ClientError";
       mockList.mockRejectedValue(error);
 
       const result = await validateApiKeyGemini("invalid-key");
-      
+
       expect(mockList).toHaveBeenCalled();
       expect(result).toBe("Invalid API key");
     });
 
     it("should handle permission denied error", async () => {
-      const error = new Error("got status: 403 . {\"error\":{\"message\":\"PERMISSION_DENIED\",\"status\":\"PERMISSION_DENIED\"}}");
+      const error = new Error(
+        'got status: 403 . {"error":{"message":"PERMISSION_DENIED","status":"PERMISSION_DENIED"}}',
+      );
       error.name = "ClientError";
       mockList.mockRejectedValue(error);
 
       const result = await validateApiKeyGemini("forbidden-key");
-      
-      expect(result).toBe("HTTP error code 403: Request failed 'PERMISSION_DENIED'");
+
+      expect(result).toBe(
+        "HTTP error code 403: Request failed 'PERMISSION_DENIED'",
+      );
     });
 
     it("should handle quota exceeded error", async () => {
-      const error = new Error("got status: 429 . {\"error\":{\"message\":\"RESOURCE_EXHAUSTED\",\"status\":\"RESOURCE_EXHAUSTED\"}}");
+      const error = new Error(
+        'got status: 429 . {"error":{"message":"RESOURCE_EXHAUSTED","status":"RESOURCE_EXHAUSTED"}}',
+      );
       error.name = "ClientError";
       mockList.mockRejectedValue(error);
 
       const result = await validateApiKeyGemini("quota-key");
-      
-      expect(result).toBe("HTTP error code 429: Request failed 'RESOURCE_EXHAUSTED'");
+
+      expect(result).toBe(
+        "HTTP error code 429: Request failed 'RESOURCE_EXHAUSTED'",
+      );
     });
 
     it("should make a TTS call and return audio", async () => {
       const mockResponse = {
-        candidates: [{
-          content: {
-            parts: [{
-              inlineData: {
-                data: "UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="
-              }
-            }]
-          }
-        }]
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  inlineData: {
+                    data: "UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=",
+                  },
+                },
+              ],
+            },
+          },
+        ],
       };
       mockGenerateContent.mockResolvedValue(mockResponse);
 
@@ -261,23 +283,32 @@ describe("Gemini Model", () => {
         contextMode: false,
       };
 
-      const result = await geminiCallTextToSpeech("Hello world", options, [], DEFAULT_SETTINGS);
-      
+      const result = await geminiCallTextToSpeech(
+        "Hello world",
+        options,
+        [],
+        DEFAULT_SETTINGS,
+      );
+
       expect(mockGenerateContent).toHaveBeenCalled();
       expect(result).toBeInstanceOf(ArrayBuffer);
     });
 
     it("should construct prompt with instructions and context", async () => {
       const mockResponse = {
-        candidates: [{
-          content: {
-            parts: [{
-              inlineData: {
-                data: "UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="
-              }
-            }]
-          }
-        }]
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  inlineData: {
+                    data: "UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=",
+                  },
+                },
+              ],
+            },
+          },
+        ],
       };
       mockGenerateContent.mockResolvedValue(mockResponse);
 
@@ -289,28 +320,39 @@ describe("Gemini Model", () => {
         contextMode: true,
       };
 
-      await geminiCallTextToSpeech("Hello world", options, ["Previous text"], DEFAULT_SETTINGS);
+      await geminiCallTextToSpeech(
+        "Hello world",
+        options,
+        ["Previous text"],
+        DEFAULT_SETTINGS,
+      );
 
       const callArgs = mockGenerateContent.mock.calls[0][0];
       const promptText = callArgs.contents[0].parts[0].text;
-      
+
       expect(promptText).toContain("Speak with emotion");
       expect(promptText).toContain("Previous text");
       expect(promptText).toContain("Content: Hello world");
-      expect(callArgs.config.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName).toBe("Zephyr");
+      expect(
+        callArgs.config.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName,
+      ).toBe("Zephyr");
     });
 
     it("should construct prompt without context when contextMode is false", async () => {
       const mockResponse = {
-        candidates: [{
-          content: {
-            parts: [{
-              inlineData: {
-                data: "UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="
-              }
-            }]
-          }
-        }]
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  inlineData: {
+                    data: "UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=",
+                  },
+                },
+              ],
+            },
+          },
+        ],
       };
       mockGenerateContent.mockResolvedValue(mockResponse);
 
@@ -322,11 +364,16 @@ describe("Gemini Model", () => {
         contextMode: false,
       };
 
-      await geminiCallTextToSpeech("Hello world", options, [], DEFAULT_SETTINGS);
+      await geminiCallTextToSpeech(
+        "Hello world",
+        options,
+        [],
+        DEFAULT_SETTINGS,
+      );
 
       const callArgs = mockGenerateContent.mock.calls[0][0];
       const promptText = callArgs.contents[0].parts[0].text;
-      
+
       expect(promptText).toContain("Read clearly");
       expect(promptText).toContain("Content: Hello world");
       expect(promptText).not.toContain("Should not appear");
@@ -334,15 +381,19 @@ describe("Gemini Model", () => {
 
     it("should handle empty instructions gracefully", async () => {
       const mockResponse = {
-        candidates: [{
-          content: {
-            parts: [{
-              inlineData: {
-                data: "UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="
-              }
-            }]
-          }
-        }]
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  inlineData: {
+                    data: "UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=",
+                  },
+                },
+              ],
+            },
+          },
+        ],
       };
       mockGenerateContent.mockResolvedValue(mockResponse);
 
@@ -354,26 +405,35 @@ describe("Gemini Model", () => {
         contextMode: false,
       };
 
-      await geminiCallTextToSpeech("Hello world", options, [], DEFAULT_SETTINGS);
+      await geminiCallTextToSpeech(
+        "Hello world",
+        options,
+        [],
+        DEFAULT_SETTINGS,
+      );
 
       const callArgs = mockGenerateContent.mock.calls[0][0];
       const promptText = callArgs.contents[0].parts[0].text;
-      
+
       expect(promptText).toContain("Content: Hello world");
       expect(mockGenerateContent).toHaveBeenCalled();
     });
 
     it("should use correct voice configuration", async () => {
       const mockResponse = {
-        candidates: [{
-          content: {
-            parts: [{
-              inlineData: {
-                data: "UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="
-              }
-            }]
-          }
-        }]
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  inlineData: {
+                    data: "UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=",
+                  },
+                },
+              ],
+            },
+          },
+        ],
       };
       mockGenerateContent.mockResolvedValue(mockResponse);
 
@@ -388,12 +448,16 @@ describe("Gemini Model", () => {
       await geminiCallTextToSpeech("Test", options, [], DEFAULT_SETTINGS);
 
       const callArgs = mockGenerateContent.mock.calls[0][0];
-      
-      expect(callArgs.config.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName).toBe("Echo");
+
+      expect(
+        callArgs.config.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName,
+      ).toBe("Echo");
     });
 
     it("should handle TTS generation errors", async () => {
-      const error = new Error("got status: 500 . {\"error\":{\"message\":\"INTERNAL\",\"status\":\"INTERNAL\"}}");
+      const error = new Error(
+        'got status: 500 . {"error":{"message":"INTERNAL","status":"INTERNAL"}}',
+      );
       error.name = "ClientError";
       mockGenerateContent.mockRejectedValue(error);
 
@@ -405,8 +469,9 @@ describe("Gemini Model", () => {
         contextMode: false,
       };
 
-      await expect(geminiCallTextToSpeech("Test", options, [], DEFAULT_SETTINGS))
-        .rejects.toThrow("Request failed 'INTERNAL'");
+      await expect(
+        geminiCallTextToSpeech("Test", options, [], DEFAULT_SETTINGS),
+      ).rejects.toThrow("Request failed 'INTERNAL'");
     });
   });
-}); 
+});

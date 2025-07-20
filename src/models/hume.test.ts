@@ -102,75 +102,79 @@ describe("Hume Model", () => {
       contextMode: false,
     };
 
-              it("should make API call with correct authentication", async () => {
-       const mockResponse = {
-         ok: true,
-         status: 200,
-         json: vi.fn().mockResolvedValue({
-           generations: [{
-             audio: "SGVsbG8gV29ybGQ=" // Valid base64 for "Hello World"
-           }]
-         }),
-       };
-       
-       vi.mocked(fetch).mockResolvedValue(mockResponse as any);
+    it("should make API call with correct authentication", async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({
+          generations: [
+            {
+              audio: "SGVsbG8gV29ybGQ=", // Valid base64 for "Hello World"
+            },
+          ],
+        }),
+      };
 
-       await humeCallTextToSpeech(
-         "Hello world",
-         mockOptions,
-         [],
-         DEFAULT_SETTINGS
-       );
+      vi.mocked(fetch).mockResolvedValue(mockResponse as any);
 
-       // Verify API call was made with correct authentication
-       expect(fetch).toHaveBeenCalledWith(
-         expect.stringContaining(HUME_API_URL),
-         expect.objectContaining({
-           method: "POST",
-           headers: expect.objectContaining({
-             "X-Hume-Api-Key": "test-api-key",
-             "Content-Type": "application/json",
-           }),
-         })
-       );
-     });
+      await humeCallTextToSpeech(
+        "Hello world",
+        mockOptions,
+        [],
+        DEFAULT_SETTINGS,
+      );
 
-              it("should handle context mode correctly", async () => {
-       const mockResponse = {
-         ok: true,
-         status: 200,
-         json: vi.fn().mockResolvedValue({
-           generations: [{
-             audio: "SGVsbG8gV29ybGQ=" // Valid base64 for "Hello World"
-           }]
-         }),
-       };
-       
-       vi.mocked(fetch).mockResolvedValue(mockResponse as any);
+      // Verify API call was made with correct authentication
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining(HUME_API_URL),
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({
+            "X-Hume-Api-Key": "test-api-key",
+            "Content-Type": "application/json",
+          }),
+        }),
+      );
+    });
 
-       const optionsWithContext: TTSModelOptions = {
-         ...mockOptions,
-         contextMode: true,
-       };
+    it("should handle context mode correctly", async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({
+          generations: [
+            {
+              audio: "SGVsbG8gV29ybGQ=", // Valid base64 for "Hello World"
+            },
+          ],
+        }),
+      };
 
-       await humeCallTextToSpeech(
-         "Continue the story",
-         optionsWithContext,
-         ["Once upon a time", "there was a dragon"],
-         DEFAULT_SETTINGS
-       );
+      vi.mocked(fetch).mockResolvedValue(mockResponse as any);
 
-       // Verify API call was made (context handling is complex, just ensure it runs)
-       expect(fetch).toHaveBeenCalledWith(
-         expect.stringContaining(HUME_API_URL),
-         expect.objectContaining({
-           method: "POST",
-           headers: expect.objectContaining({
-             "X-Hume-Api-Key": "test-api-key",
-           }),
-         })
-       );
-     });
+      const optionsWithContext: TTSModelOptions = {
+        ...mockOptions,
+        contextMode: true,
+      };
+
+      await humeCallTextToSpeech(
+        "Continue the story",
+        optionsWithContext,
+        ["Once upon a time", "there was a dragon"],
+        DEFAULT_SETTINGS,
+      );
+
+      // Verify API call was made (context handling is complex, just ensure it runs)
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining(HUME_API_URL),
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({
+            "X-Hume-Api-Key": "test-api-key",
+          }),
+        }),
+      );
+    });
 
     it("should handle API errors correctly", async () => {
       const mockErrorResponse = {
@@ -185,11 +189,11 @@ describe("Hume Model", () => {
           },
         }),
       };
-      
+
       vi.mocked(fetch).mockResolvedValue(mockErrorResponse as any);
 
       await expect(
-        humeCallTextToSpeech("Test", mockOptions, [], DEFAULT_SETTINGS)
+        humeCallTextToSpeech("Test", mockOptions, [], DEFAULT_SETTINGS),
       ).rejects.toThrow("Request failed 'HTTP 401 error'");
     });
   });
@@ -206,8 +210,12 @@ describe("Hume Model", () => {
       };
 
       // Test that the error structure contains expected fault information
-      expect(faultErrorResponse.fault.faultstring).toBe("Invalid API key provided");
-      expect(faultErrorResponse.fault.detail.errorcode).toBe("oauth.v2.InvalidApiKey");
+      expect(faultErrorResponse.fault.faultstring).toBe(
+        "Invalid API key provided",
+      );
+      expect(faultErrorResponse.fault.detail.errorcode).toBe(
+        "oauth.v2.InvalidApiKey",
+      );
     });
 
     it("should handle standard error format", () => {
@@ -245,17 +253,22 @@ describe("Hume Model", () => {
           },
         }),
       };
-      
+
       vi.mocked(fetch).mockResolvedValue(mockErrorResponse as any);
 
       await expect(
-        humeCallTextToSpeech("Test", {
-          apiKey: "invalid-key",
-          apiUri: HUME_API_URL,
-          voice: undefined,
-          model: "shared",
-          contextMode: false,
-        }, [], DEFAULT_SETTINGS)
+        humeCallTextToSpeech(
+          "Test",
+          {
+            apiKey: "invalid-key",
+            apiUri: HUME_API_URL,
+            voice: undefined,
+            model: "shared",
+            contextMode: false,
+          },
+          [],
+          DEFAULT_SETTINGS,
+        ),
       ).rejects.toThrow("Request failed 'HTTP 401 error'");
     });
 
@@ -270,17 +283,22 @@ describe("Hume Model", () => {
           },
         }),
       };
-      
+
       vi.mocked(fetch).mockResolvedValue(mockErrorResponse as any);
 
       await expect(
-        humeCallTextToSpeech("Test", {
-          apiKey: "test-key",
-          apiUri: HUME_API_URL,
-          voice: undefined,
-          model: "shared",
-          contextMode: false,
-        }, [], DEFAULT_SETTINGS)
+        humeCallTextToSpeech(
+          "Test",
+          {
+            apiKey: "test-key",
+            apiUri: HUME_API_URL,
+            voice: undefined,
+            model: "shared",
+            contextMode: false,
+          },
+          [],
+          DEFAULT_SETTINGS,
+        ),
       ).rejects.toThrow("Request failed 'HTTP 429 error'");
     });
 
@@ -293,17 +311,22 @@ describe("Hume Model", () => {
           message: "Internal server error",
         }),
       };
-      
+
       vi.mocked(fetch).mockResolvedValue(mockErrorResponse as any);
 
       await expect(
-        humeCallTextToSpeech("Test", {
-          apiKey: "test-key", 
-          apiUri: HUME_API_URL,
-          voice: undefined,
-          model: "shared",
-          contextMode: false,
-        }, [], DEFAULT_SETTINGS)
+        humeCallTextToSpeech(
+          "Test",
+          {
+            apiKey: "test-key",
+            apiUri: HUME_API_URL,
+            voice: undefined,
+            model: "shared",
+            contextMode: false,
+          },
+          [],
+          DEFAULT_SETTINGS,
+        ),
       ).rejects.toThrow("Request failed 'HTTP 500 error'");
     });
 
@@ -329,10 +352,10 @@ describe("Hume Model", () => {
         { fault: { faultstring: "error" } },
         { error: { message: "error" } },
         { status: "error", message: "error" },
-        { message: "simple error" }
+        { message: "simple error" },
       ];
 
-      errorPatterns.forEach(pattern => {
+      errorPatterns.forEach((pattern) => {
         const hasFault = !!(pattern as any).fault;
         const hasError = !!(pattern as any).error;
         const hasStatus = !!(pattern as any).status;
@@ -343,4 +366,4 @@ describe("Hume Model", () => {
       });
     });
   });
-}); 
+});

@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { openAICallTextToSpeech, listOpenAIModels, OPENAI_API_URL } from "./openai";
+import {
+  openAICallTextToSpeech,
+  listOpenAIModels,
+  OPENAI_API_URL,
+} from "./openai";
 import { TTSModelOptions } from "./tts-model";
 import { DEFAULT_SETTINGS } from "../player/TTSPluginSettings";
 
@@ -32,32 +36,29 @@ describe("OpenAI Model API", () => {
         status: 200,
         arrayBuffer: vi.fn().mockResolvedValue(mockAudioBuffer),
       };
-      
+
       vi.mocked(fetch).mockResolvedValue(mockResponse as any);
 
       const result = await openAICallTextToSpeech(
         "Hello world",
         mockOptions,
         [],
-        DEFAULT_SETTINGS
+        DEFAULT_SETTINGS,
       );
 
-      expect(fetch).toHaveBeenCalledWith(
-        `${OPENAI_API_URL}/v1/audio/speech`,
-        {
-          headers: {
-            Authorization: "Bearer test-api-key",
-            "Content-Type": "application/json",
-          },
-          method: "POST",
-          body: JSON.stringify({
-            model: "tts-1",
-            voice: "alloy",
-            input: "Hello world",
-            speed: 1.0,
-          }),
-        }
-      );
+      expect(fetch).toHaveBeenCalledWith(`${OPENAI_API_URL}/v1/audio/speech`, {
+        headers: {
+          Authorization: "Bearer test-api-key",
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        body: JSON.stringify({
+          model: "tts-1",
+          voice: "alloy",
+          input: "Hello world",
+          speed: 1.0,
+        }),
+      });
 
       expect(result).toBe(mockAudioBuffer);
     });
@@ -69,7 +70,7 @@ describe("OpenAI Model API", () => {
         status: 200,
         arrayBuffer: vi.fn().mockResolvedValue(mockAudioBuffer),
       };
-      
+
       vi.mocked(fetch).mockResolvedValue(mockResponse as any);
 
       const optionsWithContext: TTSModelOptions = {
@@ -82,7 +83,7 @@ describe("OpenAI Model API", () => {
         "Continue the story",
         optionsWithContext,
         ["Once upon a time", "there was a dragon"],
-        DEFAULT_SETTINGS
+        DEFAULT_SETTINGS,
       );
 
       expect(fetch).toHaveBeenCalledWith(
@@ -91,11 +92,12 @@ describe("OpenAI Model API", () => {
           body: JSON.stringify({
             model: "tts-1",
             voice: "alloy",
-            instructions: "Speak clearly\n\n Previous sentence(s) (Context): Once upon a timethere was a dragon",
+            instructions:
+              "Speak clearly\n\n Previous sentence(s) (Context): Once upon a timethere was a dragon",
             input: "Continue the story",
             speed: 1.0,
           }),
-        })
+        }),
       );
     });
 
@@ -107,7 +109,7 @@ describe("OpenAI Model API", () => {
         status: 200,
         arrayBuffer: vi.fn().mockResolvedValue(mockAudioBuffer),
       };
-      
+
       vi.mocked(fetch).mockResolvedValue(mockResponse as any);
 
       const customOptions: TTSModelOptions = {
@@ -119,12 +121,12 @@ describe("OpenAI Model API", () => {
         "Custom endpoint test",
         customOptions,
         [],
-        DEFAULT_SETTINGS
+        DEFAULT_SETTINGS,
       );
 
       expect(fetch).toHaveBeenCalledWith(
         `${customApiUrl}/v1/audio/speech`,
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -141,11 +143,11 @@ describe("OpenAI Model API", () => {
           },
         }),
       };
-      
+
       vi.mocked(fetch).mockResolvedValue(mockErrorResponse as any);
 
       await expect(
-        openAICallTextToSpeech("Test", mockOptions, [], DEFAULT_SETTINGS)
+        openAICallTextToSpeech("Test", mockOptions, [], DEFAULT_SETTINGS),
       ).rejects.toThrow("Request failed 'HTTP 401 error'");
 
       expect(fetch).toHaveBeenCalledTimes(1);
@@ -155,7 +157,7 @@ describe("OpenAI Model API", () => {
       vi.mocked(fetch).mockRejectedValue(new Error("Network error"));
 
       await expect(
-        openAICallTextToSpeech("Test", mockOptions, [], DEFAULT_SETTINGS)
+        openAICallTextToSpeech("Test", mockOptions, [], DEFAULT_SETTINGS),
       ).rejects.toThrow("Network error");
     });
   });
@@ -170,21 +172,18 @@ describe("OpenAI Model API", () => {
         status: 200,
         json: vi.fn().mockResolvedValue(mockModels),
       };
-      
+
       vi.mocked(fetch).mockResolvedValue(mockResponse as any);
 
       const result = await listOpenAIModels(DEFAULT_SETTINGS);
 
-      expect(fetch).toHaveBeenCalledWith(
-        `${OPENAI_API_URL}/v1/models`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${DEFAULT_SETTINGS.openai_apiKey}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      expect(fetch).toHaveBeenCalledWith(`${OPENAI_API_URL}/v1/models`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${DEFAULT_SETTINGS.openai_apiKey}`,
+          "Content-Type": "application/json",
+        },
+      });
 
       expect(result).toEqual(mockModels.data);
     });
@@ -202,12 +201,12 @@ describe("OpenAI Model API", () => {
           },
         }),
       };
-      
+
       vi.mocked(fetch).mockResolvedValue(mockErrorResponse as any);
 
       await expect(listOpenAIModels(DEFAULT_SETTINGS)).rejects.toThrow(
-        "Request failed 'HTTP 403 error'"
+        "Request failed 'HTTP 403 error'",
       );
     });
   });
-}); 
+});

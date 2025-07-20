@@ -4,7 +4,12 @@ import userEvent from "@testing-library/user-event";
 import React from "react";
 import { TTSSettingsTabComponent } from "./TTSSettingsTabComponent";
 import { AudioStore, loadAudioStore } from "../player/AudioStore";
-import { TTSPluginSettingsStore, pluginSettingsStore, DEFAULT_SETTINGS, modelProviders } from "../player/TTSPluginSettings";
+import {
+  TTSPluginSettingsStore,
+  pluginSettingsStore,
+  DEFAULT_SETTINGS,
+  modelProviders,
+} from "../player/TTSPluginSettings";
 import { createAudioSystem } from "../player/AudioSystem";
 import { ChunkLoader } from "../player/ChunkLoader";
 import { memoryStorage } from "../player/AudioCache";
@@ -14,7 +19,9 @@ import * as mobx from "mobx";
 
 // Mock components that have obsidian dependencies
 vi.mock("./IconButton", () => ({
-  IconButton: ({ children, onClick }: any) => <button onClick={onClick}>{children}</button>,
+  IconButton: ({ children, onClick }: any) => (
+    <button onClick={onClick}>{children}</button>
+  ),
   IconSpan: ({ children }: any) => <span>{children}</span>,
   Spinner: () => <div>Loading...</div>,
 }));
@@ -23,8 +30,6 @@ vi.mock("./PlayerView", () => ({
   TTSErrorInfoView: () => <div>Error View</div>,
   TTSErrorInfoDetails: () => <div>Error Details</div>,
 }));
-
-
 
 // Create a fake audio element
 function FakeHTMLAudioElement() {
@@ -56,7 +61,7 @@ class FakeAudioSink implements AudioSink {
   getAudioBuffer: (ab: ArrayBuffer) => Promise<AudioBuffer>;
   audios: ArrayBuffer[] = [];
   audio = FakeHTMLAudioElement() as any;
-  
+
   constructor({
     getAudioBuffer = () => Promise.resolve(emptyAudioBuffer),
   }: {
@@ -75,9 +80,9 @@ class FakeAudioSink implements AudioSink {
       trackStatus: mobx.computed,
     });
   }
-  
+
   currentTime: number = 0;
-  
+
   mediaComplete(): Promise<void> {
     throw new Error("Method not implemented.");
   }
@@ -94,27 +99,27 @@ class FakeAudioSink implements AudioSink {
       this.play();
     }
   }
-  
+
   async appendMedia(data: ArrayBuffer): Promise<void> {
     this.audios.push(data);
   }
-  
+
   setRate(rate: number): void {}
-  
+
   play(): void {
     this.isPlaying = true;
   }
-  
+
   pause(): void {
     this.isPlaying = false;
   }
-  
+
   async stop(): Promise<void> {
     this.isPlaying = false;
     this.isComplete = false;
     this.currentTime = 0;
   }
-  
+
   get trackStatus(): TrackStatus {
     if (this.isComplete) return "complete";
     if (this.isPlaying) return "playing";
@@ -191,10 +196,8 @@ describe("TTSPluginSettingsTab", () => {
       <TTSSettingsTabComponent
         store={stores.settingsStore}
         player={stores.audioStore}
-      />
+      />,
     );
-
-
 
     // Should render main elements
     expect(screen.getByText("Aloud")).toBeDefined();
@@ -203,15 +206,15 @@ describe("TTSPluginSettingsTab", () => {
 
     // Switch through all providers to maximize coverage
     const select = screen.getByDisplayValue("OpenAI");
-    
+
     for (const provider of modelProviders) {
       await user.selectOptions(select, provider);
-      
+
       // Each provider switch should trigger the update function
       expect(stores.settingsStore.settings.modelProvider).toBe(provider);
-      
+
       // Just verify the component rendered without crashing for this provider
       expect(screen.getByText("Model Provider")).toBeDefined();
     }
   });
-}); 
+});

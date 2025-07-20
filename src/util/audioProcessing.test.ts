@@ -12,7 +12,7 @@ describe("audioProcessing", () => {
       };
 
       await expect(pcmBufferToMp3Buffer(buffer, options)).rejects.toThrow(
-        "Raw PCM bitDepth 8 is not directly supported"
+        "Raw PCM bitDepth 8 is not directly supported",
       );
     });
 
@@ -25,13 +25,13 @@ describe("audioProcessing", () => {
       };
 
       await expect(pcmBufferToMp3Buffer(buffer, options)).rejects.toThrow(
-        "Raw 16-bit PCM ArrayBuffer length must be even"
+        "Raw 16-bit PCM ArrayBuffer length must be even",
       );
     });
 
     it("should reject unsupported channel count", async () => {
       const buffer = new ArrayBuffer(16);
-      
+
       // Test too many channels
       const optionsTooMany: PcmToMp3Options = {
         sampleRate: 44100,
@@ -39,9 +39,9 @@ describe("audioProcessing", () => {
         bitDepth: 16,
       };
 
-      await expect(pcmBufferToMp3Buffer(buffer, optionsTooMany)).rejects.toThrow(
-        "Unsupported number of channels: 3"
-      );
+      await expect(
+        pcmBufferToMp3Buffer(buffer, optionsTooMany),
+      ).rejects.toThrow("Unsupported number of channels: 3");
 
       // Test zero channels
       const optionsZero: PcmToMp3Options = {
@@ -51,7 +51,7 @@ describe("audioProcessing", () => {
       };
 
       await expect(pcmBufferToMp3Buffer(buffer, optionsZero)).rejects.toThrow(
-        "Unsupported number of channels: 0"
+        "Unsupported number of channels: 0",
       );
     });
 
@@ -64,7 +64,7 @@ describe("audioProcessing", () => {
       };
 
       await expect(pcmBufferToMp3Buffer(buffer, options)).rejects.toThrow(
-        "PCM data is empty or could not be extracted"
+        "PCM data is empty or could not be extracted",
       );
     });
 
@@ -89,7 +89,9 @@ describe("audioProcessing", () => {
         await pcmBufferToMp3Buffer(buffer, options);
       } catch (error) {
         // Should not be a validation error
-        expect(error.message).not.toMatch(/bitDepth|channels|ArrayBuffer length/);
+        expect(error.message).not.toMatch(
+          /bitDepth|channels|ArrayBuffer length/,
+        );
       }
     });
 
@@ -111,7 +113,9 @@ describe("audioProcessing", () => {
         await pcmBufferToMp3Buffer(buffer, options);
       } catch (error) {
         // Should not be a validation error
-        expect(error.message).not.toMatch(/bitDepth|channels|ArrayBuffer length/);
+        expect(error.message).not.toMatch(
+          /bitDepth|channels|ArrayBuffer length/,
+        );
       }
     });
 
@@ -135,8 +139,10 @@ describe("audioProcessing", () => {
         await pcmBufferToMp3Buffer(buffer, options);
       } catch (error) {
         // Should not be a validation error
-        expect(error.message).not.toMatch(/bitDepth|channels|ArrayBuffer length/);
+        expect(error.message).not.toMatch(
+          /bitDepth|channels|ArrayBuffer length/,
+        );
       }
     });
   });
-}); 
+});

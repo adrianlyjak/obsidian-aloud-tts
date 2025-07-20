@@ -6,7 +6,7 @@ import {
   createSlidingWindowGroups,
   splitParagraphs,
   createWindows,
-  debounce
+  debounce,
 } from "./misc";
 
 describe("misc utilities", () => {
@@ -47,7 +47,9 @@ describe("misc utilities", () => {
   describe("randomId", () => {
     it("should generate UUID-like strings", () => {
       const id = randomId();
-      expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+      expect(id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      );
     });
 
     it("should generate unique IDs", () => {
@@ -59,7 +61,8 @@ describe("misc utilities", () => {
 
   describe("createSlidingWindowGroups", () => {
     it("should create sliding windows from text", () => {
-      const text = "First sentence. Second sentence. Third sentence. Fourth sentence.";
+      const text =
+        "First sentence. Second sentence. Third sentence. Fourth sentence.";
       const windows = createSlidingWindowGroups(text, 2, 1);
       expect(windows.length).toBeGreaterThan(0);
       expect(windows[0].length).toBeLessThanOrEqual(2);
@@ -98,7 +101,10 @@ describe("misc utilities", () => {
     it("should create sliding windows from array", () => {
       const items = [1, 2, 3, 4, 5];
       const windows = createWindows(items, 3, 2);
-      expect(windows).toEqual([[1, 2, 3], [3, 4, 5]]);
+      expect(windows).toEqual([
+        [1, 2, 3],
+        [3, 4, 5],
+      ]);
     });
 
     it("should handle windowSize larger than array", () => {
@@ -118,13 +124,13 @@ describe("misc utilities", () => {
       vi.useFakeTimers();
       const mockFn = vi.fn();
       const debouncedFn = debounce(mockFn, 100);
-      
+
       debouncedFn("arg1");
       expect(mockFn).not.toHaveBeenCalled();
-      
+
       vi.advanceTimersByTime(100);
       expect(mockFn).toHaveBeenCalledWith("arg1");
-      
+
       vi.useRealTimers();
     });
 
@@ -132,15 +138,15 @@ describe("misc utilities", () => {
       vi.useFakeTimers();
       const mockFn = vi.fn();
       const debouncedFn = debounce(mockFn, 100);
-      
+
       debouncedFn("first");
       debouncedFn("second");
-      
+
       vi.advanceTimersByTime(100);
       expect(mockFn).toHaveBeenCalledTimes(1);
       expect(mockFn).toHaveBeenCalledWith("second");
-      
+
       vi.useRealTimers();
     });
   });
-}); 
+});

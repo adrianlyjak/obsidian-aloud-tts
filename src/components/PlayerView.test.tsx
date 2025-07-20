@@ -1,13 +1,13 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import React from "react";
 import { PlayerView } from "./PlayerView";
-import { 
-  createTestAudioStore, 
-  createTestSettingsStore, 
-  FakeAudioSink, 
-  createMockObsidianBridge, 
-  createMockEditorView 
+import {
+  createTestAudioStore,
+  createTestSettingsStore,
+  FakeAudioSink,
+  createMockObsidianBridge,
+  createMockEditorView,
 } from "./test-utils";
 
 // Mock dependencies
@@ -17,13 +17,17 @@ vi.mock("obsidian", () => ({
 }));
 
 vi.mock("./IconButton", () => ({
-  IconButton: ({ children, onClick }: any) => <button onClick={onClick}>{children}</button>,
+  IconButton: ({ children, onClick }: any) => (
+    <button onClick={onClick}>{children}</button>
+  ),
   IconSpan: ({ children }: any) => <span>{children}</span>,
   Spinner: () => <div data-testid="spinner">Loading...</div>,
 }));
 
 vi.mock("./AudioVisualizer", () => ({
-  AudioVisualizer: () => <div data-testid="audio-visualizer">Audio Visualizer</div>,
+  AudioVisualizer: () => (
+    <div data-testid="audio-visualizer">Audio Visualizer</div>
+  ),
 }));
 
 describe("PlayerView", () => {
@@ -41,10 +45,10 @@ describe("PlayerView", () => {
         settings={mockSettings}
         sink={mockSink}
         obsidian={mockBridge as any}
-      />
+      />,
     );
-    
+
     // Component renders conditionally, just verify no crash
     expect(document.body).toBeTruthy();
   });
-}); 
+});

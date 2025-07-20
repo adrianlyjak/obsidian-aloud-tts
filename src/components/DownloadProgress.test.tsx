@@ -11,7 +11,7 @@ vi.mock("./IconButton", () => ({
 describe("DownloadProgress", () => {
   it("should render without crashing", () => {
     render(<DownloadProgress file="test-file.mp3" />);
-    
+
     expect(screen.getByTestId("spinner")).toBeDefined();
     expect(screen.getByText(/test-file\.mp3/)).toBeDefined();
   });
@@ -19,7 +19,7 @@ describe("DownloadProgress", () => {
   it("should display the correct file name", () => {
     const filename = "my-audio.wav";
     render(<DownloadProgress file={filename} />);
-    
+
     expect(screen.getByText(new RegExp(filename))).toBeDefined();
   });
-}); 
+});

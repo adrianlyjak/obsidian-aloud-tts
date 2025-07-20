@@ -13,9 +13,11 @@ vi.mock("../player/AudioStore", () => ({
 }));
 
 vi.mock("../player/TTSPluginSettings", () => ({
-  pluginSettingsStore: vi.fn(() => Promise.resolve({
-    settings: { modelProvider: "openai" },
-  })),
+  pluginSettingsStore: vi.fn(() =>
+    Promise.resolve({
+      settings: { modelProvider: "openai" },
+    }),
+  ),
 }));
 
 vi.mock("./IndexedDBAudioStorage", () => ({
@@ -50,7 +52,7 @@ vi.mock("../components/AudioVisualizer", () => ({
 }));
 
 // Mock localStorage
-Object.defineProperty(window, 'localStorage', {
+Object.defineProperty(window, "localStorage", {
   value: {
     getItem: vi.fn(() => null),
     setItem: vi.fn(),
@@ -69,4 +71,4 @@ describe("Web App", () => {
     expect(window.localStorage.getItem).toBeDefined();
     expect(window.localStorage.setItem).toBeDefined();
   });
-}); 
+});

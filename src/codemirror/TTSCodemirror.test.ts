@@ -1,8 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
 import { EditorState } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
 import { TTSCodeMirror } from "./TTSCodemirror";
-import { createTestAudioStore, createTestSettingsStore, FakeAudioSink, createMockObsidianBridge } from "../components/test-utils";
+import {
+  createTestAudioStore,
+  createTestSettingsStore,
+  FakeAudioSink,
+  createMockObsidianBridge,
+} from "../components/test-utils";
 
 // Mock React and DOM utilities
 vi.mock("react-dom/client", () => ({
@@ -31,7 +35,7 @@ describe("TTSCodemirror", () => {
       mockAudioStore,
       mockSettings,
       mockSink,
-      mockBridge as any
+      mockBridge as any,
     );
 
     expect(extension).toBeDefined();
@@ -48,7 +52,7 @@ describe("TTSCodemirror", () => {
       mockAudioStore,
       mockSettings,
       mockSink,
-      mockBridge as any
+      mockBridge as any,
     );
 
     // Create a minimal editor state with the extension
@@ -61,4 +65,4 @@ describe("TTSCodemirror", () => {
     expect(state).toBeDefined();
     expect(state.doc.toString()).toBe("Hello world");
   });
-}); 
+});

@@ -58,4 +58,4 @@ describe("OpenAI-Like Model", () => {
       expect(options.contextMode).toBe(false);
     });
   });
-}); 
+});

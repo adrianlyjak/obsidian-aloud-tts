@@ -2,7 +2,11 @@ import { describe, it, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
 import React from "react";
 import { IsPlaying } from "./IsPlaying";
-import { createTestAudioStore, createMockObsidianBridge, createMockEditorView } from "./test-utils";
+import {
+  createTestAudioStore,
+  createMockObsidianBridge,
+  createMockEditorView,
+} from "./test-utils";
 
 // Mock the IconButton components
 vi.mock("./IconButton", () => ({
@@ -20,10 +24,10 @@ describe("IsPlaying", () => {
         audio={mockAudioStore}
         bridge={mockBridge as any}
         editor={mockEditor as any}
-      />
+      />,
     );
-    
+
     // Component renders conditionally based on playing state, just verify no crash
     expect(document.body).toBeTruthy();
   });
-}); 
+});

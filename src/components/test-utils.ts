@@ -1,6 +1,10 @@
 import { vi } from "vitest";
 import { AudioStore, loadAudioStore } from "../player/AudioStore";
-import { TTSPluginSettingsStore, pluginSettingsStore, DEFAULT_SETTINGS } from "../player/TTSPluginSettings";
+import {
+  TTSPluginSettingsStore,
+  pluginSettingsStore,
+  DEFAULT_SETTINGS,
+} from "../player/TTSPluginSettings";
 import { createAudioSystem } from "../player/AudioSystem";
 import { ChunkLoader } from "../player/ChunkLoader";
 import { memoryStorage } from "../player/AudioCache";
@@ -24,7 +28,7 @@ export class FakeAudioSink implements AudioSink {
   getAudioBuffer: (ab: ArrayBuffer) => Promise<AudioBuffer>;
   audios: ArrayBuffer[] = [];
   audio = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as any;
-  
+
   constructor() {
     this.getAudioBuffer = () => Promise.resolve(emptyAudioBuffer);
     mobx.makeObservable(this, {
@@ -35,20 +39,30 @@ export class FakeAudioSink implements AudioSink {
       trackStatus: mobx.computed,
     });
   }
-  
+
   currentTime: number = 0;
-  
-  mediaComplete(): Promise<void> { return Promise.resolve(); }
-  setComplete(): void { this.isComplete = true; }
+
+  mediaComplete(): Promise<void> {
+    return Promise.resolve();
+  }
+  setComplete(): void {
+    this.isComplete = true;
+  }
   async switchMedia(): Promise<void> {}
   async appendMedia(): Promise<void> {}
   setRate(): void {}
-  play(): void { this.isPlaying = true; }
-  pause(): void { this.isPlaying = false; }
-  async stop(): Promise<void> { this.isPlaying = false; }
+  play(): void {
+    this.isPlaying = true;
+  }
+  pause(): void {
+    this.isPlaying = false;
+  }
+  async stop(): Promise<void> {
+    this.isPlaying = false;
+  }
   async restart(): Promise<void> {}
   async clearMedia(): Promise<void> {}
-  
+
   get trackStatus(): TrackStatus {
     if (this.isComplete) return "complete";
     if (this.isPlaying) return "playing";
@@ -58,7 +72,8 @@ export class FakeAudioSink implements AudioSink {
 
 export function createTestModel(): TTSModel {
   return {
-    call: async (txt: string, _: TTSModelOptions) => new ArrayBuffer(txt.length),
+    call: async (txt: string, _: TTSModelOptions) =>
+      new ArrayBuffer(txt.length),
     validateConnection: async () => undefined,
     convertToOptions: () => ({ model: "fake", contextMode: false }),
   };
@@ -112,4 +127,4 @@ export const createMockObsidianBridge = () => ({
 export const createMockEditorView = () => ({
   state: { doc: { toString: () => "test content" } },
   dispatch: vi.fn(),
-}); 
+});
