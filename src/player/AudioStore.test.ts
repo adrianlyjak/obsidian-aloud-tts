@@ -1,7 +1,7 @@
 import * as mobx from "mobx";
 import { describe, expect, test, vi, beforeEach, afterEach } from "vitest";
 import { AudioCache, memoryStorage } from "./AudioCache";
-import { AudioSink, TrackStatus } from "./AudioSink";
+import { AudioSink } from "./AudioSink";
 import { AudioStore, loadAudioStore } from "./AudioStore";
 import { TTSModel, TTSModelOptions } from "../models/tts-model";
 import { DEFAULT_SETTINGS, TTSPluginSettings } from "./TTSPluginSettings";
@@ -9,6 +9,7 @@ import { ActiveAudioText } from "./ActiveAudioText";
 import { createAudioSystem } from "./AudioSystem";
 import { AudioTextOptions } from "./AudioTextChunk";
 import { ChunkLoader } from "./ChunkLoader";
+import { FakeAudioSink, createTestModel } from "../components/test-utils";
 
 vi.mock("obsidian", () => ({
   requestUrl: vi.fn(),
@@ -99,7 +100,7 @@ describe("AudioStore", () => {
           } as AudioBuffer);
         },
       });
-      const tts = vi.mockObject(createModel());
+      const tts = vi.mockObject(createTestModel());
       tts.call.mockReturnValue(Promise.resolve(new ArrayBuffer(0)));
       tts.convertToOptions = vi.fn().mockReturnValue({
         model: "gpt-4o-mini-tts",
@@ -147,7 +148,7 @@ describe("AudioStore", () => {
     });
 
     test("should switch out the queue when the settings change", async () => {
-      const tts = vi.mockObject(createModel());
+      const tts = vi.mockObject(createTestModel());
       tts.call.mockReturnValue(Promise.resolve(new ArrayBuffer(0)));
       tts.validateConnection = vi.fn().mockResolvedValue(undefined);
       tts.convertToOptions = vi
@@ -233,7 +234,7 @@ describe("AudioStore", () => {
     test("should reset audio after current track finishes when text in next track is edited", async () => {
       vi.useFakeTimers();
       const duration = 5;
-      const tts = vi.mockObject(createModel());
+      const tts = vi.mockObject(createTestModel());
       tts.call.mockReturnValue(Promise.resolve(new ArrayBuffer(0)));
       tts.convertToOptions = vi.fn().mockReturnValue({
         model: "gpt-4o-mini-tts",
@@ -663,102 +664,6 @@ describe("AudioStore", () => {
   });
 });
 
-const emptyAudioBuffer = {
-  length: 0,
-  duration: 0,
-  numberOfChannels: 0,
-  sampleRate: 144000,
-} as AudioBuffer;
-
-class FakeAudioSink implements AudioSink {
-  currentData: ArrayBuffer | undefined = undefined;
-  isPlaying: boolean = false;
-  isComplete: boolean = false;
-  getAudioBuffer: (ab: ArrayBuffer) => Promise<AudioBuffer>;
-  audios: ArrayBuffer[] = [];
-  audio: FakeHTMLAudioElement = FakeHTMLAudioElement();
-  constructor({
-    getAudioBuffer = () => Promise.resolve(emptyAudioBuffer),
-  }: {
-    getAudioBuffer?: (ab: ArrayBuffer) => Promise<AudioBuffer>;
-  } = {}) {
-    this.getAudioBuffer = getAudioBuffer;
-    mobx.makeObservable(this, {
-      currentData: mobx.observable,
-      isPlaying: mobx.observable,
-      currentTime: mobx.observable,
-      isComplete: mobx.observable,
-      switchMedia: mobx.action,
-      play: mobx.action,
-      pause: mobx.action,
-      setComplete: mobx.action,
-      trackStatus: mobx.computed,
-    });
-  }
-  currentTime: number = 0;
-  mediaComplete(): Promise<void> {
-    throw new Error("Method not implemented.");
-  }
-
-  setComplete(): void {
-    this.isComplete = true;
-  }
-
-  async switchMedia(data: ArrayBuffer): Promise<void> {
-    const wasComplete = this.isPlaying && this.isComplete;
-    this.isComplete = false;
-    this.currentData = data;
-    if (wasComplete) {
-      this.play();
-    }
-  }
-  async appendMedia(data: ArrayBuffer): Promise<void> {
-    this.audios.push(data);
-  }
-  setRate(rate: number): void {}
-  play(): void {
-    this.isPlaying = true;
-  }
-  pause(): void {
-    this.isPlaying = false;
-  }
-  restart(): void {}
-  async clearMedia(): Promise<void> {
-    this.currentTime = 0;
-    this.audios = [];
-  }
-  get trackStatus(): TrackStatus {
-    const derivedStatus = (): TrackStatus => {
-      if (this.isComplete) {
-        return "complete";
-      } else if (this.isPlaying) {
-        return "playing";
-      } else {
-        return "paused";
-      }
-    };
-    return derivedStatus();
-  }
-  source: AudioNode | undefined;
-  context: AudioContext | undefined;
-}
-
-type FakeHTMLAudioElement = HTMLAudioElement;
-
-function FakeHTMLAudioElement() {
-  return {
-    seeking: false,
-    addEventListener: (
-      event: string,
-      listener: EventListenerOrEventListenerObject,
-    ) => {},
-    removeEventListener: (
-      event: string,
-      listener: EventListenerOrEventListenerObject,
-    ) => {},
-  } as FakeHTMLAudioElement;
-}
-
 interface MaybeStoreDependencies {
   textToSpeech?: TTSModel;
   storage?: AudioCache;
@@ -768,7 +673,7 @@ interface MaybeStoreDependencies {
 function createStore({
   storage = memoryStorage(),
   audioSink = new FakeAudioSink(),
-  textToSpeech = createModel(),
+  textToSpeech = createTestModel(),
   ttsSettings = DEFAULT_SETTINGS,
 }: MaybeStoreDependencies = {}): AudioStore {
   const system = createAudioSystem({
@@ -821,17 +726,4 @@ async function waitForPassing(
     }
   }
   throw lastErr;
-}
-
-function createModel(): TTSModel {
-  return {
-    call: async (txt: string, _: TTSModelOptions) => {
-      return new ArrayBuffer(txt.length);
-    },
-    validateConnection: async () => undefined,
-    convertToOptions: () => ({
-      model: "fake",
-      contextMode: false,
-    }),
-  };
 }

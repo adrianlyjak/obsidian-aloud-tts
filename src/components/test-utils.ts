@@ -20,22 +20,46 @@ export const emptyAudioBuffer = {
   sampleRate: 144000,
 } as AudioBuffer;
 
-// Fake implementations for testing
+// Create a fake HTML audio element for testing
+export function FakeHTMLAudioElement() {
+  return {
+    play: vi.fn(),
+    pause: vi.fn(),
+    load: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    currentTime: 0,
+    duration: 0,
+    paused: true,
+    ended: false,
+    seeking: false,
+  };
+}
+
+// Consolidated FakeAudioSink class for testing
 export class FakeAudioSink implements AudioSink {
   currentData: ArrayBuffer | undefined = undefined;
   isPlaying: boolean = false;
   isComplete: boolean = false;
   getAudioBuffer: (ab: ArrayBuffer) => Promise<AudioBuffer>;
   audios: ArrayBuffer[] = [];
-  audio = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as any;
+  audio = FakeHTMLAudioElement() as any;
 
-  constructor() {
-    this.getAudioBuffer = () => Promise.resolve(emptyAudioBuffer);
+  constructor({
+    getAudioBuffer = () => Promise.resolve(emptyAudioBuffer),
+  }: {
+    getAudioBuffer?: (ab: ArrayBuffer) => Promise<AudioBuffer>;
+  } = {}) {
+    this.getAudioBuffer = getAudioBuffer;
     mobx.makeObservable(this, {
       currentData: mobx.observable,
       isPlaying: mobx.observable,
       currentTime: mobx.observable,
       isComplete: mobx.observable,
+      switchMedia: mobx.action,
+      play: mobx.action,
+      pause: mobx.action,
+      setComplete: mobx.action,
       trackStatus: mobx.computed,
     });
   }
@@ -43,31 +67,57 @@ export class FakeAudioSink implements AudioSink {
   currentTime: number = 0;
 
   mediaComplete(): Promise<void> {
-    return Promise.resolve();
+    throw new Error("Method not implemented.");
   }
+
   setComplete(): void {
     this.isComplete = true;
   }
-  async switchMedia(): Promise<void> {}
-  async appendMedia(): Promise<void> {}
-  setRate(): void {}
+
+  async switchMedia(data: ArrayBuffer): Promise<void> {
+    const wasComplete = this.isPlaying && this.isComplete;
+    this.isComplete = false;
+    this.currentData = data;
+    if (wasComplete) {
+      this.play();
+    }
+  }
+
+  async appendMedia(data: ArrayBuffer): Promise<void> {
+    this.audios.push(data);
+  }
+
+  setRate(rate: number): void {}
+
   play(): void {
     this.isPlaying = true;
   }
+
   pause(): void {
     this.isPlaying = false;
   }
+
   async stop(): Promise<void> {
     this.isPlaying = false;
+    this.isComplete = false;
+    this.currentTime = 0;
   }
+
   async restart(): Promise<void> {}
-  async clearMedia(): Promise<void> {}
+
+  async clearMedia(): Promise<void> {
+    this.currentTime = 0;
+    this.audios = [];
+  }
 
   get trackStatus(): TrackStatus {
     if (this.isComplete) return "complete";
     if (this.isPlaying) return "playing";
     return "paused";
   }
+
+  source: AudioNode | undefined;
+  context: AudioContext | undefined;
 }
 
 export function createTestModel(): TTSModel {
