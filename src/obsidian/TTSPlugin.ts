@@ -1,19 +1,22 @@
 import { TTSCodeMirror } from "../codemirror/TTSCodemirror";
 
 import { Editor, MarkdownView, Notice, Plugin, addIcon } from "obsidian";
+import { REGISTRY } from "../models/registry";
 import { TTSSettingTab } from "../components/TTSPluginSettingsTab";
 import { AudioSink, WebAudioSink } from "../player/AudioSink";
 import { AudioStore, loadAudioStore } from "../player/AudioStore";
 import { AudioSystem, createAudioSystem } from "../player/AudioSystem";
+import { ChunkLoader } from "../player/ChunkLoader";
 import {
   MARKETING_NAME,
   MARKETING_NAME_LONG,
+  TTSPluginSettings,
   TTSPluginSettingsStore,
   pluginSettingsStore,
 } from "../player/TTSPluginSettings";
 import { ObsidianBridge, ObsidianBridgeImpl } from "./ObsidianBridge";
 import { configurableAudioCache } from "./ObsidianPlayer";
-import { openAITextToSpeech } from "../player/TTSModel";
+import { TTSModel, TTSModelOptions } from "../models/tts-model";
 
 // standard lucide.dev icon, but for some reason not working as a ribbon icon without registering it
 // https://lucide.dev/icons/audio-lines
@@ -171,22 +174,43 @@ export default class TTSPlugin extends Plugin {
       () => this.loadData(),
       (data) => this.saveData(data),
     );
+
     const audio = await WebAudioSink.create();
     const cache = configurableAudioCache(this.app, this.settings);
     this.cache = cache;
     this.system = createAudioSystem({
       settings: () => this.settings.settings,
       audioSink: () => audio,
-      audioStore: (sys) =>
-        loadAudioStore({
-          system: sys,
-        }),
+      audioStore: (sys) => loadAudioStore({ system: sys }),
       storage: () => cache,
-      ttsModel: () => openAITextToSpeech,
+      ttsModel: (system) => ProxiedTTSModel(system.settings),
+      chunkLoader: (system) => new ChunkLoader({ system }),
       config: () => ({
         backgroundLoaderIntervalMillis: 1000,
       }),
     });
     this.bridge = new ObsidianBridgeImpl(this.app, this.player, this.settings);
   }
+}
+
+function ProxiedTTSModel(settings: TTSPluginSettings): TTSModel {
+  const getModel = () => {
+    return REGISTRY[settings.modelProvider];
+  };
+  return {
+    call: (
+      text: string,
+      options: TTSModelOptions,
+      contexts: string[],
+      settings: TTSPluginSettings,
+    ) => {
+      return getModel().call(text, options, contexts, settings);
+    },
+    validateConnection: (settings: TTSPluginSettings) => {
+      return getModel().validateConnection(settings);
+    },
+    convertToOptions: (settings: TTSPluginSettings) => {
+      return getModel().convertToOptions(settings);
+    },
+  };
 }

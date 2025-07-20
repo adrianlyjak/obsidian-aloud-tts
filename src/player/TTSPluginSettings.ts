@@ -1,14 +1,12 @@
 import { action, observable } from "mobx";
-import { TTSErrorInfo, TTSModelOptions, listModels } from "./TTSModel";
+import { TTSModelOptions } from "../models/tts-model";
 import { debounce } from "../util/misc";
-import { hashString } from "../util/Minhash";
+import { hashStrings } from "../util/Minhash";
+import { OPENAI_API_URL } from "../models/openai";
+import { REGISTRY } from "../models/registry";
+
 export type TTSPluginSettings = {
-  OPENAI_API_KEY: string;
-  OPENAI_API_URL: string;
   modelProvider: ModelProvider;
-  model: string;
-  ttsVoice: string;
-  instructions?: string;
   chunkType: "sentence" | "paragraph";
   playbackSpeed: number;
   cacheType: "local" | "vault";
@@ -16,20 +14,56 @@ export type TTSPluginSettings = {
   showPlayerView: PlayerViewMode;
   version: number;
   audioFolder: string;
-} & OpenAIModelConfig &
-  OpenAICompatibleModelConfig;
+} & (GeminiModelConfig &
+  HumeModelConfig &
+  OpenAIModelConfig &
+  OpenAICompatModelConfig);
+
+export interface GeminiModelConfig {
+  /** the API key to use */
+  gemini_apiKey: string;
+  /** the model to use (tts vs tts-hd etc.*/
+  gemini_ttsModel: string;
+  /** the voice string id to use. Required */
+  gemini_ttsVoice: string;
+  /** the instructions to use for voice quality. Only applicable to gpt-4o-mini-tts */
+  gemini_ttsInstructions?: string;
+  /** whether to include previous utterances in the instructions/context */
+  gemini_contextMode: boolean;
+}
+
+export interface HumeModelConfig {
+  /** the API key to use */
+  hume_apiKey: string;
+  /** the voice UUID to use. I think required */
+  hume_ttsVoice?: string;
+  /** user defined voices or shared voices */
+  hume_sourceType: string;
+  /** the instructions to use for voice quality */
+  hume_ttsInstructions?: string;
+  /** whether to include previous utterances in the instructions/context */
+  hume_contextMode: boolean;
+}
 
 export interface OpenAIModelConfig {
+  /** the API key to use */
   openai_apiKey: string;
+  /** the model to use (tts vs tts-hd etc.*/
   openai_ttsModel: string;
+  /** the voice string id to use. Required */
   openai_ttsVoice: string;
+  /** the instructions to use for voice quality. Only applicable to gpt-4o-mini-tts */
   openai_ttsInstructions?: string;
 }
 
-export interface OpenAICompatibleModelConfig {
+export interface OpenAICompatModelConfig {
+  /** the API key to use. Not required */
   openaicompat_apiKey: string;
+  /** the backend openai compatible API URL to use */
   openaicompat_apiBase: string;
+  /** the model to use. Depends on the backend.*/
   openaicompat_ttsModel: string;
+  /** the voice string id to use. Required. Depends on the backend. */
   openaicompat_ttsVoice: string;
 }
 
@@ -47,31 +81,41 @@ export function isPlayerViewMode(value: unknown): value is PlayerViewMode {
 }
 
 export function voiceHash(options: TTSModelOptions): string {
-  return hashString(
+  return hashStrings([
     options.apiUri +
-      options.model +
+      (options.model || "") +
       options.voice +
       (options.instructions || ""),
-  ).toString();
+  ])[0].toString();
 }
 
-export const REAL_OPENAI_API_URL = "https://api.openai.com";
-
-export const modelProviders = ["openai", "openaicompat"] as const;
+export const modelProviders = [
+  "gemini",
+  "hume",
+  "openai",
+  "openaicompat",
+] as const;
 export type ModelProvider = (typeof modelProviders)[number];
 
 export const DEFAULT_SETTINGS: TTSPluginSettings = {
-  OPENAI_API_KEY: "",
-  OPENAI_API_URL: "",
   modelProvider: "openai",
-  model: "gpt-4o-mini-tts",
-  ttsVoice: "shimmer",
-  instructions: undefined,
   chunkType: "sentence",
   playbackSpeed: 1.0,
   cacheDurationMillis: 1000 * 60 * 60 * 24 * 7, // 7 days
   cacheType: "local",
   showPlayerView: "always-mobile",
+  // gemini
+  gemini_apiKey: "",
+  gemini_ttsModel: "gemini-2.5-flash-preview-tts",
+  gemini_ttsVoice: "Zephyr",
+  gemini_ttsInstructions: undefined,
+  gemini_contextMode: false,
+  // hume
+  hume_apiKey: "",
+  hume_ttsVoice: undefined,
+  hume_sourceType: "HUME_AI",
+  hume_ttsInstructions: undefined,
+  hume_contextMode: false,
   // openai
   openai_apiKey: "",
   openai_ttsModel: "gpt-4o-mini-tts",
@@ -82,7 +126,8 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   openaicompat_apiBase: "",
   openaicompat_ttsModel: "",
   openaicompat_ttsVoice: "",
-  version: 1,
+
+  version: 2,
   audioFolder: "aloud",
 } as const;
 
@@ -116,50 +161,24 @@ export async function pluginSettingsStore(
         this.apiKeyError = error;
       },
       checkApiKey: debounce(async () => {
-        if (
-          store.settings.OPENAI_API_URL &&
-          store.settings.OPENAI_API_URL !== REAL_OPENAI_API_URL
-        ) {
-          store.setApiKeyValidity(true);
-        } else {
-          if (!store.settings.OPENAI_API_KEY) {
-            store.setApiKeyValidity(
-              false,
-              `Please enter an API key in the "${MARKETING_NAME_LONG}" plugin settings`,
-            );
-          } else {
-            store.setApiKeyValidity(undefined, undefined);
-            try {
-              await listModels(store.settings);
-              store.setApiKeyValidity(true, undefined);
-            } catch (ex: unknown) {
-              console.error("Could not validate API key", ex);
-              let message = "Cannot connect to OpenAI";
-              if (ex instanceof TTSErrorInfo) {
-                if (ex.openAIErrorCode() === "invalid_api_key") {
-                  message =
-                    "Invalid API key! Enter a valid API key in the plugin settings";
-                } else {
-                  const msg = ex.openAIJsonMessage();
-                  if (msg) {
-                    message = msg;
-                  }
-                }
-              }
-              store.setApiKeyValidity(false, message);
-            }
-          }
-        }
+        store.setApiKeyValidity(undefined, undefined);
+        const error = await REGISTRY[
+          store.settings.modelProvider
+        ].validateConnection(store.settings);
+        store.setApiKeyValidity(error ? false : true, error);
       }, 500),
       updateSettings: async (
         update: Partial<TTSPluginSettings>,
       ): Promise<void> => {
-        const keyBefore = store.settings.OPENAI_API_KEY;
-        const apiBefore = store.settings.OPENAI_API_URL;
+        const model = REGISTRY[store.settings.modelProvider];
+        const optionsBefore = model.convertToOptions(store.settings);
+        const providerBefore = store.settings.modelProvider;
         Object.assign(store.settings, update);
+        const optionsAfter = model.convertToOptions(store.settings);
         if (
-          keyBefore !== store.settings.OPENAI_API_KEY ||
-          apiBefore !== store.settings.OPENAI_API_URL
+          optionsBefore.apiKey !== optionsAfter.apiKey ||
+          optionsBefore.apiUri !== optionsAfter.apiUri ||
+          providerBefore !== store.settings.modelProvider
         ) {
           await store.checkApiKey();
         }
@@ -173,25 +192,8 @@ export async function pluginSettingsStore(
           ...store.settings,
           ...settings,
         };
-        const additionalSettings: Partial<TTSPluginSettings> =
-          provider === "openai"
-            ? {
-                OPENAI_API_KEY: merged.openai_apiKey,
-                OPENAI_API_URL: "",
-                ttsVoice: merged.openai_ttsVoice,
-                instructions: merged.openai_ttsInstructions || undefined,
-                model: merged.openai_ttsModel,
-              }
-            : {
-                OPENAI_API_KEY: merged.openaicompat_apiKey,
-                OPENAI_API_URL: merged.openaicompat_apiBase,
-                ttsVoice: merged.openaicompat_ttsVoice,
-                instructions: undefined,
-                model: merged.openaicompat_ttsModel,
-              };
         await store.updateSettings({
-          ...settings,
-          ...additionalSettings,
+          ...merged,
           modelProvider: provider,
         });
       },
@@ -226,6 +228,9 @@ const parsePluginSettings = (toParse: unknown): TTSPluginSettings => {
   if (data.version < 1) {
     data = migrateToVersion1(data);
   }
+  if (data.version < 2) {
+    data = migrateToVersion2(data);
+  }
   return data;
 };
 
@@ -233,22 +238,39 @@ const parsePluginSettings = (toParse: unknown): TTSPluginSettings => {
 function migrateToVersion1(data: any): any {
   // extract the openai_apiKey and openai_apiBase fields
   const isCustom =
-    !!data.OPENAI_API_URL && data.OPENAI_API_URL !== REAL_OPENAI_API_URL;
+    !!data.OPENAI_API_URL && data.OPENAI_API_URL !== OPENAI_API_URL;
   return {
     ...data,
     modelProvider: isCustom ? "openaicompat" : "openai",
-    ...(isCustom
-      ? {
-          openaicompat_apiKey: data.OPENAI_API_KEY,
-          openaicompat_apiBase: data.OPENAI_API_URL,
-          openaicompat_ttsModel: data.model,
-          openaicompat_ttsVoice: data.ttsVoice,
-        }
-      : {
-          openai_apiKey: data.OPENAI_API_KEY,
-          openai_ttsModel: data.model,
-          openai_ttsVoice: data.ttsVoice,
-        }),
+    openaicompat_apiKey: isCustom ? data.OPENAI_API_KEY : "",
+    openaicompat_apiBase: isCustom ? data.OPENAI_API_URL : "",
+    openaicompat_ttsModel: isCustom ? data.model : "",
+    openaicompat_ttsVoice: isCustom ? data.ttsVoice : "",
+    openai_apiKey: !isCustom
+      ? data.OPENAI_API_KEY
+      : DEFAULT_SETTINGS.openai_apiKey,
+    openai_ttsModel: !isCustom ? data.model : DEFAULT_SETTINGS.openai_ttsModel,
+    openai_ttsVoice: !isCustom
+      ? data.ttsVoice
+      : DEFAULT_SETTINGS.openai_ttsVoice,
+
     version: 1,
   };
+}
+
+// Dropped the shared fields, those can be computed dynamically,
+// and added 2 new models (hume and gemini)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function migrateToVersion2(data: any): any {
+  // remove shared fields
+  const {
+    OPENAI_API_URL, // eslint-disable-line @typescript-eslint/no-unused-vars
+    OPENAI_API_KEY, // eslint-disable-line @typescript-eslint/no-unused-vars
+    model, // eslint-disable-line @typescript-eslint/no-unused-vars
+    ttsVoice, // eslint-disable-line @typescript-eslint/no-unused-vars
+    instructions, // eslint-disable-line @typescript-eslint/no-unused-vars
+    ...rest
+  } = data;
+  // add any fields that were missing before
+  return { ...DEFAULT_SETTINGS, ...rest, version: 2 };
 }

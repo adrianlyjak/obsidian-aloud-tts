@@ -8,6 +8,16 @@ export function checksum(text: string): number {
   return hash;
 }
 
+export function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
 export function randomId(): string {
   const S4 = () => {
     return (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);

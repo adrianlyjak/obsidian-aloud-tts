@@ -4,6 +4,7 @@ import {
   DEFAULT_SETTINGS,
   TTSPluginSettings,
 } from "./TTSPluginSettings";
+import { OPENAI_API_URL } from "../models/openai";
 
 describe("pluginSettingsStore", () => {
   vi.mock("obsidian", () => ({
@@ -19,7 +20,7 @@ describe("pluginSettingsStore", () => {
     expect(store.settings).toEqual(DEFAULT_SETTINGS);
   });
 
-  it("should migrate data (no base url) to version 1 format", async () => {
+  it("should migrate data (no base url) from version 0 format", async () => {
     const baseData = {
       OPENAI_API_KEY: "test-key",
       OPENAI_API_URL: "",
@@ -33,22 +34,23 @@ describe("pluginSettingsStore", () => {
 
     const expectedSettings: TTSPluginSettings = {
       ...DEFAULT_SETTINGS,
-      ...baseData,
       modelProvider: "openai",
       openai_apiKey: "test-key",
       openai_ttsModel: "test-model",
       openai_ttsVoice: "test-voice",
-      version: 1,
+      version: 2,
     };
 
-    expect(store.settings).toEqual(expectedSettings);
+    expect(store.settings).toMatchObject(expectedSettings);
   });
-  it("should migrate data (default base url) to version 1 format", async () => {
+
+  it("should migrate data (openai base url) to from version 0 format", async () => {
     const baseData = {
       OPENAI_API_KEY: "test-key",
-      OPENAI_API_URL: "https://api.openai.com",
+      OPENAI_API_URL: OPENAI_API_URL,
       model: "test-model",
       ttsVoice: "test-voice",
+      contextMode: false,
     };
     const loadData = async () => baseData;
     const saveData = async (data: unknown) => {};
@@ -57,18 +59,16 @@ describe("pluginSettingsStore", () => {
 
     const expectedSettings: TTSPluginSettings = {
       ...DEFAULT_SETTINGS,
-      ...baseData,
-      OPENAI_API_URL: "https://api.openai.com",
       modelProvider: "openai",
-      openai_apiKey: "test-key",
-      openai_ttsModel: "test-model",
-      openai_ttsVoice: "test-voice",
-      version: 1,
+      openai_apiKey: baseData.OPENAI_API_KEY,
+      openai_ttsModel: baseData.model,
+      openai_ttsVoice: baseData.ttsVoice,
+      version: 2,
     };
 
-    expect(store.settings).toEqual(expectedSettings);
+    expect(store.settings).toMatchObject(expectedSettings);
   });
-  it("should migrate data (custom base url) to version 1 format", async () => {
+  it("should migrate data (custom base url) from version 0 format", async () => {
     const baseData = {
       OPENAI_API_KEY: "test-key",
       OPENAI_API_URL: "https://api.example.com",
@@ -82,65 +82,92 @@ describe("pluginSettingsStore", () => {
 
     const expectedSettings: TTSPluginSettings = {
       ...DEFAULT_SETTINGS,
-      ...baseData,
-      OPENAI_API_URL: "https://api.example.com",
       modelProvider: "openaicompat",
-      openaicompat_apiKey: "test-key",
-      openaicompat_apiBase: "https://api.example.com",
-      openaicompat_ttsModel: "test-model",
-      openaicompat_ttsVoice: "test-voice",
-      version: 1,
+      openaicompat_apiKey: baseData.OPENAI_API_KEY,
+      openaicompat_apiBase: baseData.OPENAI_API_URL,
+      openaicompat_ttsModel: baseData.model,
+      openaicompat_ttsVoice: baseData.ttsVoice,
+      version: 2,
     };
 
-    expect(store.settings).toEqual(expectedSettings);
+    expect(store.settings).toMatchObject(expectedSettings);
   });
 
-  it("should apply openai related settings to the default scope", async () => {
-    const loadData = async () => ({
-      ...DEFAULT_SETTINGS,
-      modelProvider: "openaicompat",
-      openaicompat_apiKey: "test-key",
-      openaicompat_apiBase: "https://api.example.com",
-      openaicompat_ttsModel: "test-model",
-      openaicompat_ttsVoice: "test-voice",
-    });
+  it("should migrate v1 to v2 format by removing shared fields and preserving provider-specific settings", async () => {
+    const v1Data = {
+      version: 1,
+      modelProvider: "openai",
+      // Legacy shared fields that should be removed
+      OPENAI_API_KEY: "legacy-key",
+      OPENAI_API_URL: "legacy-url",
+      model: "legacy-model",
+      ttsVoice: "legacy-voice",
+      instructions: "legacy-instructions",
+      // Provider-specific fields that should be preserved
+      openai_apiKey: "correct-key",
+      openai_ttsModel: "correct-model",
+      openai_ttsVoice: "correct-voice",
+      gemini_apiKey: "gemini-key",
+      gemini_ttsModel: "gemini-model",
+      // Other settings
+      chunkType: "paragraph",
+      playbackSpeed: 1.5,
+    };
+    const loadData = async () => v1Data;
     const saveData = async (data: unknown) => {};
 
     const store = await pluginSettingsStore(loadData, saveData);
 
-    await store.updateModelSpecificSettings("openai", {
-      openai_apiKey: "new-test-key",
-      openai_ttsModel: "new-test-model",
-      openai_ttsVoice: "new-test-voice",
-    });
-    expect(store.settings.OPENAI_API_KEY).toEqual("new-test-key");
-    expect(store.settings.model).toEqual("new-test-model");
-    expect(store.settings.ttsVoice).toEqual("new-test-voice");
+    // Should have v2 structure without legacy shared fields
+    expect(store.settings.version).toBe(2);
+    expect(store.settings).not.toHaveProperty("OPENAI_API_KEY");
+    expect(store.settings).not.toHaveProperty("OPENAI_API_URL");
+    expect(store.settings).not.toHaveProperty("model");
+    expect(store.settings).not.toHaveProperty("ttsVoice");
+    expect(store.settings).not.toHaveProperty("instructions");
+
+    // Should preserve provider-specific settings
+    expect(store.settings.openai_apiKey).toBe("correct-key");
+    expect(store.settings.openai_ttsModel).toBe("correct-model");
+    expect(store.settings.openai_ttsVoice).toBe("correct-voice");
+    expect(store.settings.gemini_apiKey).toBe("gemini-key");
+    expect(store.settings.gemini_ttsModel).toBe("gemini-model");
+
+    // Should preserve other settings
+    expect(store.settings.modelProvider).toBe("openai");
+    expect(store.settings.chunkType).toBe("paragraph");
+    expect(store.settings.playbackSpeed).toBe(1.5);
+
+    // Should have default values for any missing fields
+    expect(store.settings.gemini_ttsVoice).toBe(
+      DEFAULT_SETTINGS.gemini_ttsVoice,
+    );
+    expect(store.settings.hume_apiKey).toBe(DEFAULT_SETTINGS.hume_apiKey);
   });
-  it("should apply openaicompat related settings to the default scope", async () => {
+
+  it("should update model provider and merge settings when using updateModelSpecificSettings", async () => {
     const loadData = async () => ({
       ...DEFAULT_SETTINGS,
       modelProvider: "openai",
-      openai_apiKey: "test-key",
-      openai_apiBase: "https://api.example.com",
-      openai_ttsModel: "test-model",
-      openai_ttsVoice: "test-voice",
     });
     const saveData = async (data: unknown) => {};
 
     const store = await pluginSettingsStore(loadData, saveData);
 
-    await store.updateModelSpecificSettings("openaicompat", {
-      openaicompat_apiKey: "new-test-key",
-      openaicompat_apiBase: "https://api.example.com",
-      openaicompat_ttsModel: "new-test-model",
-      openaicompat_ttsVoice: "new-test-voice",
+    await store.updateModelSpecificSettings("gemini", {
+      gemini_apiKey: "new-key",
+      gemini_ttsModel: "new-model",
+      gemini_ttsVoice: "new-voice",
+      gemini_contextMode: true,
     });
-    expect(store.settings.OPENAI_API_KEY).toEqual("new-test-key");
-    expect(store.settings.OPENAI_API_URL).toEqual("https://api.example.com");
-    expect(store.settings.model).toEqual("new-test-model");
-    expect(store.settings.ttsVoice).toEqual("new-test-voice");
+
+    expect(store.settings.modelProvider).toEqual("gemini");
+    expect(store.settings.gemini_apiKey).toEqual("new-key");
+    expect(store.settings.gemini_ttsModel).toEqual("new-model");
+    expect(store.settings.gemini_ttsVoice).toEqual("new-voice");
+    expect(store.settings.gemini_contextMode).toEqual(true);
   });
+
   it("should save data when updateSettings is called", async () => {
     const loadData = async () => ({
       ...DEFAULT_SETTINGS,

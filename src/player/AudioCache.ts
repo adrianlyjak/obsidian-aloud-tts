@@ -1,5 +1,5 @@
 import { hashString } from "../util/Minhash";
-import { TTSModelOptions } from "./TTSModel";
+import { TTSModelOptions } from "../models/tts-model";
 import { voiceHash } from "./TTSPluginSettings";
 
 export interface AudioCache {

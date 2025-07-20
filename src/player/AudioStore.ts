@@ -6,7 +6,6 @@ import {
   buildTrack,
 } from "./ActiveAudioText";
 import { AudioSystem } from "./AudioSystem";
-import { toModelOptions } from "./TTSModel";
 import { AudioText, AudioTextOptions } from "./AudioTextChunk";
 
 /** High level track changer interface */
@@ -64,8 +63,15 @@ class AudioStoreImpl implements AudioStore {
     return this.system.storage.getStorageSize();
   }
 
-  exportAudio(text: string): Promise<ArrayBuffer> {
-    return this.system.ttsModel(text, toModelOptions(this.system.settings));
+  async exportAudio(text: string): Promise<ArrayBuffer> {
+    // TODO make this an async generator, that gets chunked according to the model's max length
+    const options = this.system.ttsModel.convertToOptions(this.system.settings);
+    return await this.system.ttsModel.call(
+      text,
+      options,
+      [],
+      this.system.settings,
+    );
   }
 
   _backgroundProcesses: { shutdown: () => void }[] = [];

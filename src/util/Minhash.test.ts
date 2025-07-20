@@ -1,22 +1,20 @@
 import { describe, it, expect } from "vitest";
-import { INTERNAL, Minhash, hashString } from "./Minhash";
+import { INTERNAL, Minhash, hashStrings } from "./Minhash";
 
 describe("Minhash", () => {
   it("should correctly hash a string", () => {
-    const hash = hashString("test string");
+    const hash = hashStrings(["test string"])[0];
     expect(hash).toBeGreaterThan(0);
   });
 
   it("should create consistent hash values for the same input", () => {
-    const hash1 = hashString("consistent input");
-    const hash2 = hashString("consistent input");
-    expect(hash1).toEqual(hash2);
+    const hash = hashStrings(["consistent input", "consistent input"]);
+    expect(hash[0]).toEqual(hash[1]);
   });
 
   it("should create different hash values for different inputs", () => {
-    const hash1 = hashString("input one");
-    const hash2 = hashString("input two");
-    expect(hash1).not.toEqual(hash2);
+    const hash = hashStrings(["input one", "input two"]);
+    expect(hash[0]).not.toEqual(hash[1]);
   });
 
   it("should estimate Jaccard similarity close to 1 for identical sets", () => {

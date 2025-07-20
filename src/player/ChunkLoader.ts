@@ -1,6 +1,6 @@
 import * as mobx from "mobx";
 import { AudioSystem } from "./AudioSystem";
-import { TTSErrorInfo, TTSModelOptions } from "./TTSModel";
+import { TTSErrorInfo, TTSModelOptions } from "../models/tts-model";
 
 /** manages loading and caching of tracks */
 export class ChunkLoader {
@@ -35,25 +35,32 @@ export class ChunkLoader {
   };
 
   /**
-   * When you remove an ArrayBuffer from the audio, it dereferences the ArrayBuffer, rendering it
-   * as a useless pointer that can no longer be used. This method removes the cached audio for that same
-   * text, such that it can be re-loaded from the disk cache.
+   * Removes locally cached audio (e.g., if ArrayBuffer becomes detached).
+   * Does not affect storage cache.
    */
   uncache(text: string): void {
     this.localCache = this.localCache.filter((x) => x.text !== text);
   }
 
   preload(text: string, options: TTSModelOptions, position: number): void {
-    const found = this.backgroundQueue.find(
+    // Check if already queued
+    const alreadyQueued = this.backgroundQueue.some(
       (x) => x.text === text && mobx.comparer.structural(x.options, options),
     );
-    if (found) {
+    if (alreadyQueued) {
       return;
     }
-    const loaded = this.localCache.find(
+
+    // Check if already in local memory cache (loading or loaded)
+    const alreadyLoaded = this.localCache.some(
       (x) => x.text === text && mobx.comparer.structural(x.options, options),
     );
-    if (loaded) {
+    if (alreadyLoaded) {
+      // Update requested time to prevent garbage collection if needed
+      const cached = this.localCache.find(
+        (x) => x.text === text && mobx.comparer.structural(x.options, options),
+      );
+      if (cached) cached.requestedTime = Date.now();
       return;
     }
     this.backgroundQueue.push({
@@ -62,20 +69,38 @@ export class ChunkLoader {
       requestedTime: Date.now(),
       position,
     });
+    // Sort queue by position to prioritize upcoming chunks
+    this.backgroundQueue.sort((a, b) => a.position - b.position);
     this.backgroundRequestProcessor.startIfNot();
   }
 
-  load(text: string, options: TTSModelOptions): Promise<ArrayBuffer> {
+  async load(
+    text: string,
+    options: TTSModelOptions,
+    position?: number,
+  ): Promise<ArrayBuffer> {
     const existing = this.localCache.find(
-      (x) =>
-        x.text === text &&
-        JSON.stringify(x.options) === JSON.stringify(options),
+      (x) => x.text === text && mobx.comparer.structural(x.options, options), // Use structural comparison
     );
+
     if (existing) {
       existing.requestedTime = Date.now();
       return existing.result;
     } else {
-      const audio = this.createCachedAudio(text, options);
+      // select the last 3 chunks of the active text. Perhaps make this somehow configurable
+      const audioTextChunks = position
+        ? this.system.audioStore.activeText?.audio.chunks.slice(
+            position - 3,
+            position,
+          )
+        : undefined;
+      const contexts = audioTextChunks?.map((x) => x.text);
+
+      const audio = this.createCachedAudio(
+        text,
+        options,
+        options.contextMode ? contexts : undefined,
+      );
       this.localCache.push(audio);
       return audio.result;
     }
@@ -84,17 +109,22 @@ export class ChunkLoader {
   destroy(): void {
     this.backgroundRequestProcessor.stop();
     this.garbageCollector.stop();
+    // Clear caches and queue on destroy
+    this.localCache = [];
+    this.backgroundQueue = [];
+    this.backgroundActiveCount = 0;
   }
 
   private createCachedAudio(
     text: string,
     options: TTSModelOptions,
+    contexts?: string[],
   ): CachedAudio {
-    const audio = {
+    const audio: CachedAudio = {
       text,
       options,
       requestedTime: Date.now(),
-      result: this.tryLoadTrack(text, options, 0, 3).catch((e) => {
+      result: this.tryLoadTrack(text, options, 0, 3, contexts).catch((e) => {
         this.destroyCachedAudio(audio);
         throw e;
       }),
@@ -109,27 +139,30 @@ export class ChunkLoader {
     }
   }
 
-  // combined with the IntervalDaemon, this has the behavior of adding a request
-  // ever interval, up until it saturates at the MAX_BACKGROUND_REQUESTS
+  // Processes the queue
   private processBackgroundQueue(): boolean {
     if (this.backgroundActiveCount >= this.MAX_BACKGROUND_REQUESTS) {
       return true;
-    } else if (this.backgroundQueue.length === 0) {
-      return false;
-    } else {
-      const item = this.backgroundQueue.shift()!;
-      this.backgroundActiveCount += 1;
-      this.load(item.text, item.options).finally(() => {
-        this.backgroundActiveCount -= 1;
-        this.processBackgroundQueue();
-      });
-      return true;
     }
+    if (this.backgroundQueue.length === 0) {
+      return false;
+    }
+
+    const item = this.backgroundQueue.shift()!; // Take one item
+    const itemOptions: TTSModelOptions = item.options;
+
+    this.backgroundActiveCount += 1; // Increment active *requests* count by 1
+    this.load(item.text, itemOptions, item.position).finally(() => {
+      this.backgroundActiveCount -= 1;
+      this.processBackgroundQueue(); // Check for more work
+    });
+
+    return true; // Keep processor running if queue might still have items or requests are active
   }
 
   private processGarbage(): boolean {
     this.localCache = this.localCache.filter(
-      (req) => Date.now() - req.requestedTime < this.MAX_LOCAL_TTL_MILLIS,
+      (entry) => Date.now() - entry.requestedTime < this.MAX_LOCAL_TTL_MILLIS,
     );
     return true;
   }
@@ -139,10 +172,12 @@ export class ChunkLoader {
     options: TTSModelOptions,
     attempt: number = 0,
     maxAttempts: number = 3,
+    contexts?: string[],
   ): Promise<ArrayBuffer> {
     try {
-      return await this.loadTrack(track, options);
+      return await this.loadTrack(track, options, contexts);
     } catch (ex) {
+      console.log("error loading track", ex);
       const errorInfo = ex instanceof TTSErrorInfo ? ex : undefined;
       const canRetry =
         attempt < maxAttempts && (errorInfo ? errorInfo.isRetryable : true);
@@ -157,6 +192,7 @@ export class ChunkLoader {
           options,
           attempt + 1,
           maxAttempts,
+          contexts,
         );
       }
     }
@@ -166,6 +202,7 @@ export class ChunkLoader {
   private async loadTrack(
     text: string,
     options: TTSModelOptions,
+    contexts?: string[],
   ): Promise<ArrayBuffer> {
     // copy the settings to make sure audio isn't stored under under the wrong key
     // if the settings are changed while request is in flight
@@ -176,13 +213,20 @@ export class ChunkLoader {
     if (stored) {
       return stored;
     } else {
-      const buff = await this.system.ttsModel(text, options);
+      // likely some race conditions here, if the options have changed since the request was enqueued
+      const buff = await this.system.ttsModel.call(
+        text,
+        options,
+        contexts ?? [],
+        this.system.settings,
+      );
       await this.system.storage.saveAudio(text, options, buff);
       return buff;
     }
   }
 }
 
+// --- Helper Interfaces and Functions ---
 interface IntervalDaemon {
   stop: () => IntervalDaemon;
   startIfNot: () => IntervalDaemon;
@@ -214,17 +258,19 @@ export function IntervalDaemon(
       try {
         shouldContinue = doWork();
       } catch (ex) {
-        // ignore it, will retry
+        // Decide whether to stop or continue based on error? For now, assume continue.
+        shouldContinue = true;
       }
       if (shouldContinue) {
         timer = setInterval(() => {
-          let shouldContinue = true;
+          let shouldContinueInterval = true;
           try {
-            shouldContinue = doWork();
+            shouldContinueInterval = doWork();
           } catch (ex) {
-            // ignore it, will retry
+            // Decide whether to stop or continue based on error? For now, assume continue.
+            shouldContinueInterval = true;
           }
-          if (!shouldContinue) {
+          if (!shouldContinueInterval) {
             processor.stop();
           }
         }, opts.interval);
@@ -249,6 +295,8 @@ interface BackgroundRequest {
 interface CachedAudio {
   /** the text that was requested */
   readonly text: string;
+  /** the index for the text */
+  readonly index?: number;
   /** the options used to generate this audio */
   readonly options: TTSModelOptions;
   /** the final result of the request across retries */

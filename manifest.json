@@ -3,7 +3,7 @@
   "name": "Aloud",
   "version": "0.7.0",
   "minAppVersion": "0.15.0",
-  "description": "Highlight and speak text from your notes. Converts text to speech in real-time using lifelike voices from OpenAI.",
+  "description": "Highlight and speak text from your notes. Converts text to speech in real-time with lifelike voices.",
   "author": "Adrian Lyjak",
   "authorUrl": "https://github.com/adrianlyjak",
   "isDesktopOnly": false
