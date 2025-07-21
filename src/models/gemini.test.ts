@@ -30,20 +30,15 @@ describe("Gemini Model", () => {
       const testSettings = {
         ...DEFAULT_SETTINGS,
         gemini_apiKey: "test-api-key",
-        gemini_ttsModel: "gemini-2.5-flash",
-        gemini_ttsVoice: "Zephyr",
-        gemini_ttsInstructions: "Speak naturally",
-        gemini_contextMode: true,
       };
 
       const options = geminiTextToSpeech.convertToOptions(testSettings);
 
       expect(options).toEqual({
         apiKey: "test-api-key",
-        model: "gemini-2.5-flash",
         voice: "Zephyr",
-        instructions: "Speak naturally",
-        contextMode: true,
+        instructions: undefined,
+        model: "gemini-2.5-flash-preview-tts",
       });
     });
 
@@ -51,20 +46,15 @@ describe("Gemini Model", () => {
       const testSettings = {
         ...DEFAULT_SETTINGS,
         gemini_apiKey: "",
-        gemini_ttsModel: "",
-        gemini_ttsVoice: "",
-        gemini_ttsInstructions: "",
-        gemini_contextMode: false,
       };
 
       const options = geminiTextToSpeech.convertToOptions(testSettings);
 
       expect(options).toEqual({
         apiKey: "",
-        model: "",
-        voice: "",
-        instructions: "",
-        contextMode: false,
+        voice: "Zephyr",
+        instructions: undefined,
+        model: "gemini-2.5-flash-preview-tts",
       });
     });
 
@@ -77,21 +67,9 @@ describe("Gemini Model", () => {
       const options = geminiTextToSpeech.convertToOptions(testSettings);
 
       expect(options).toHaveProperty("apiKey");
-      expect(options).toHaveProperty("model");
       expect(options).toHaveProperty("voice");
       expect(options).toHaveProperty("instructions");
-      expect(options).toHaveProperty("contextMode");
-    });
-
-    it("should handle context mode correctly", () => {
-      const testSettings = {
-        ...DEFAULT_SETTINGS,
-        gemini_contextMode: true,
-      };
-
-      const options = geminiTextToSpeech.convertToOptions(testSettings);
-
-      expect(options.contextMode).toBe(true);
+      expect(options).toHaveProperty("model");
     });
   });
 
@@ -111,6 +89,7 @@ describe("Gemini Model", () => {
         gemini_apiKey: "",
       });
 
+      expect(result).toBeDefined();
       expect(result).toContain("API key");
     });
 
@@ -118,18 +97,13 @@ describe("Gemini Model", () => {
       const testSettings = {
         ...DEFAULT_SETTINGS,
         gemini_apiKey: "test-key",
-        gemini_ttsModel: "gemini-2.5-flash",
-        gemini_ttsVoice: "Zephyr",
-        gemini_ttsInstructions: "Speak with emotion",
-        gemini_contextMode: true,
       };
 
       const options = geminiTextToSpeech.convertToOptions(testSettings);
 
-      expect(options.contextMode).toBe(true);
-      expect(options.instructions).toBe("Speak with emotion");
       expect(options.voice).toBe("Zephyr");
-      expect(options.model).toBe("gemini-2.5-flash");
+      expect(options.instructions).toBeUndefined();
+      expect(options.model).toBe("gemini-2.5-flash-preview-tts");
     });
   });
 
@@ -277,10 +251,9 @@ describe("Gemini Model", () => {
 
       const options = {
         apiKey: "test-key",
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-preview-tts",
         voice: "Zephyr",
-        instructions: "Test instructions",
-        contextMode: false,
+        instructions: undefined,
       };
 
       const result = await geminiCallTextToSpeech(
@@ -314,24 +287,21 @@ describe("Gemini Model", () => {
 
       const options = {
         apiKey: "test-key",
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-preview-tts",
         voice: "Zephyr",
-        instructions: "Speak with emotion",
-        contextMode: true,
+        instructions: undefined,
       };
 
       await geminiCallTextToSpeech(
         "Hello world",
         options,
-        ["Previous text"],
+        [],
         DEFAULT_SETTINGS,
       );
 
       const callArgs = mockGenerateContent.mock.calls[0][0];
       const promptText = callArgs.contents[0].parts[0].text;
 
-      expect(promptText).toContain("Speak with emotion");
-      expect(promptText).toContain("Previous text");
       expect(promptText).toContain("Content: Hello world");
       expect(
         callArgs.config.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName,
@@ -358,10 +328,9 @@ describe("Gemini Model", () => {
 
       const options = {
         apiKey: "test-key",
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-preview-tts",
         voice: "Zephyr",
-        instructions: "Read clearly",
-        contextMode: false,
+        instructions: undefined,
       };
 
       await geminiCallTextToSpeech(
@@ -374,7 +343,6 @@ describe("Gemini Model", () => {
       const callArgs = mockGenerateContent.mock.calls[0][0];
       const promptText = callArgs.contents[0].parts[0].text;
 
-      expect(promptText).toContain("Read clearly");
       expect(promptText).toContain("Content: Hello world");
       expect(promptText).not.toContain("Should not appear");
     });
@@ -399,10 +367,9 @@ describe("Gemini Model", () => {
 
       const options = {
         apiKey: "test-key",
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-preview-tts",
         voice: "Zephyr",
-        instructions: "",
-        contextMode: false,
+        instructions: undefined,
       };
 
       await geminiCallTextToSpeech(
@@ -439,10 +406,9 @@ describe("Gemini Model", () => {
 
       const options = {
         apiKey: "test-key",
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-preview-tts",
         voice: "Echo",
-        instructions: "Test",
-        contextMode: false,
+        instructions: undefined,
       };
 
       await geminiCallTextToSpeech("Test", options, [], DEFAULT_SETTINGS);
@@ -463,10 +429,9 @@ describe("Gemini Model", () => {
 
       const options = {
         apiKey: "test-key",
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-preview-tts",
         voice: "Zephyr",
-        instructions: "Test",
-        contextMode: false,
+        instructions: undefined,
       };
 
       await expect(

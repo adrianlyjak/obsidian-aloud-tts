@@ -30,8 +30,6 @@ export interface GeminiModelConfig {
   gemini_ttsVoice: string;
   /** the instructions to use for voice quality. Only applicable to gpt-4o-mini-tts */
   gemini_ttsInstructions?: string;
-  /** whether to include previous utterances in the instructions/context */
-  gemini_contextMode: boolean;
 }
 
 export interface HumeModelConfig {
@@ -43,8 +41,6 @@ export interface HumeModelConfig {
   hume_sourceType: string;
   /** the instructions to use for voice quality */
   hume_ttsInstructions?: string;
-  /** whether to include previous utterances in the instructions/context */
-  hume_contextMode: boolean;
 }
 
 export interface OpenAIModelConfig {
@@ -80,8 +76,6 @@ export interface ElevenLabsModelConfig {
   elevenlabs_stability?: number;
   /** voice similarity boost setting (0-1) */
   elevenlabs_similarity?: number;
-  /** whether to include previous utterances as context */
-  elevenlabs_contextMode: boolean;
 }
 
 export interface AzureModelConfig {
@@ -93,8 +87,6 @@ export interface AzureModelConfig {
   azure_voice: string;
   /** the output format for the audio */
   azure_outputFormat: string;
-  /** whether to include previous utterances as context */
-  azure_contextMode: boolean;
 }
 
 export const playViewModes = [
@@ -141,13 +133,11 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   gemini_ttsModel: "gemini-2.5-flash-preview-tts",
   gemini_ttsVoice: "Zephyr",
   gemini_ttsInstructions: undefined,
-  gemini_contextMode: false,
   // hume
   hume_apiKey: "",
   hume_ttsVoice: undefined,
   hume_sourceType: "HUME_AI",
   hume_ttsInstructions: undefined,
-  hume_contextMode: false,
   // openai
   openai_apiKey: "",
   openai_ttsModel: "gpt-4o-mini-tts",
@@ -164,13 +154,11 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   elevenlabs_voice: "",
   elevenlabs_stability: 0.5,
   elevenlabs_similarity: 0.75,
-  elevenlabs_contextMode: false,
   // azure
   azure_apiKey: "",
   azure_region: "eastus",
   azure_voice: "en-US-JennyNeural",
   azure_outputFormat: "audio-24khz-96kbitrate-mono-mp3",
-  azure_contextMode: false,
 
   version: 2,
   audioFolder: "aloud",

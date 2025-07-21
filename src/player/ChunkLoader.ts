@@ -96,11 +96,7 @@ export class ChunkLoader {
         : undefined;
       const contexts = audioTextChunks?.map((x) => x.text);
 
-      const audio = this.createCachedAudio(
-        text,
-        options,
-        options.contextMode ? contexts : undefined,
-      );
+      const audio = this.createCachedAudio(text, options, contexts);
       this.localCache.push(audio);
       return audio.result;
     }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { openaiLikeTextToSpeech } from "./openai-like";
+import { openAILikeTextToSpeech } from "./openai-like";
 import { DEFAULT_SETTINGS } from "../player/TTSPluginSettings";
 
 describe("OpenAI-Like Model", () => {
@@ -13,7 +13,7 @@ describe("OpenAI-Like Model", () => {
         openaicompat_ttsVoice: "nova",
       };
 
-      const options = openaiLikeTextToSpeech.convertToOptions(testSettings);
+      const options = openAILikeTextToSpeech.convertToOptions(testSettings);
 
       expect(options).toEqual({
         apiKey: "test-api-key",
@@ -21,7 +21,6 @@ describe("OpenAI-Like Model", () => {
         model: "tts-1-hd",
         voice: "nova",
         instructions: undefined,
-        contextMode: false,
       });
     });
 
@@ -34,7 +33,7 @@ describe("OpenAI-Like Model", () => {
         openaicompat_ttsVoice: "",
       };
 
-      const options = openaiLikeTextToSpeech.convertToOptions(testSettings);
+      const options = openAILikeTextToSpeech.convertToOptions(testSettings);
 
       expect(options).toEqual({
         apiKey: "",
@@ -42,20 +41,7 @@ describe("OpenAI-Like Model", () => {
         model: "",
         voice: "",
         instructions: undefined,
-        contextMode: false,
       });
-    });
-
-    it("should use default context mode", () => {
-      const testSettings = {
-        ...DEFAULT_SETTINGS,
-        openaicompat_apiKey: "test-key",
-        openaicompat_apiBase: "https://api.example.com",
-      };
-
-      const options = openaiLikeTextToSpeech.convertToOptions(testSettings);
-
-      expect(options.contextMode).toBe(false);
     });
   });
 });

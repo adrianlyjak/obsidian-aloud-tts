@@ -2,11 +2,7 @@ import React from "react";
 import { TTSPluginSettingsStore } from "../../../player/TTSPluginSettings";
 import { observer } from "mobx-react-lite";
 import { ApiKeyComponent } from "../api-key-component";
-import {
-  OptionSelectSetting,
-  TextareaSetting,
-  CheckboxSetting,
-} from "../setting-components";
+import { OptionSelectSetting, TextareaSetting } from "../setting-components";
 
 export function GeminiSettings({ store }: { store: TTSPluginSettingsStore }) {
   return (
@@ -15,7 +11,6 @@ export function GeminiSettings({ store }: { store: TTSPluginSettingsStore }) {
       <GeminiModelComponent store={store} />
       <GeminiVoiceComponent store={store} />
       <GeminiTTSInstructionsComponent store={store} />
-      <GeminiContextModeComponent store={store} />
     </>
   );
 }
@@ -186,20 +181,6 @@ const GeminiTTSInstructionsComponent: React.FC<{
       fieldName="gemini_ttsInstructions"
       placeholder="Example: Speak in a whisper"
       rows={3}
-    />
-  );
-});
-
-const GeminiContextModeComponent: React.FC<{
-  store: TTSPluginSettingsStore;
-}> = observer(({ store }) => {
-  return (
-    <CheckboxSetting
-      name="Context Mode"
-      description="Enable context mode to improve coherence across sentences."
-      store={store}
-      provider="gemini"
-      fieldName="gemini_contextMode"
     />
   );
 });

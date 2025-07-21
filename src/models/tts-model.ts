@@ -34,8 +34,6 @@ export interface TTSModelOptions {
   voice?: string;
   /** The instructions to use for voice quality. Only applicable to some models */
   instructions?: string;
-  /** Whether to include previous utterances in the instructions/context */
-  contextMode: boolean;
   /** The base API URL to use, if there isn't a default */
   apiUri?: string;
   /** The API key to use. Not required for all models. */

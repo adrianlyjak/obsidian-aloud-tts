@@ -2,7 +2,7 @@ import { observer } from "mobx-react-lite";
 import React from "react";
 import { TTSPluginSettingsStore } from "../../../player/TTSPluginSettings";
 import { ApiKeyComponent } from "../api-key-component";
-import { OptionSelectSetting, CheckboxSetting } from "../setting-components";
+import { OptionSelectSetting } from "../setting-components";
 import {
   listElevenLabsVoices,
   listElevenLabsModels,
@@ -35,7 +35,6 @@ export const ElevenLabsSettings = observer(
         <ElevenLabsVoiceComponent store={store} />
         <ElevenLabsStabilityComponent store={store} />
         <ElevenLabsSimilarityComponent store={store} />
-        <ElevenLabsContextModeComponent store={store} />
       </>
     );
   },
@@ -265,19 +264,5 @@ const ElevenLabsSimilarityComponent: React.FC<{
         />
       </div>
     </div>
-  );
-});
-
-const ElevenLabsContextModeComponent: React.FC<{
-  store: TTSPluginSettingsStore;
-}> = observer(({ store }) => {
-  return (
-    <CheckboxSetting
-      name="Context Mode"
-      description="Include previous sentences as context to improve speech continuity"
-      store={store}
-      provider="elevenlabs"
-      fieldName="elevenlabs_contextMode"
-    />
   );
 });

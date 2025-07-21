@@ -53,13 +53,15 @@ describe("TTSPluginSettingsTab", () => {
     expect(screen.getByText("Model Provider")).toBeDefined();
     expect(screen.getByRole("button", { name: /test voice/i })).toBeDefined();
 
-    // Switch through all providers to maximize coverage
-    const select = screen.getByDisplayValue("OpenAI");
+    // Test switching between all providers
+    const selects = screen.getAllByRole("combobox");
+    const providerSelect = selects[0]; // First select should be the provider dropdown
 
     for (const provider of modelProviders) {
-      await user.selectOptions(select, provider);
+      // Select the provider option
+      await user.selectOptions(providerSelect, provider);
 
-      // Each provider switch should trigger the update function
+      // Verify the settings store was updated
       expect(stores.settingsStore.settings.modelProvider).toBe(provider);
 
       // Just verify the component rendered without crashing for this provider

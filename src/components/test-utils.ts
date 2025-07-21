@@ -125,7 +125,7 @@ export function createTestModel(): TTSModel {
     call: async (txt: string, _: TTSModelOptions) =>
       new ArrayBuffer(txt.length),
     validateConnection: async () => undefined,
-    convertToOptions: () => ({ model: "fake", contextMode: false }),
+    convertToOptions: () => ({ model: "fake" }),
   };
 }
 

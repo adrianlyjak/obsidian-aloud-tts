@@ -22,7 +22,6 @@ export const elevenLabsTextToSpeech: TTSModel = {
       apiKey: settings.elevenlabs_apiKey,
       voice: settings.elevenlabs_voice,
       model: settings.elevenlabs_model,
-      contextMode: settings.elevenlabs_contextMode,
     };
   },
 };
@@ -83,8 +82,8 @@ export async function elevenLabsCallTextToSpeech(
     }
   }
 
-  // Add context if enabled and available
-  if (options.contextMode && contexts && contexts.length > 0) {
+  // Add context if available (ElevenLabs supports context)
+  if (contexts && contexts.length > 0) {
     requestBody.previous_text = contexts.join(" ");
   }
 

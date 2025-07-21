@@ -22,11 +22,9 @@ describe("OpenAI Model API", () => {
   describe("openAICallTextToSpeech", () => {
     const mockOptions: TTSModelOptions = {
       apiKey: "test-api-key",
-      apiUri: OPENAI_API_URL,
+      apiUri: "https://api.openai.com",
       voice: "alloy",
-      instructions: undefined, // Test without instructions to avoid the bug
       model: "tts-1",
-      contextMode: false,
     };
 
     it("should make correct API call for basic TTS request", async () => {
@@ -61,44 +59,6 @@ describe("OpenAI Model API", () => {
       });
 
       expect(result).toBe(mockAudioBuffer);
-    });
-
-    it("should include context when contextMode is enabled", async () => {
-      const mockAudioBuffer = new ArrayBuffer(512);
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        arrayBuffer: vi.fn().mockResolvedValue(mockAudioBuffer),
-      };
-
-      vi.mocked(fetch).mockResolvedValue(mockResponse as any);
-
-      const optionsWithContext: TTSModelOptions = {
-        ...mockOptions,
-        contextMode: true,
-        instructions: "Speak clearly", // Add instructions for this test
-      };
-
-      await openAICallTextToSpeech(
-        "Continue the story",
-        optionsWithContext,
-        ["Once upon a time", "there was a dragon"],
-        DEFAULT_SETTINGS,
-      );
-
-      expect(fetch).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          body: JSON.stringify({
-            model: "tts-1",
-            voice: "alloy",
-            instructions:
-              "Speak clearly\n\n Previous sentence(s) (Context): Once upon a timethere was a dragon",
-            input: "Continue the story",
-            speed: 1.0,
-          }),
-        }),
-      );
     });
 
     it("should use custom API URL when provided", async () => {

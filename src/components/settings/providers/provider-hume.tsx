@@ -6,7 +6,6 @@ import {
   OptionSelectSetting,
   TextInputSetting,
   TextareaSetting,
-  CheckboxSetting,
 } from "../setting-components";
 import { listModels } from "../../../models/hume";
 
@@ -43,7 +42,6 @@ export const HumeSettings = observer(
         />
         <HumeVoiceComponent store={store} />
         <HumeTTSInstructionsComponent store={store} />
-        <HumeContextModeComponent store={store} />
       </>
     );
   },
@@ -186,20 +184,6 @@ const HumeTTSInstructionsComponent: React.FC<{
       fieldName="hume_ttsInstructions"
       placeholder="Example: Speak in a whisper"
       rows={3}
-    />
-  );
-});
-
-const HumeContextModeComponent: React.FC<{
-  store: TTSPluginSettingsStore;
-}> = observer(({ store }) => {
-  return (
-    <CheckboxSetting
-      name="Context Mode"
-      description="Enable context mode to improve coherence across sentences."
-      store={store}
-      provider="hume"
-      fieldName="hume_contextMode"
     />
   );
 });

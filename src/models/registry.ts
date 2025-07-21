@@ -3,7 +3,7 @@ import { TTSModel } from "./tts-model";
 import { openAITextToSpeech } from "./openai";
 import { geminiTextToSpeech } from "./gemini";
 import { humeTextToSpeech } from "./hume";
-import { openaiLikeTextToSpeech } from "./openai-like";
+import { openAILikeTextToSpeech } from "./openai-like";
 import { elevenLabsTextToSpeech } from "./elevenlabs";
 import { azureTextToSpeech } from "./azure";
 
@@ -11,7 +11,7 @@ export const REGISTRY: Record<ModelProvider, TTSModel> = {
   openai: openAITextToSpeech,
   gemini: geminiTextToSpeech,
   hume: humeTextToSpeech,
-  openaicompat: openaiLikeTextToSpeech,
+  openaicompat: openAILikeTextToSpeech,
   elevenlabs: elevenLabsTextToSpeech,
   azure: azureTextToSpeech,
 };
