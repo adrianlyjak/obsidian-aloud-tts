@@ -17,6 +17,8 @@ import { GeminiSettings } from "./settings/gemini";
 import { HumeSettings } from "./settings/hume";
 import { OpenAISettings } from "./settings/openai";
 import { OpenAICompatibleSettings } from "./settings/openai-like";
+import { ElevenLabsSettings } from "./settings/elevenlabs";
+import { AzureSettings } from "./settings/azure";
 import { OptionSelect } from "./settings/option-select";
 
 export const TTSSettingsTabComponent: React.FC<{
@@ -46,6 +48,12 @@ export const TTSSettingsTabComponent: React.FC<{
       )}
       {store.settings.modelProvider === "openaicompat" && (
         <OpenAICompatibleSettings store={store} />
+      )}
+      {store.settings.modelProvider === "elevenlabs" && (
+        <ElevenLabsSettings store={store} />
+      )}
+      {store.settings.modelProvider === "azure" && (
+        <AzureSettings store={store} />
       )}
 
       <h1>User Interface</h1>
@@ -84,6 +92,8 @@ const labels: Record<ModelProvider, string> = {
   hume: "Hume",
   openai: "OpenAI",
   openaicompat: "OpenAI Compatible (Advanced)",
+  elevenlabs: "ElevenLabs",
+  azure: "Azure Speech Services",
 };
 
 const ModelSwitcher: React.FC<{
