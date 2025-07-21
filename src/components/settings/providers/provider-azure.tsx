@@ -1,13 +1,13 @@
 import { observer } from "mobx-react-lite";
 import React from "react";
-import { TTSPluginSettingsStore } from "../../player/TTSPluginSettings";
-import { ApiKeyComponent } from "./api-key-component";
-import { OptionSelectSetting, CheckboxSetting } from "./setting-components";
+import { TTSPluginSettingsStore } from "../../../player/TTSPluginSettings";
+import { ApiKeyComponent } from "../api-key-component";
+import { OptionSelectSetting, CheckboxSetting } from "../setting-components";
 import {
   listAzureVoices,
   AZURE_REGIONS,
   AZURE_OUTPUT_FORMATS,
-} from "../../models/azure";
+} from "../../../models/azure";
 
 export const AzureSettings = observer(
   ({ store }: { store: TTSPluginSettingsStore }) => {

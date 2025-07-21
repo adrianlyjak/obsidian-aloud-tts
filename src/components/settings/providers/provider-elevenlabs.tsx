@@ -1,12 +1,12 @@
 import { observer } from "mobx-react-lite";
 import React from "react";
-import { TTSPluginSettingsStore } from "../../player/TTSPluginSettings";
-import { ApiKeyComponent } from "./api-key-component";
-import { OptionSelectSetting, CheckboxSetting } from "./setting-components";
+import { TTSPluginSettingsStore } from "../../../player/TTSPluginSettings";
+import { ApiKeyComponent } from "../api-key-component";
+import { OptionSelectSetting, CheckboxSetting } from "../setting-components";
 import {
   listElevenLabsVoices,
   listElevenLabsModels,
-} from "../../models/elevenlabs";
+} from "../../../models/elevenlabs";
 
 export const ElevenLabsSettings = observer(
   ({ store }: { store: TTSPluginSettingsStore }) => {

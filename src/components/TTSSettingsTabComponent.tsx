@@ -13,12 +13,12 @@ import {
 import { IconButton, IconSpan, Spinner } from "./IconButton";
 import { TTSErrorInfoDetails, TTSErrorInfoView } from "./PlayerView";
 import { hasNamedVoice, REGISTRY } from "../models/registry";
-import { GeminiSettings } from "./settings/gemini";
-import { HumeSettings } from "./settings/hume";
-import { OpenAISettings } from "./settings/openai";
-import { OpenAICompatibleSettings } from "./settings/openai-like";
-import { ElevenLabsSettings } from "./settings/elevenlabs";
-import { AzureSettings } from "./settings/azure";
+import { GeminiSettings } from "./settings/providers/provider-gemini";
+import { HumeSettings } from "./settings/providers/provider-hume";
+import { OpenAISettings } from "./settings/providers/provider-openai";
+import { OpenAICompatibleSettings } from "./settings/providers/provider-openai-like";
+import { ElevenLabsSettings } from "./settings/providers/provider-elevenlabs";
+import { AzureSettings } from "./settings/providers/provider-azure";
 import { OptionSelect } from "./settings/option-select";
 
 export const TTSSettingsTabComponent: React.FC<{

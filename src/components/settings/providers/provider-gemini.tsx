@@ -1,12 +1,12 @@
 import React from "react";
-import { TTSPluginSettingsStore } from "../../player/TTSPluginSettings";
+import { TTSPluginSettingsStore } from "../../../player/TTSPluginSettings";
 import { observer } from "mobx-react-lite";
-import { ApiKeyComponent } from "./api-key-component";
+import { ApiKeyComponent } from "../api-key-component";
 import {
   OptionSelectSetting,
   TextareaSetting,
   CheckboxSetting,
-} from "./setting-components";
+} from "../setting-components";
 
 export function GeminiSettings({ store }: { store: TTSPluginSettingsStore }) {
   return (

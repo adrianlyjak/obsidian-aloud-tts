@@ -1,14 +1,14 @@
 import React from "react";
-import { TTSPluginSettingsStore } from "../../player/TTSPluginSettings";
+import { TTSPluginSettingsStore } from "../../../player/TTSPluginSettings";
 import { observer } from "mobx-react-lite";
-import { ApiKeyComponent } from "./api-key-component";
+import { ApiKeyComponent } from "../api-key-component";
 import {
   OptionSelectSetting,
   TextInputSetting,
   TextareaSetting,
   CheckboxSetting,
-} from "./setting-components";
-import { listModels } from "../../models/hume";
+} from "../setting-components";
+import { listModels } from "../../../models/hume";
 
 export const HumeSettings = observer(
   ({ store }: { store: TTSPluginSettingsStore }) => {
