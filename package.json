@@ -7,6 +7,7 @@
     "all": "pnpm run lint; pnpm run format:check; pnpm run test run; pnpm run build",
     "dev": "node esbuild.config.mjs",
     "typecheck": "tsc -noEmit -skipLibCheck",
+    "typecheck:staged": "bash -c 'tsc -noEmit -skipLibCheck'",
     "build": "pnpm run typecheck && node esbuild.config.mjs production",
     "version": "./version-bump.sh",
     "lint": "eslint src",
@@ -69,7 +70,7 @@
     "src/**/*.{ts,tsx}": [
       "prettier --check",
       "eslint",
-      "pnpm run typecheck"
+      "pnpm run typecheck:staged"
     ]
   },
   "pnpm": {

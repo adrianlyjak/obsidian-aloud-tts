@@ -41,6 +41,14 @@ export const ElevenLabsSettings = observer(
   },
 );
 
+// Add fallback options if no API key
+const fallbackOptions = [
+  { name: "Eleven Multilingual v2", id: "eleven_multilingual_v2" },
+  { name: "Eleven Flash v2.5", id: "eleven_flash_v2.5" },
+  { name: "Eleven Turbo v2.5", id: "eleven_turbo_v2.5" },
+  { name: "Eleven v3", id: "eleven_v3" },
+];
+
 const ElevenLabsModelComponent: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
@@ -62,31 +70,19 @@ const ElevenLabsModelComponent: React.FC<{
         setModels(fetchedModels);
       } catch (error) {
         console.error("Failed to fetch ElevenLabs models:", error);
-        // Fallback to default models
-        setModels([
-          { id: "eleven_multilingual_v2", name: "Eleven Multilingual v2" },
-          { id: "eleven_flash_v2.5", name: "Eleven Flash v2.5" },
-          { id: "eleven_turbo_v2.5", name: "Eleven Turbo v2.5" },
-          { id: "eleven_v3", name: "Eleven v3" },
-        ]);
+        setModels(fallbackOptions);
       }
     };
 
     fetchModels();
   }, [apiKey]);
 
-  const modelOptions = models.map((model) => ({
-    label: model.name,
-    value: model.id,
-  }));
-
-  // Add fallback options if no API key
-  const fallbackOptions = [
-    { label: "Eleven Multilingual v2", value: "eleven_multilingual_v2" },
-    { label: "Eleven Flash v2.5", value: "eleven_flash_v2.5" },
-    { label: "Eleven Turbo v2.5", value: "eleven_turbo_v2.5" },
-    { label: "Eleven v3", value: "eleven_v3" },
-  ];
+  const modelOptions = (models.length > 0 ? models : fallbackOptions).map(
+    (model) => ({
+      label: model.name,
+      value: model.id,
+    }),
+  );
 
   return (
     <OptionSelectSetting
@@ -95,7 +91,7 @@ const ElevenLabsModelComponent: React.FC<{
       store={store}
       provider="elevenlabs"
       fieldName="elevenlabs_model"
-      options={modelOptions.length > 0 ? modelOptions : fallbackOptions}
+      options={modelOptions}
     />
   );
 });
