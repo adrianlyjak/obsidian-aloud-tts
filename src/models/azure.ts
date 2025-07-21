@@ -27,7 +27,7 @@ export const azureTextToSpeech: TTSModel = {
       apiUri: `https://${settings.azure_region}.tts.speech.microsoft.com`,
       voice: settings.azure_voice,
       model: settings.azure_outputFormat,
-      contextMode: settings.azure_contextMode,
+      contextMode: false,
     };
   },
 };
@@ -63,18 +63,9 @@ export async function azureCallTextToSpeech(
     throw new Error("Voice is required for Azure TTS");
   }
 
-  // Build SSML content
-  let ssmlText = text;
-
-  // Add context if enabled and available
-  if (options.contextMode && contexts && contexts.length > 0) {
-    // For Azure, we can prepend context as part of the speech
-    ssmlText = contexts.join("") + text;
-  }
-
   const ssmlBody = `<speak version='1.0' xml:lang='en-US'>
     <voice xml:lang='en-US' name='${options.voice}'>
-      ${escapeXml(ssmlText)}
+      ${escapeXml(text)}
     </voice>
   </speak>`;
 
