@@ -9,7 +9,6 @@ export const OpenAICompatibleSettings = observer(
   ({ store }: { store: TTSPluginSettingsStore }) => {
     return (
       <>
-        <h1>OpenAI Compatible API</h1>
         <ApiKeyComponent
           store={store}
           provider="openaicompat"

@@ -13,7 +13,6 @@ export const AzureSettings = observer(
   ({ store }: { store: TTSPluginSettingsStore }) => {
     return (
       <>
-        <h1>Azure Speech Services</h1>
         <ApiKeyComponent
           store={store}
           provider="azure"

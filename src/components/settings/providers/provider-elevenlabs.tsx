@@ -12,7 +12,6 @@ export const ElevenLabsSettings = observer(
   ({ store }: { store: TTSPluginSettingsStore }) => {
     return (
       <>
-        <h1>ElevenLabs</h1>
         <ApiKeyComponent
           store={store}
           provider="elevenlabs"

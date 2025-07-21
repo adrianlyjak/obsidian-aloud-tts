@@ -8,7 +8,6 @@ export const OpenAISettings = observer(
   ({ store }: { store: TTSPluginSettingsStore }) => {
     return (
       <>
-        <h1>OpenAI</h1>
         <ApiKeyComponent
           store={store}
           provider="openai"

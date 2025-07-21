@@ -14,7 +14,6 @@ export const HumeSettings = observer(
   ({ store }: { store: TTSPluginSettingsStore }) => {
     return (
       <>
-        <h1>Hume</h1>
         <ApiKeyComponent
           store={store}
           provider="hume"

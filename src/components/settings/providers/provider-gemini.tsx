@@ -11,7 +11,6 @@ import {
 export function GeminiSettings({ store }: { store: TTSPluginSettingsStore }) {
   return (
     <>
-      <h1>Google Gemini</h1>
       <GeminiApiKeyComponent store={store} />
       <GeminiModelComponent store={store} />
       <GeminiVoiceComponent store={store} />

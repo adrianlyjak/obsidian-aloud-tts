@@ -120,12 +120,12 @@ export function voiceHash(options: TTSModelOptions): string {
 }
 
 export const modelProviders = [
-  "gemini",
-  "hume",
   "openai",
   "openaicompat",
-  "elevenlabs",
   "azure",
+  "elevenlabs",
+  "gemini",
+  "hume",
 ] as const;
 export type ModelProvider = (typeof modelProviders)[number];
 
