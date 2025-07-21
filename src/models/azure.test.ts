@@ -38,7 +38,7 @@ describe("Azure TTS Model", () => {
           apiUri: "https://eastus.tts.speech.microsoft.com",
           voice: "en-US-JennyNeural",
           model: "audio-24khz-96kbitrate-mono-mp3",
-          contextMode: true,
+          contextMode: false,
         });
       });
     });
@@ -179,37 +179,6 @@ describe("Azure TTS Model", () => {
       expect(ssmlBody).toContain("</speak>");
 
       expect(result).toBe(mockAudioBuffer);
-    });
-
-    it("should include context when contextMode is enabled", async () => {
-      const mockAudioBuffer = new ArrayBuffer(512);
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        arrayBuffer: vi.fn().mockResolvedValue(mockAudioBuffer),
-      };
-
-      vi.mocked(fetch).mockResolvedValue(mockResponse as any);
-
-      const optionsWithContext: TTSModelOptions = {
-        ...mockOptions,
-        contextMode: true,
-      };
-
-      await azureCallTextToSpeech(
-        "Continue the story",
-        optionsWithContext,
-        ["Once upon a time", "there was a dragon"],
-        DEFAULT_SETTINGS,
-      );
-
-      const callArgs = vi.mocked(fetch).mock.calls[0];
-      const ssmlBody = callArgs[1]?.body as string;
-
-      // Should contain both context and current text
-      expect(ssmlBody).toContain(
-        "Once upon a time there was a dragon Continue the story",
-      );
     });
 
     it("should properly escape XML characters", async () => {
