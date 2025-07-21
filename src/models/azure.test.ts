@@ -29,7 +29,6 @@ describe("Azure TTS Model", () => {
           azure_region: "eastus",
           azure_voice: "en-US-JennyNeural",
           azure_outputFormat: "audio-24khz-96kbitrate-mono-mp3",
-          azure_contextMode: true,
         };
 
         const options = azureTextToSpeech.convertToOptions(testSettings);

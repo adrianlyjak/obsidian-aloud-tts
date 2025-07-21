@@ -2,7 +2,7 @@ import { observer } from "mobx-react-lite";
 import React from "react";
 import { TTSPluginSettingsStore } from "../../../player/TTSPluginSettings";
 import { ApiKeyComponent } from "../api-key-component";
-import { OptionSelectSetting, CheckboxSetting } from "../setting-components";
+import { OptionSelectSetting } from "../setting-components";
 import {
   listAzureVoices,
   AZURE_REGIONS,
@@ -35,7 +35,6 @@ export const AzureSettings = observer(
         <AzureRegionComponent store={store} />
         <AzureVoiceComponent store={store} />
         <AzureOutputFormatComponent store={store} />
-        <AzureContextModeComponent store={store} />
       </>
     );
   },
@@ -171,20 +170,6 @@ const AzureOutputFormatComponent: React.FC<{
       provider="azure"
       fieldName="azure_outputFormat"
       options={AZURE_OUTPUT_FORMATS}
-    />
-  );
-});
-
-const AzureContextModeComponent: React.FC<{
-  store: TTSPluginSettingsStore;
-}> = observer(({ store }) => {
-  return (
-    <CheckboxSetting
-      name="Context Mode"
-      description="Include previous sentences as context to improve speech continuity"
-      store={store}
-      provider="azure"
-      fieldName="azure_contextMode"
     />
   );
 });

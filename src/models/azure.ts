@@ -69,7 +69,7 @@ export async function azureCallTextToSpeech(
   // Add context if enabled and available
   if (options.contextMode && contexts && contexts.length > 0) {
     // For Azure, we can prepend context as part of the speech
-    ssmlText = contexts.join(" ") + " " + text;
+    ssmlText = contexts.join("") + text;
   }
 
   const ssmlBody = `<speak version='1.0' xml:lang='en-US'>
