@@ -2,9 +2,9 @@ import { observer } from "mobx-react-lite";
 import * as React from "react";
 import { AudioStore } from "../player/AudioStore";
 import {
+  MARKETING_NAME,
   ModelProvider,
   PlayerViewMode,
-  MARKETING_NAME,
   TTSPluginSettingsStore,
   isPlayerViewMode,
   modelProviders,
@@ -12,12 +12,13 @@ import {
 } from "../player/TTSPluginSettings";
 import { IconButton, IconSpan, Spinner } from "./IconButton";
 import { TTSErrorInfoDetails, TTSErrorInfoView } from "./PlayerView";
-import { hasNamedVoice, REGISTRY } from "../models/registry";
-import { GeminiSettings } from "./settings/gemini";
-import { HumeSettings } from "./settings/hume";
-import { OpenAISettings } from "./settings/openai";
-import { OpenAICompatibleSettings } from "./settings/openai-like";
 import { OptionSelect } from "./settings/option-select";
+import { AzureSettings } from "./settings/providers/provider-azure";
+import { ElevenLabsSettings } from "./settings/providers/provider-elevenlabs";
+import { GeminiSettings } from "./settings/providers/provider-gemini";
+import { HumeSettings } from "./settings/providers/provider-hume";
+import { OpenAISettings } from "./settings/providers/provider-openai";
+import { OpenAICompatibleSettings } from "./settings/providers/provider-openai-like";
 
 export const TTSSettingsTabComponent: React.FC<{
   store: TTSPluginSettingsStore;
@@ -34,7 +35,20 @@ export const TTSSettingsTabComponent: React.FC<{
         isActive={isActive}
         setActive={setActive}
       />
-      <ModelSwitcher store={store} />
+      <div
+        style={{
+          display: "flex",
+          width: "100%",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <h1 style={{ display: "inline-block" }}>Model Provider</h1>
+        <div style={{ display: "inline-block" }}>
+          <ModelSwitcher store={store} />
+        </div>
+      </div>
+
       {store.settings.modelProvider === "gemini" && (
         <GeminiSettings store={store} />
       )}
@@ -46,6 +60,12 @@ export const TTSSettingsTabComponent: React.FC<{
       )}
       {store.settings.modelProvider === "openaicompat" && (
         <OpenAICompatibleSettings store={store} />
+      )}
+      {store.settings.modelProvider === "elevenlabs" && (
+        <ElevenLabsSettings store={store} />
+      )}
+      {store.settings.modelProvider === "azure" && (
+        <AzureSettings store={store} />
       )}
 
       <h1>User Interface</h1>
@@ -80,33 +100,25 @@ const ErrorInfoView: React.FC<{
 });
 
 const labels: Record<ModelProvider, string> = {
-  gemini: "Google Gemini",
-  hume: "Hume",
   openai: "OpenAI",
   openaicompat: "OpenAI Compatible (Advanced)",
+  azure: "Azure Speech Services",
+  elevenlabs: "ElevenLabs",
+  gemini: "Google Gemini",
+  hume: "Hume",
 };
 
 const ModelSwitcher: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
   return (
-    <div className="setting-item">
-      <div className="setting-item-info">
-        <div className="setting-item-name">Model Provider</div>
-        <div className="setting-item-description">
-          The model provider to use
-        </div>
-      </div>
-      <div className="setting-item-control">
-        <OptionSelect
-          options={modelProviders.map((v) => ({ label: labels[v], value: v }))}
-          value={store.settings.modelProvider}
-          onChange={(v) =>
-            store.updateModelSpecificSettings(v as ModelProvider, {})
-          }
-        />
-      </div>
-    </div>
+    <OptionSelect
+      options={modelProviders.map((v) => ({ label: labels[v], value: v }))}
+      value={store.settings.modelProvider}
+      onChange={(v) =>
+        store.updateModelSpecificSettings(v as ModelProvider, {})
+      }
+    />
   );
 });
 
@@ -355,21 +367,18 @@ const TestVoiceComponent: React.FC<{
 }> = observer(({ store, player, isActive, setActive }) => {
   const isPlaying = player.activeText?.isPlaying && isActive;
   const isLoading = player.activeText?.isLoading;
-  const opts = REGISTRY[store.settings.modelProvider].convertToOptions(
-    store.settings,
+
+  const [testText, setTestText] = React.useState(
+    "When the sunlight strikes raindrops in the air, they act as a prism and form a rainbow. The rainbow is a division of white light into many beautiful colors. These take the shape of a long round arch, with its path high above, and its two ends apparently beyond the horizon. There is , according to legend, a boiling pot of gold at one end. People look, but no one ever finds it.",
   );
+
   const playSample = React.useCallback(() => {
     if (!isPlaying) {
-      let text;
-      let filename;
-
-      if (!opts.voice || !hasNamedVoice(store.settings.modelProvider)) {
-        text = `Hi, I'm a virtual text to speech assistant.`;
-        filename = "sample";
-      } else {
-        text = `Hi, I'm ${opts.voice}. I'm a virtual text to speech assistant.`;
-        filename = "sample " + opts.voice;
+      const text = testText;
+      if (!text.trim()) {
+        return;
       }
+      const filename = "sample";
       player.startPlayer({
         text,
         filename,
@@ -382,28 +391,51 @@ const TestVoiceComponent: React.FC<{
     } else {
       player.activeText?.pause();
     }
-  }, [opts.voice, isPlaying, store.settings.modelProvider]);
+  }, [testText, isPlaying, isActive, player, setActive]);
+
+  const onTextChange: React.ChangeEventHandler<HTMLTextAreaElement> =
+    React.useCallback((e) => {
+      setTestText(e.target.value);
+    }, []);
+
+  const canPlay = !!testText.trim();
+
   return (
-    <div className="setting-item">
-      <div className="setting-item-info">
-        <div className="setting-item-name">Test Voice</div>
-        <div className="setting-item-description">
-          Test the voice to see how it sounds
+    <>
+      <div className="setting-item">
+        <div className="setting-item-info">
+          <div className="setting-item-name">Test Voice</div>
+          <div className="setting-item-description">
+            Test the voice with a custom phrase to see how it sounds.
+          </div>
+        </div>
+        <div className="setting-item-control">
+          <button
+            onClick={playSample}
+            disabled={!canPlay && !isPlaying}
+            className="mod-cta"
+          >
+            {isLoading ? (
+              <Spinner style={{ marginRight: "0.5em" }} delay={250} />
+            ) : (
+              <IconSpan
+                style={{ marginRight: "0.5em" }}
+                icon={isPlaying ? "pause" : "play"}
+              />
+            )}{" "}
+            Test Voice
+          </button>
         </div>
       </div>
-      <div className="setting-item-control">
-        <button onClick={playSample}>
-          {isLoading ? (
-            <Spinner style={{ marginRight: "0.5em" }} delay={250} />
-          ) : (
-            <IconSpan
-              style={{ marginRight: "0.5em" }}
-              icon={isPlaying ? "pause" : "play"}
-            />
-          )}{" "}
-          Test Voice
-        </button>
+      <div>
+        <textarea
+          rows={3}
+          value={testText}
+          onChange={onTextChange}
+          style={{ width: "100%", marginBottom: "0.5em" }}
+          placeholder="Enter text to test..."
+        />
       </div>
-    </div>
+    </>
   );
 });

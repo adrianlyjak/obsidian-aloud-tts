@@ -17,7 +17,9 @@ export type TTSPluginSettings = {
 } & (GeminiModelConfig &
   HumeModelConfig &
   OpenAIModelConfig &
-  OpenAICompatModelConfig);
+  OpenAICompatModelConfig &
+  ElevenLabsModelConfig &
+  AzureModelConfig);
 
 export interface GeminiModelConfig {
   /** the API key to use */
@@ -67,6 +69,34 @@ export interface OpenAICompatModelConfig {
   openaicompat_ttsVoice: string;
 }
 
+export interface ElevenLabsModelConfig {
+  /** the API key to use */
+  elevenlabs_apiKey: string;
+  /** the model to use */
+  elevenlabs_model: string;
+  /** the voice ID to use. Required */
+  elevenlabs_voice: string;
+  /** voice stability setting (0-1) */
+  elevenlabs_stability?: number;
+  /** voice similarity boost setting (0-1) */
+  elevenlabs_similarity?: number;
+  /** whether to include previous utterances as context */
+  elevenlabs_contextMode: boolean;
+}
+
+export interface AzureModelConfig {
+  /** the API key to use */
+  azure_apiKey: string;
+  /** the Azure region to use */
+  azure_region: string;
+  /** the voice to use. Required */
+  azure_voice: string;
+  /** the output format for the audio */
+  azure_outputFormat: string;
+  /** whether to include previous utterances as context */
+  azure_contextMode: boolean;
+}
+
 export const playViewModes = [
   "always",
   "always-mobile",
@@ -90,10 +120,12 @@ export function voiceHash(options: TTSModelOptions): string {
 }
 
 export const modelProviders = [
-  "gemini",
-  "hume",
   "openai",
   "openaicompat",
+  "azure",
+  "elevenlabs",
+  "gemini",
+  "hume",
 ] as const;
 export type ModelProvider = (typeof modelProviders)[number];
 
@@ -126,6 +158,19 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   openaicompat_apiBase: "",
   openaicompat_ttsModel: "",
   openaicompat_ttsVoice: "",
+  // elevenlabs
+  elevenlabs_apiKey: "",
+  elevenlabs_model: "eleven_multilingual_v2",
+  elevenlabs_voice: "",
+  elevenlabs_stability: 0.5,
+  elevenlabs_similarity: 0.75,
+  elevenlabs_contextMode: false,
+  // azure
+  azure_apiKey: "",
+  azure_region: "eastus",
+  azure_voice: "en-US-JennyNeural",
+  azure_outputFormat: "audio-24khz-96kbitrate-mono-mp3",
+  azure_contextMode: false,
 
   version: 2,
   audioFolder: "aloud",

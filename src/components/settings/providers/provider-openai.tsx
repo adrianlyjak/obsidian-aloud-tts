@@ -1,14 +1,13 @@
 import { observer } from "mobx-react-lite";
 import React from "react";
-import { TTSPluginSettingsStore } from "../../player/TTSPluginSettings";
-import { ApiKeyComponent } from "./api-key-component";
-import { OptionSelectSetting, TextareaSetting } from "./setting-components";
+import { TTSPluginSettingsStore } from "../../../player/TTSPluginSettings";
+import { ApiKeyComponent } from "../api-key-component";
+import { OptionSelectSetting, TextareaSetting } from "../setting-components";
 
 export const OpenAISettings = observer(
   ({ store }: { store: TTSPluginSettingsStore }) => {
     return (
       <>
-        <h1>OpenAI</h1>
         <ApiKeyComponent
           store={store}
           provider="openai"

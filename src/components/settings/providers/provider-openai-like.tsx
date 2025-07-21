@@ -1,15 +1,14 @@
 import { observer } from "mobx-react-lite";
 import React from "react";
-import { OPENAI_API_URL } from "../../models/openai";
-import { TTSPluginSettingsStore } from "../../player/TTSPluginSettings";
-import { ApiKeyComponent } from "./api-key-component";
-import { TextInputSetting } from "./setting-components";
+import { OPENAI_API_URL } from "../../../models/openai";
+import { TTSPluginSettingsStore } from "../../../player/TTSPluginSettings";
+import { ApiKeyComponent } from "../api-key-component";
+import { TextInputSetting } from "../setting-components";
 
 export const OpenAICompatibleSettings = observer(
   ({ store }: { store: TTSPluginSettingsStore }) => {
     return (
       <>
-        <h1>OpenAI Compatible API</h1>
         <ApiKeyComponent
           store={store}
           provider="openaicompat"
