@@ -19,15 +19,18 @@ describe("Hume Model", () => {
       const testSettings = {
         ...DEFAULT_SETTINGS,
         hume_apiKey: "test-api-key",
+        hume_ttsVoice: "test-voice-uuid",
+        hume_sourceType: "shared",
+        hume_ttsInstructions: "Emotional speech",
       };
 
       const options = humeTextToSpeech.convertToOptions(testSettings);
 
       expect(options).toEqual({
         apiKey: "test-api-key",
-        model: "HUME_AI",
-        voice: undefined,
-        instructions: undefined,
+        model: "shared",
+        voice: "test-voice-uuid",
+        instructions: "Emotional speech",
       });
     });
 
@@ -35,15 +38,18 @@ describe("Hume Model", () => {
       const testSettings = {
         ...DEFAULT_SETTINGS,
         hume_apiKey: "",
+        hume_ttsVoice: "",
+        hume_sourceType: "",
+        hume_ttsInstructions: "",
       };
 
       const options = humeTextToSpeech.convertToOptions(testSettings);
 
       expect(options).toEqual({
         apiKey: "",
-        model: "HUME_AI",
-        voice: undefined,
-        instructions: undefined,
+        model: "",
+        voice: "",
+        instructions: "",
       });
     });
 
@@ -51,11 +57,12 @@ describe("Hume Model", () => {
       const testSettings = {
         ...DEFAULT_SETTINGS,
         hume_apiKey: "test-key",
+        hume_sourceType: "custom",
       };
 
       const options = humeTextToSpeech.convertToOptions(testSettings);
 
-      expect(options.model).toBe("HUME_AI");
+      expect(options.model).toBe("custom");
     });
 
     it("should handle undefined voice", () => {

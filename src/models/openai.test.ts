@@ -22,8 +22,9 @@ describe("OpenAI Model API", () => {
   describe("openAICallTextToSpeech", () => {
     const mockOptions: TTSModelOptions = {
       apiKey: "test-api-key",
-      apiUri: "https://api.openai.com",
+      apiUri: OPENAI_API_URL,
       voice: "alloy",
+      instructions: undefined,
       model: "tts-1",
     };
 

@@ -30,15 +30,18 @@ describe("Gemini Model", () => {
       const testSettings = {
         ...DEFAULT_SETTINGS,
         gemini_apiKey: "test-api-key",
+        gemini_ttsModel: "gemini-2.5-flash",
+        gemini_ttsVoice: "Zephyr",
+        gemini_ttsInstructions: "Speak naturally",
       };
 
       const options = geminiTextToSpeech.convertToOptions(testSettings);
 
       expect(options).toEqual({
         apiKey: "test-api-key",
+        model: "gemini-2.5-flash",
         voice: "Zephyr",
-        instructions: undefined,
-        model: "gemini-2.5-flash-preview-tts",
+        instructions: "Speak naturally",
       });
     });
 
@@ -46,15 +49,18 @@ describe("Gemini Model", () => {
       const testSettings = {
         ...DEFAULT_SETTINGS,
         gemini_apiKey: "",
+        gemini_ttsModel: "",
+        gemini_ttsVoice: "",
+        gemini_ttsInstructions: "",
       };
 
       const options = geminiTextToSpeech.convertToOptions(testSettings);
 
       expect(options).toEqual({
         apiKey: "",
-        voice: "Zephyr",
-        instructions: undefined,
-        model: "gemini-2.5-flash-preview-tts",
+        model: "",
+        voice: "",
+        instructions: "",
       });
     });
 
@@ -93,17 +99,20 @@ describe("Gemini Model", () => {
       expect(result).toContain("API key");
     });
 
-    it("should convert settings correctly for context mode", () => {
+    it("should convert settings correctly with custom values", () => {
       const testSettings = {
         ...DEFAULT_SETTINGS,
         gemini_apiKey: "test-key",
+        gemini_ttsModel: "gemini-2.5-flash",
+        gemini_ttsVoice: "Zephyr",
+        gemini_ttsInstructions: "Speak with emotion",
       };
 
       const options = geminiTextToSpeech.convertToOptions(testSettings);
 
+      expect(options.instructions).toBe("Speak with emotion");
       expect(options.voice).toBe("Zephyr");
-      expect(options.instructions).toBeUndefined();
-      expect(options.model).toBe("gemini-2.5-flash-preview-tts");
+      expect(options.model).toBe("gemini-2.5-flash");
     });
   });
 
@@ -251,9 +260,9 @@ describe("Gemini Model", () => {
 
       const options = {
         apiKey: "test-key",
-        model: "gemini-2.5-flash-preview-tts",
+        model: "gemini-2.5-flash",
         voice: "Zephyr",
-        instructions: undefined,
+        instructions: "Test instructions",
       };
 
       const result = await geminiCallTextToSpeech(
@@ -287,21 +296,23 @@ describe("Gemini Model", () => {
 
       const options = {
         apiKey: "test-key",
-        model: "gemini-2.5-flash-preview-tts",
+        model: "gemini-2.5-flash",
         voice: "Zephyr",
-        instructions: undefined,
+        instructions: "Speak with emotion",
       };
 
       await geminiCallTextToSpeech(
         "Hello world",
         options,
-        [],
+        ["Previous text"],
         DEFAULT_SETTINGS,
       );
 
       const callArgs = mockGenerateContent.mock.calls[0][0];
       const promptText = callArgs.contents[0].parts[0].text;
 
+      expect(promptText).toContain("Speak with emotion");
+      expect(promptText).toContain("Previous text");
       expect(promptText).toContain("Content: Hello world");
       expect(
         callArgs.config.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName,
@@ -328,9 +339,9 @@ describe("Gemini Model", () => {
 
       const options = {
         apiKey: "test-key",
-        model: "gemini-2.5-flash-preview-tts",
+        model: "gemini-2.5-flash",
         voice: "Zephyr",
-        instructions: undefined,
+        instructions: "Read clearly",
       };
 
       await geminiCallTextToSpeech(
@@ -343,6 +354,7 @@ describe("Gemini Model", () => {
       const callArgs = mockGenerateContent.mock.calls[0][0];
       const promptText = callArgs.contents[0].parts[0].text;
 
+      expect(promptText).toContain("Read clearly");
       expect(promptText).toContain("Content: Hello world");
       expect(promptText).not.toContain("Should not appear");
     });
@@ -367,9 +379,9 @@ describe("Gemini Model", () => {
 
       const options = {
         apiKey: "test-key",
-        model: "gemini-2.5-flash-preview-tts",
+        model: "gemini-2.5-flash",
         voice: "Zephyr",
-        instructions: undefined,
+        instructions: "",
       };
 
       await geminiCallTextToSpeech(
@@ -406,9 +418,9 @@ describe("Gemini Model", () => {
 
       const options = {
         apiKey: "test-key",
-        model: "gemini-2.5-flash-preview-tts",
+        model: "gemini-2.5-flash",
         voice: "Echo",
-        instructions: undefined,
+        instructions: "Test",
       };
 
       await geminiCallTextToSpeech("Test", options, [], DEFAULT_SETTINGS);
@@ -429,9 +441,9 @@ describe("Gemini Model", () => {
 
       const options = {
         apiKey: "test-key",
-        model: "gemini-2.5-flash-preview-tts",
+        model: "gemini-2.5-flash",
         voice: "Zephyr",
-        instructions: undefined,
+        instructions: "Test",
       };
 
       await expect(
