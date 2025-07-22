@@ -105,7 +105,6 @@ describe("AudioStore", () => {
       tts.convertToOptions = vi.fn().mockReturnValue({
         model: "gpt-4o-mini-tts",
         voice: "shimmer",
-        contextMode: false,
       });
       const text =
         "First there was one bottle top. Then there were two bottle tops. Penultimately there were three bottle tops. Finally there were four bottle tops.";
@@ -157,7 +156,6 @@ describe("AudioStore", () => {
           return {
             model: settings.openai_ttsModel,
             voice: settings.openai_ttsVoice,
-            contextMode: false,
           };
         });
       const settings = mobx.observable({ ...DEFAULT_SETTINGS });
@@ -239,7 +237,6 @@ describe("AudioStore", () => {
       tts.convertToOptions = vi.fn().mockReturnValue({
         model: "gpt-4o-mini-tts",
         voice: "shimmer",
-        contextMode: false,
       });
       const sink = new FakeAudioSink({
         getAudioBuffer: async () => ({ duration }) as AudioBuffer,

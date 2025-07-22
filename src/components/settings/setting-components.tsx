@@ -216,7 +216,7 @@ export const CheckboxSetting: React.FC<CheckboxSettingProps> = observer(
         <div className="setting-item-control">
           <input
             type="checkbox"
-            checked={store.settings[fieldName] as boolean}
+            checked={store.settings[fieldName] as unknown as boolean}
             onChange={onChange}
           />
         </div>

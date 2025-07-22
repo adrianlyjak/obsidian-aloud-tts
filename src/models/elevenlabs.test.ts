@@ -30,7 +30,6 @@ describe("ElevenLabs Model", () => {
           elevenlabs_apiKey: "test-api-key",
           elevenlabs_voice: "test-voice-id",
           elevenlabs_model: "eleven_multilingual_v2",
-          elevenlabs_contextMode: true,
         };
 
         const options = elevenLabsTextToSpeech.convertToOptions(testSettings);
@@ -39,7 +38,6 @@ describe("ElevenLabs Model", () => {
           apiKey: "test-api-key",
           voice: "test-voice-id",
           model: "eleven_multilingual_v2",
-          contextMode: true,
         });
       });
     });
@@ -118,7 +116,6 @@ describe("ElevenLabs Model", () => {
       apiKey: "test-api-key",
       voice: "test-voice-id",
       model: "eleven_multilingual_v2",
-      contextMode: false,
     };
 
     it("should make correct API call for basic TTS request", async () => {
@@ -198,7 +195,7 @@ describe("ElevenLabs Model", () => {
       );
     });
 
-    it("should include context when contextMode is enabled", async () => {
+    it("should automatically include context when available", async () => {
       const mockAudioBuffer = new ArrayBuffer(256);
       const mockResponse = {
         ok: true,
@@ -210,7 +207,6 @@ describe("ElevenLabs Model", () => {
 
       const optionsWithContext: TTSModelOptions = {
         ...mockOptions,
-        contextMode: true,
       };
 
       await elevenLabsCallTextToSpeech(

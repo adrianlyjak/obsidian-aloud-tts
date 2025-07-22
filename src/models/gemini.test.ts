@@ -33,7 +33,6 @@ describe("Gemini Model", () => {
         gemini_ttsModel: "gemini-2.5-flash",
         gemini_ttsVoice: "Zephyr",
         gemini_ttsInstructions: "Speak naturally",
-        gemini_contextMode: true,
       };
 
       const options = geminiTextToSpeech.convertToOptions(testSettings);
@@ -43,7 +42,6 @@ describe("Gemini Model", () => {
         model: "gemini-2.5-flash",
         voice: "Zephyr",
         instructions: "Speak naturally",
-        contextMode: true,
       });
     });
 
@@ -54,7 +52,6 @@ describe("Gemini Model", () => {
         gemini_ttsModel: "",
         gemini_ttsVoice: "",
         gemini_ttsInstructions: "",
-        gemini_contextMode: false,
       };
 
       const options = geminiTextToSpeech.convertToOptions(testSettings);
@@ -64,7 +61,6 @@ describe("Gemini Model", () => {
         model: "",
         voice: "",
         instructions: "",
-        contextMode: false,
       });
     });
 
@@ -77,21 +73,9 @@ describe("Gemini Model", () => {
       const options = geminiTextToSpeech.convertToOptions(testSettings);
 
       expect(options).toHaveProperty("apiKey");
-      expect(options).toHaveProperty("model");
       expect(options).toHaveProperty("voice");
       expect(options).toHaveProperty("instructions");
-      expect(options).toHaveProperty("contextMode");
-    });
-
-    it("should handle context mode correctly", () => {
-      const testSettings = {
-        ...DEFAULT_SETTINGS,
-        gemini_contextMode: true,
-      };
-
-      const options = geminiTextToSpeech.convertToOptions(testSettings);
-
-      expect(options.contextMode).toBe(true);
+      expect(options).toHaveProperty("model");
     });
   });
 
@@ -111,22 +95,21 @@ describe("Gemini Model", () => {
         gemini_apiKey: "",
       });
 
+      expect(result).toBeDefined();
       expect(result).toContain("API key");
     });
 
-    it("should convert settings correctly for context mode", () => {
+    it("should convert settings correctly with custom values", () => {
       const testSettings = {
         ...DEFAULT_SETTINGS,
         gemini_apiKey: "test-key",
         gemini_ttsModel: "gemini-2.5-flash",
         gemini_ttsVoice: "Zephyr",
         gemini_ttsInstructions: "Speak with emotion",
-        gemini_contextMode: true,
       };
 
       const options = geminiTextToSpeech.convertToOptions(testSettings);
 
-      expect(options.contextMode).toBe(true);
       expect(options.instructions).toBe("Speak with emotion");
       expect(options.voice).toBe("Zephyr");
       expect(options.model).toBe("gemini-2.5-flash");
@@ -280,7 +263,6 @@ describe("Gemini Model", () => {
         model: "gemini-2.5-flash",
         voice: "Zephyr",
         instructions: "Test instructions",
-        contextMode: false,
       };
 
       const result = await geminiCallTextToSpeech(
@@ -317,7 +299,6 @@ describe("Gemini Model", () => {
         model: "gemini-2.5-flash",
         voice: "Zephyr",
         instructions: "Speak with emotion",
-        contextMode: true,
       };
 
       await geminiCallTextToSpeech(
@@ -361,7 +342,6 @@ describe("Gemini Model", () => {
         model: "gemini-2.5-flash",
         voice: "Zephyr",
         instructions: "Read clearly",
-        contextMode: false,
       };
 
       await geminiCallTextToSpeech(
@@ -402,7 +382,6 @@ describe("Gemini Model", () => {
         model: "gemini-2.5-flash",
         voice: "Zephyr",
         instructions: "",
-        contextMode: false,
       };
 
       await geminiCallTextToSpeech(
@@ -442,7 +421,6 @@ describe("Gemini Model", () => {
         model: "gemini-2.5-flash",
         voice: "Echo",
         instructions: "Test",
-        contextMode: false,
       };
 
       await geminiCallTextToSpeech("Test", options, [], DEFAULT_SETTINGS);
@@ -466,7 +444,6 @@ describe("Gemini Model", () => {
         model: "gemini-2.5-flash",
         voice: "Zephyr",
         instructions: "Test",
-        contextMode: false,
       };
 
       await expect(

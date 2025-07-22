@@ -10,10 +10,10 @@ import {
 export const azureTextToSpeech: TTSModel = {
   call: azureCallTextToSpeech,
   validateConnection: async (settings) => {
-    if (!settings.azure_apiKey) {
+    if (!settings.azure_apiKey.trim()) {
       return REQUIRE_API_KEY;
     }
-    if (!settings.azure_region) {
+    if (!settings.azure_region.trim()) {
       return "Please specify an Azure region";
     }
     return await validateApiKeyAzure(
@@ -27,7 +27,6 @@ export const azureTextToSpeech: TTSModel = {
       apiUri: `https://${settings.azure_region}.tts.speech.microsoft.com`,
       voice: settings.azure_voice,
       model: settings.azure_outputFormat,
-      contextMode: false,
     };
   },
 };

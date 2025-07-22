@@ -38,7 +38,6 @@ describe("Azure TTS Model", () => {
           apiUri: "https://eastus.tts.speech.microsoft.com",
           voice: "en-US-JennyNeural",
           model: "audio-24khz-96kbitrate-mono-mp3",
-          contextMode: false,
         });
       });
     });
@@ -133,7 +132,6 @@ describe("Azure TTS Model", () => {
       apiUri: "https://eastus.tts.speech.microsoft.com",
       voice: "en-US-JennyNeural",
       model: "audio-24khz-96kbitrate-mono-mp3",
-      contextMode: false,
     };
 
     it("should make correct SSML API call for basic TTS request", async () => {

@@ -25,7 +25,6 @@ export const humeTextToSpeech: TTSModel = {
       model: settings.hume_sourceType,
       voice: settings.hume_ttsVoice,
       instructions: settings.hume_ttsInstructions,
-      contextMode: settings.hume_contextMode,
     };
   },
 };
@@ -72,8 +71,7 @@ export async function humeCallTextToSpeech(
     method: "POST",
     body: JSON.stringify({
       ...(contexts &&
-        contexts.length > 0 &&
-        options.contextMode && {
+        contexts.length > 0 && {
           context: { utterances: contextUtterances },
         }),
       utterances: [utterance],

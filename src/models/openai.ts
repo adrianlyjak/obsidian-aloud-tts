@@ -42,9 +42,8 @@ export const openAITextToSpeech: TTSModel = {
       apiKey: settings.openai_apiKey,
       apiUri: OPENAI_API_URL,
       voice: settings.openai_ttsVoice,
-      instructions: settings.openai_ttsInstructions || undefined,
+      instructions: settings.openai_ttsInstructions,
       model: settings.openai_ttsModel,
-      contextMode: false, // not supported
     };
   },
 };
@@ -67,11 +66,7 @@ export async function openAICallTextToSpeech(
         model: options.model,
         voice: options.voice ? options.voice : "",
         ...(options.instructions && {
-          instructions:
-            options.instructions +
-            (contexts &&
-              options.contextMode &&
-              "\n\n Previous sentence(s) (Context): " + contexts.join("")),
+          instructions: options.instructions,
         }),
         input: text,
         speed: 1.0,

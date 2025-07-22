@@ -25,7 +25,6 @@ export const geminiTextToSpeech: TTSModel = {
       voice: settings.gemini_ttsVoice,
       instructions: settings.gemini_ttsInstructions,
       model: settings.gemini_ttsModel,
-      contextMode: settings.gemini_contextMode,
     };
   },
 };

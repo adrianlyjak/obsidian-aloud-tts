@@ -50,7 +50,6 @@ describe("pluginSettingsStore", () => {
       OPENAI_API_URL: OPENAI_API_URL,
       model: "test-model",
       ttsVoice: "test-voice",
-      contextMode: false,
     };
     const loadData = async () => baseData;
     const saveData = async (data: unknown) => {};
@@ -158,14 +157,12 @@ describe("pluginSettingsStore", () => {
       gemini_apiKey: "new-key",
       gemini_ttsModel: "new-model",
       gemini_ttsVoice: "new-voice",
-      gemini_contextMode: true,
     });
 
     expect(store.settings.modelProvider).toEqual("gemini");
     expect(store.settings.gemini_apiKey).toEqual("new-key");
     expect(store.settings.gemini_ttsModel).toEqual("new-model");
     expect(store.settings.gemini_ttsVoice).toEqual("new-voice");
-    expect(store.settings.gemini_contextMode).toEqual(true);
   });
 
   it("should save data when updateSettings is called", async () => {

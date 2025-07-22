@@ -22,7 +22,6 @@ describe("Hume Model", () => {
         hume_ttsVoice: "test-voice-uuid",
         hume_sourceType: "shared",
         hume_ttsInstructions: "Emotional speech",
-        hume_contextMode: true,
       };
 
       const options = humeTextToSpeech.convertToOptions(testSettings);
@@ -32,7 +31,6 @@ describe("Hume Model", () => {
         model: "shared",
         voice: "test-voice-uuid",
         instructions: "Emotional speech",
-        contextMode: true,
       });
     });
 
@@ -43,7 +41,6 @@ describe("Hume Model", () => {
         hume_ttsVoice: "",
         hume_sourceType: "",
         hume_ttsInstructions: "",
-        hume_contextMode: false,
       };
 
       const options = humeTextToSpeech.convertToOptions(testSettings);
@@ -53,7 +50,6 @@ describe("Hume Model", () => {
         model: "",
         voice: "",
         instructions: "",
-        contextMode: false,
       });
     });
 
@@ -79,17 +75,6 @@ describe("Hume Model", () => {
 
       expect(options.voice).toBeUndefined();
     });
-
-    it("should handle context mode correctly", () => {
-      const testSettings = {
-        ...DEFAULT_SETTINGS,
-        hume_contextMode: true,
-      };
-
-      const options = humeTextToSpeech.convertToOptions(testSettings);
-
-      expect(options.contextMode).toBe(true);
-    });
   });
 
   describe("humeCallTextToSpeech API", () => {
@@ -99,7 +84,6 @@ describe("Hume Model", () => {
       voice: "test-voice-uuid",
       instructions: "Emotional speech",
       model: "shared",
-      contextMode: false,
     };
 
     it("should make API call with correct authentication", async () => {
@@ -154,7 +138,6 @@ describe("Hume Model", () => {
 
       const optionsWithContext: TTSModelOptions = {
         ...mockOptions,
-        contextMode: true,
       };
 
       await humeCallTextToSpeech(
@@ -264,7 +247,6 @@ describe("Hume Model", () => {
             apiUri: HUME_API_URL,
             voice: undefined,
             model: "shared",
-            contextMode: false,
           },
           [],
           DEFAULT_SETTINGS,
@@ -294,7 +276,6 @@ describe("Hume Model", () => {
             apiUri: HUME_API_URL,
             voice: undefined,
             model: "shared",
-            contextMode: false,
           },
           [],
           DEFAULT_SETTINGS,
@@ -322,7 +303,6 @@ describe("Hume Model", () => {
             apiUri: HUME_API_URL,
             voice: undefined,
             model: "shared",
-            contextMode: false,
           },
           [],
           DEFAULT_SETTINGS,
