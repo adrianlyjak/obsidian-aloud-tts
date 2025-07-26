@@ -41,8 +41,8 @@ describe("OpenAI Model API", () => {
       const result = await openAICallTextToSpeech(
         "Hello world",
         mockOptions,
-        [],
         DEFAULT_SETTINGS,
+        {},
       );
 
       expect(fetch).toHaveBeenCalledWith(`${OPENAI_API_URL}/v1/audio/speech`, {
@@ -81,8 +81,8 @@ describe("OpenAI Model API", () => {
       await openAICallTextToSpeech(
         "Custom endpoint test",
         customOptions,
-        [],
         DEFAULT_SETTINGS,
+        {},
       );
 
       expect(fetch).toHaveBeenCalledWith(
@@ -108,7 +108,7 @@ describe("OpenAI Model API", () => {
       vi.mocked(fetch).mockResolvedValue(mockErrorResponse as any);
 
       await expect(
-        openAICallTextToSpeech("Test", mockOptions, [], DEFAULT_SETTINGS),
+        openAICallTextToSpeech("Test", mockOptions, DEFAULT_SETTINGS, {}),
       ).rejects.toThrow("Request failed 'HTTP 401 error'");
 
       expect(fetch).toHaveBeenCalledTimes(1);
@@ -118,7 +118,7 @@ describe("OpenAI Model API", () => {
       vi.mocked(fetch).mockRejectedValue(new Error("Network error"));
 
       await expect(
-        openAICallTextToSpeech("Test", mockOptions, [], DEFAULT_SETTINGS),
+        openAICallTextToSpeech("Test", mockOptions, DEFAULT_SETTINGS, {}),
       ).rejects.toThrow("Network error");
     });
   });

@@ -5,6 +5,7 @@ import { AudioSystem } from "./AudioSystem";
 import { AudioTextChunk } from "./AudioTextChunk";
 import { ChunkLoader } from "./ChunkLoader";
 import { CancellablePromise } from "./CancellablePromise";
+import { AudioTextContext } from "src/models/tts-model";
 
 /**
  * Effectively the inner loop for the audio text.
@@ -63,6 +64,7 @@ export class ChunkPlayer {
   /** should only be called when this.active is undefined or the current track is finished*/
   async _activate() {
     const BUFFER_AHEAD = 3;
+    const CHUNK_CONTEXT_SIZE = 3; // maybe make this configurable
 
     let toReset: { indexes: number[] } | { all: true } | undefined = undefined;
 
@@ -106,7 +108,12 @@ export class ChunkPlayer {
       }
 
       this.cancelDemand = foreground
-        ? loadCheckLoop(this.system, this.chunkLoader, BUFFER_AHEAD)
+        ? loadCheckLoop(
+            this.system,
+            this.chunkLoader,
+            BUFFER_AHEAD,
+            CHUNK_CONTEXT_SIZE,
+          )
         : undefined;
       this.cancelMonitorText = loopMonitorTextForChanges();
       this.cancelSettingsChange = this._whenSettingsChange().thenCancellable(
@@ -404,38 +411,56 @@ type PlaybackPosition =
   | { type: "AfterLoaded"; position: number }
   | { type: "Position"; position: number };
 
+function getContext(
+  chunks: AudioTextChunk[],
+  index: number,
+  audioContextChunks: number,
+): AudioTextContext {
+  const before = chunks.slice(Math.max(0, index - audioContextChunks), index);
+  const after = chunks.slice(index + 1, index + 1 + audioContextChunks);
+  return {
+    textBefore: before.map((x) => x.text).join(""),
+    textAfter: after.map((x) => x.text).join(""),
+  };
+}
+
 /**
  * Loads the next audio, if any, and returns the audio buffer (if not interrupted)
+ * @param audioContextChunks - the number of chunks to include in the "context" when calling the TTS model.
+ *                             To make audio transitions smoother.
  */
 const loadCheck = async (
   system: AudioSystem,
   chunkLoader: ChunkLoader,
   maxBufferAhead: number,
   isCancelled: () => boolean,
+  audioContextChunks: number,
 ): Promise<ArrayBuffer | undefined> => {
   const indexes = indexesToLoad(system.audioStore.activeText!, maxBufferAhead);
   if (indexes.length === 0) {
     return;
   }
-
+  const chunks = system.audioStore.activeText!.audio.chunks;
   // kick off the preload
   const modelOpts = system.ttsModel.convertToOptions(system.settings);
   for (const index of indexes) {
-    const chunk = system.audioStore.activeText!.audio.chunks[index];
+    const chunk = chunks[index];
+    const context = getContext(chunks, index, audioContextChunks);
     if (chunk?.text.trim()) {
-      chunkLoader.preload(chunk.text, modelOpts, index);
+      chunkLoader.preload(chunk.text, modelOpts, index, context);
     }
   }
 
   const position = indexes[0];
-  const chunk = system.audioStore.activeText!.audio.chunks[position];
+  const chunk = chunks[position];
+  const context = getContext(chunks, position, audioContextChunks);
   const text = chunk.text;
 
   // then wait for the next one to complete
   chunk.setLoading();
   let audio: ArrayBuffer;
   try {
-    audio = await chunkLoader.load(text, modelOpts);
+    audio = await chunkLoader.load(text, modelOpts, context);
   } catch (e) {
     chunk.setFailed(e);
     throw e;
@@ -453,39 +478,44 @@ const loadCheckLoop = (
   system: AudioSystem,
   chunkLoader: ChunkLoader,
   maxBufferAhead: number,
+  audioContextChunks: number,
 ): CancellablePromise<void> => {
   let cancelled = false;
   const inner = (): Promise<void> => {
     const position = nextToLoad(system.audioStore.activeText!, maxBufferAhead);
     chunkLoader.expireBefore(system.audioStore.activeText!.position);
-    return loadCheck(system, chunkLoader, maxBufferAhead, () => cancelled).then(
-      (result) => {
-        const activeText = system.audioStore.activeText;
-        if (result && activeText && position !== null && !cancelled) {
-          activeText.audio.chunks[position].setLoaded(result);
-          return system.audioSink
-            .appendMedia(result)
-            .then(() => system.audioSink.getAudioBuffer(result))
-            .then((buff) => {
-              const chunk = activeText.audio.chunks[position];
-              if (chunk.audio) {
-                const offsetDuration = activeText.audio.chunks
-                  .slice(0, position)
-                  .reduce((acc, x) => acc + (x.duration || 0), 0);
-                activeText.audio.chunks[position].setAudioBuffer(
-                  buff,
-                  offsetDuration,
-                );
-              } else {
-                chunk.reset(); // something interrupted, so reset
-              }
-            })
-            .then(() => inner());
-        } else {
-          return Promise.resolve();
-        }
-      },
-    );
+    return loadCheck(
+      system,
+      chunkLoader,
+      maxBufferAhead,
+      () => cancelled,
+      audioContextChunks,
+    ).then((result) => {
+      const activeText = system.audioStore.activeText;
+      if (result && activeText && position !== null && !cancelled) {
+        activeText.audio.chunks[position].setLoaded(result);
+        return system.audioSink
+          .appendMedia(result)
+          .then(() => system.audioSink.getAudioBuffer(result))
+          .then((buff) => {
+            const chunk = activeText.audio.chunks[position];
+            if (chunk.audio) {
+              const offsetDuration = activeText.audio.chunks
+                .slice(0, position)
+                .reduce((acc, x) => acc + (x.duration || 0), 0);
+              activeText.audio.chunks[position].setAudioBuffer(
+                buff,
+                offsetDuration,
+              );
+            } else {
+              chunk.reset(); // something interrupted, so reset
+            }
+          })
+          .then(() => inner());
+      } else {
+        return Promise.resolve();
+      }
+    });
   };
   return CancellablePromise.cancelFn(inner(), () => {
     cancelled = true;

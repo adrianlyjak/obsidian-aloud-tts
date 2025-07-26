@@ -66,12 +66,7 @@ class AudioStoreImpl implements AudioStore {
   async exportAudio(text: string): Promise<ArrayBuffer> {
     // TODO make this an async generator, that gets chunked according to the model's max length
     const options = this.system.ttsModel.convertToOptions(this.system.settings);
-    return await this.system.ttsModel.call(
-      text,
-      options,
-      [],
-      this.system.settings,
-    );
+    return await this.system.ttsModel.call(text, options, this.system.settings);
   }
 
   _backgroundProcesses: { shutdown: () => void }[] = [];

@@ -104,8 +104,8 @@ describe("Hume Model", () => {
       await humeCallTextToSpeech(
         "Hello world",
         mockOptions,
-        [],
         DEFAULT_SETTINGS,
+        {},
       );
 
       // Verify API call was made with correct authentication
@@ -143,20 +143,44 @@ describe("Hume Model", () => {
       await humeCallTextToSpeech(
         "Continue the story",
         optionsWithContext,
-        ["Once upon a time", "there was a dragon"],
         DEFAULT_SETTINGS,
+        { textBefore: "Once upon a time", textAfter: "there was a dragon" },
       );
 
-      // Verify API call was made (context handling is complex, just ensure it runs)
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining(HUME_API_URL),
-        expect.objectContaining({
-          method: "POST",
-          headers: expect.objectContaining({
-            "X-Hume-Api-Key": "test-api-key",
-          }),
-        }),
-      );
+      // Extract the actual call arguments from the mock
+      const callArgs = vi.mocked(fetch).mock.calls[0];
+
+      expect(callArgs[0]).toContain(HUME_API_URL);
+      expect(callArgs[1]!.method).toBe("POST");
+      expect(callArgs[1]!.headers).toMatchObject({
+        "X-Hume-Api-Key": "test-api-key",
+        "Content-Type": "application/json",
+      });
+      expect(JSON.parse(callArgs[1]!.body as string)).toMatchObject({
+        context: {
+          utterances: [
+            {
+              text: "Once upon a time",
+            },
+          ],
+        },
+        utterances: [
+          {
+            text: "Continue the story",
+            voice: {
+              id: "test-voice-uuid",
+              provider: "SHARED",
+            },
+            description: "Emotional speech",
+            speed: 1,
+          },
+        ],
+        format: {
+          type: "mp3",
+        },
+        num_generations: 1,
+        split_utterances: true,
+      });
     });
 
     it("should handle API errors correctly", async () => {
@@ -176,7 +200,7 @@ describe("Hume Model", () => {
       vi.mocked(fetch).mockResolvedValue(mockErrorResponse as any);
 
       await expect(
-        humeCallTextToSpeech("Test", mockOptions, [], DEFAULT_SETTINGS),
+        humeCallTextToSpeech("Test", mockOptions, DEFAULT_SETTINGS, {}),
       ).rejects.toThrow("Request failed 'HTTP 401 error'");
     });
   });
@@ -248,8 +272,8 @@ describe("Hume Model", () => {
             voice: undefined,
             model: "shared",
           },
-          [],
           DEFAULT_SETTINGS,
+          {},
         ),
       ).rejects.toThrow("Request failed 'HTTP 401 error'");
     });
@@ -277,8 +301,8 @@ describe("Hume Model", () => {
             voice: undefined,
             model: "shared",
           },
-          [],
           DEFAULT_SETTINGS,
+          {},
         ),
       ).rejects.toThrow("Request failed 'HTTP 429 error'");
     });
@@ -304,8 +328,8 @@ describe("Hume Model", () => {
             voice: undefined,
             model: "shared",
           },
-          [],
           DEFAULT_SETTINGS,
+          {},
         ),
       ).rejects.toThrow("Request failed 'HTTP 500 error'");
     });

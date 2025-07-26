@@ -131,8 +131,8 @@ describe("ElevenLabs Model", () => {
       const result = await elevenLabsCallTextToSpeech(
         "Hello world",
         mockOptions,
-        [],
         DEFAULT_SETTINGS,
+        {},
       );
 
       expect(fetch).toHaveBeenCalledWith(
@@ -176,8 +176,8 @@ describe("ElevenLabs Model", () => {
       await elevenLabsCallTextToSpeech(
         "Hello with settings",
         mockOptions,
-        [],
         testSettings,
+        {},
       );
 
       expect(fetch).toHaveBeenCalledWith(
@@ -195,7 +195,7 @@ describe("ElevenLabs Model", () => {
       );
     });
 
-    it("should automatically include context when available", async () => {
+    it("should include context when available", async () => {
       const mockAudioBuffer = new ArrayBuffer(256);
       const mockResponse = {
         ok: true,
@@ -212,8 +212,8 @@ describe("ElevenLabs Model", () => {
       await elevenLabsCallTextToSpeech(
         "Continue the story",
         optionsWithContext,
-        ["Once upon a time", "there was a dragon"],
         DEFAULT_SETTINGS,
+        { textBefore: "Once upon a time ", textAfter: "there was a dragon " },
       );
 
       expect(fetch).toHaveBeenCalledWith(
@@ -226,7 +226,8 @@ describe("ElevenLabs Model", () => {
               stability: 0.5,
               similarity_boost: 0.75,
             },
-            previous_text: "Once upon a time there was a dragon",
+            previous_text: "Once upon a time ",
+            next_text: "there was a dragon ",
           }),
         }),
       );
@@ -242,8 +243,8 @@ describe("ElevenLabs Model", () => {
         elevenLabsCallTextToSpeech(
           "Hello world",
           optionsWithoutVoice,
-          [],
           DEFAULT_SETTINGS,
+          {},
         ),
       ).rejects.toThrow("Voice is required for ElevenLabs TTS");
     });
@@ -263,8 +264,8 @@ describe("ElevenLabs Model", () => {
         elevenLabsCallTextToSpeech(
           "Hello world",
           mockOptions,
-          [],
           DEFAULT_SETTINGS,
+          {},
         ),
       ).rejects.toThrow();
     });

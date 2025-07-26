@@ -147,8 +147,8 @@ describe("Azure TTS Model", () => {
       const result = await azureCallTextToSpeech(
         "Hello world",
         mockOptions,
-        [],
         DEFAULT_SETTINGS,
+        {},
       );
 
       expect(fetch).toHaveBeenCalledWith(
@@ -192,8 +192,8 @@ describe("Azure TTS Model", () => {
       await azureCallTextToSpeech(
         'Hello "world" & <test>',
         mockOptions,
-        [],
         DEFAULT_SETTINGS,
+        {},
       );
 
       const callArgs = vi.mocked(fetch).mock.calls[0];
@@ -213,8 +213,8 @@ describe("Azure TTS Model", () => {
         azureCallTextToSpeech(
           "Hello world",
           optionsWithoutVoice,
-          [],
           DEFAULT_SETTINGS,
+          {},
         ),
       ).rejects.toThrow("Voice is required for Azure TTS");
     });
@@ -231,7 +231,7 @@ describe("Azure TTS Model", () => {
       vi.mocked(fetch).mockResolvedValue(mockResponse as any);
 
       await expect(
-        azureCallTextToSpeech("Hello world", mockOptions, [], DEFAULT_SETTINGS),
+        azureCallTextToSpeech("Hello world", mockOptions, DEFAULT_SETTINGS, {}),
       ).rejects.toThrow();
     });
 
@@ -253,8 +253,8 @@ describe("Azure TTS Model", () => {
       await azureCallTextToSpeech(
         "Hello world",
         optionsWithoutModel,
-        [],
         DEFAULT_SETTINGS,
+        {},
       );
 
       expect(fetch).toHaveBeenCalledWith(

@@ -1,4 +1,5 @@
 import {
+  AudioTextContext,
   ErrorMessage,
   REQUIRE_API_KEY,
   TTSErrorInfo,
@@ -32,8 +33,8 @@ export const humeTextToSpeech: TTSModel = {
 export async function humeCallTextToSpeech(
   text: string,
   options: TTSModelOptions,
-  contexts: string[],
   settings: TTSPluginSettings,
+  context: AudioTextContext = {},
 ): Promise<ArrayBuffer> {
   // Construct the utterances array for the Hume API request
   const utterance: {
@@ -55,12 +56,12 @@ export async function humeCallTextToSpeech(
   };
 
   let contextUtterances: { text: string }[] | undefined;
-  if (contexts) {
-    contextUtterances = contexts.map((text) => {
-      return {
-        text: text,
-      };
-    });
+  if (context.textBefore) {
+    contextUtterances = [
+      {
+        text: context.textBefore,
+      },
+    ];
   }
 
   const headers = await fetch(`${HUME_API_URL}/v0/tts`, {
@@ -70,10 +71,9 @@ export async function humeCallTextToSpeech(
     },
     method: "POST",
     body: JSON.stringify({
-      ...(contexts &&
-        contexts.length > 0 && {
-          context: { utterances: contextUtterances },
-        }),
+      ...(contextUtterances && {
+        context: { utterances: contextUtterances },
+      }),
       utterances: [utterance],
       format: { type: "mp3" },
       num_generations: 1,

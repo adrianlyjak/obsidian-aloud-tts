@@ -268,8 +268,8 @@ describe("Gemini Model", () => {
       const result = await geminiCallTextToSpeech(
         "Hello world",
         options,
-        [],
         DEFAULT_SETTINGS,
+        {},
       );
 
       expect(mockGenerateContent).toHaveBeenCalled();
@@ -301,12 +301,9 @@ describe("Gemini Model", () => {
         instructions: "Speak with emotion",
       };
 
-      await geminiCallTextToSpeech(
-        "Hello world",
-        options,
-        ["Previous text"],
-        DEFAULT_SETTINGS,
-      );
+      await geminiCallTextToSpeech("Hello world", options, DEFAULT_SETTINGS, {
+        textBefore: "Previous text",
+      });
 
       const callArgs = mockGenerateContent.mock.calls[0][0];
       const promptText = callArgs.contents[0].parts[0].text;
@@ -347,8 +344,8 @@ describe("Gemini Model", () => {
       await geminiCallTextToSpeech(
         "Hello world",
         options,
-        [],
         DEFAULT_SETTINGS,
+        {},
       );
 
       const callArgs = mockGenerateContent.mock.calls[0][0];
@@ -387,8 +384,8 @@ describe("Gemini Model", () => {
       await geminiCallTextToSpeech(
         "Hello world",
         options,
-        [],
         DEFAULT_SETTINGS,
+        {},
       );
 
       const callArgs = mockGenerateContent.mock.calls[0][0];
@@ -423,7 +420,7 @@ describe("Gemini Model", () => {
         instructions: "Test",
       };
 
-      await geminiCallTextToSpeech("Test", options, [], DEFAULT_SETTINGS);
+      await geminiCallTextToSpeech("Test", options, DEFAULT_SETTINGS, {});
 
       const callArgs = mockGenerateContent.mock.calls[0][0];
 
@@ -447,7 +444,7 @@ describe("Gemini Model", () => {
       };
 
       await expect(
-        geminiCallTextToSpeech("Test", options, [], DEFAULT_SETTINGS),
+        geminiCallTextToSpeech("Test", options, DEFAULT_SETTINGS, {}),
       ).rejects.toThrow("Request failed 'INTERNAL'");
     });
   });
