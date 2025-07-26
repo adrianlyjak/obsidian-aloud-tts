@@ -1,6 +1,10 @@
 import * as mobx from "mobx";
 import { AudioSystem } from "./AudioSystem";
-import { TTSErrorInfo, TTSModelOptions } from "../models/tts-model";
+import {
+  AudioTextContext,
+  TTSErrorInfo,
+  TTSModelOptions,
+} from "../models/tts-model";
 
 /** manages loading and caching of tracks */
 export class ChunkLoader {
@@ -42,42 +46,41 @@ export class ChunkLoader {
     this.localCache = this.localCache.filter((x) => x.text !== text);
   }
 
-  preload(text: string, options: TTSModelOptions, position: number): void {
+  preload(
+    text: string,
+    options: TTSModelOptions,
+    position: number,
+    context: AudioTextContext = {},
+  ): void {
     // Check if already queued
-    const alreadyQueued = this.backgroundQueue.some(
+    const found = this.backgroundQueue.find(
       (x) => x.text === text && mobx.comparer.structural(x.options, options),
     );
-    if (alreadyQueued) {
+    if (found) {
       return;
     }
 
     // Check if already in local memory cache (loading or loaded)
-    const alreadyLoaded = this.localCache.some(
+    const loaded = this.localCache.find(
       (x) => x.text === text && mobx.comparer.structural(x.options, options),
     );
-    if (alreadyLoaded) {
-      // Update requested time to prevent garbage collection if needed
-      const cached = this.localCache.find(
-        (x) => x.text === text && mobx.comparer.structural(x.options, options),
-      );
-      if (cached) cached.requestedTime = Date.now();
+    if (loaded) {
       return;
     }
     this.backgroundQueue.push({
       text,
       options,
       requestedTime: Date.now(),
+      context,
       position,
     });
-    // Sort queue by position to prioritize upcoming chunks
-    this.backgroundQueue.sort((a, b) => a.position - b.position);
     this.backgroundRequestProcessor.startIfNot();
   }
 
   async load(
     text: string,
     options: TTSModelOptions,
-    position?: number,
+    context: AudioTextContext = {},
   ): Promise<ArrayBuffer> {
     const existing = this.localCache.find(
       (x) => x.text === text && mobx.comparer.structural(x.options, options), // Use structural comparison
@@ -87,16 +90,7 @@ export class ChunkLoader {
       existing.requestedTime = Date.now();
       return existing.result;
     } else {
-      // select the last 3 chunks of the active text. Perhaps make this somehow configurable
-      const audioTextChunks = position
-        ? this.system.audioStore.activeText?.audio.chunks.slice(
-            position - 3,
-            position,
-          )
-        : undefined;
-      const contexts = audioTextChunks?.map((x) => x.text);
-
-      const audio = this.createCachedAudio(text, options, contexts);
+      const audio = this.createCachedAudio(text, options, context);
       this.localCache.push(audio);
       return audio.result;
     }
@@ -114,13 +108,13 @@ export class ChunkLoader {
   private createCachedAudio(
     text: string,
     options: TTSModelOptions,
-    contexts?: string[],
+    context: AudioTextContext = {},
   ): CachedAudio {
     const audio: CachedAudio = {
       text,
       options,
       requestedTime: Date.now(),
-      result: this.tryLoadTrack(text, options, 0, 3, contexts).catch((e) => {
+      result: this.tryLoadTrack(text, options, 0, 3, context).catch((e) => {
         this.destroyCachedAudio(audio);
         throw e;
       }),
@@ -148,7 +142,7 @@ export class ChunkLoader {
     const itemOptions: TTSModelOptions = item.options;
 
     this.backgroundActiveCount += 1; // Increment active *requests* count by 1
-    this.load(item.text, itemOptions, item.position).finally(() => {
+    this.load(item.text, itemOptions, item.context).finally(() => {
       this.backgroundActiveCount -= 1;
       this.processBackgroundQueue(); // Check for more work
     });
@@ -168,10 +162,10 @@ export class ChunkLoader {
     options: TTSModelOptions,
     attempt: number = 0,
     maxAttempts: number = 3,
-    contexts?: string[],
+    context: AudioTextContext = {},
   ): Promise<ArrayBuffer> {
     try {
-      return await this.loadTrack(track, options, contexts);
+      return await this.loadTrack(track, options, context);
     } catch (ex) {
       console.log("error loading track", ex);
       const errorInfo = ex instanceof TTSErrorInfo ? ex : undefined;
@@ -188,7 +182,7 @@ export class ChunkLoader {
           options,
           attempt + 1,
           maxAttempts,
-          contexts,
+          context,
         );
       }
     }
@@ -198,7 +192,7 @@ export class ChunkLoader {
   private async loadTrack(
     text: string,
     options: TTSModelOptions,
-    contexts?: string[],
+    context: AudioTextContext = {},
   ): Promise<ArrayBuffer> {
     // copy the settings to make sure audio isn't stored under under the wrong key
     // if the settings are changed while request is in flight
@@ -213,8 +207,8 @@ export class ChunkLoader {
       const buff = await this.system.ttsModel.call(
         text,
         options,
-        contexts ?? [],
         this.system.settings,
+        context,
       );
       await this.system.storage.saveAudio(text, options, buff);
       return buff;
@@ -284,7 +278,9 @@ interface BackgroundRequest {
   options: TTSModelOptions;
   /** the time the request was made. Milliseconds since Unix Epoch */
   requestedTime: number;
-  /** the track number that was requested */
+  /** the context that was requested */
+  context: AudioTextContext;
+  /** the position that was requested */
   position: number;
 }
 

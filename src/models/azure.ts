@@ -1,5 +1,6 @@
 import { TTSPluginSettings } from "../player/TTSPluginSettings";
 import {
+  AudioTextContext,
   ErrorMessage,
   REQUIRE_API_KEY,
   TTSErrorInfo,
@@ -55,8 +56,8 @@ export async function validateApiKeyAzure(
 export async function azureCallTextToSpeech(
   text: string,
   options: TTSModelOptions,
-  contexts: string[],
   settings: TTSPluginSettings,
+  context: AudioTextContext = {},
 ): Promise<ArrayBuffer> {
   if (!options.voice) {
     throw new Error("Voice is required for Azure TTS");

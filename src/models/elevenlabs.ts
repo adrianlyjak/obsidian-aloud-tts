@@ -1,5 +1,6 @@
 import { TTSPluginSettings } from "../player/TTSPluginSettings";
 import {
+  AudioTextContext,
   ErrorMessage,
   REQUIRE_API_KEY,
   TTSErrorInfo,
@@ -49,8 +50,8 @@ export async function validateApiKeyElevenLabs(
 export async function elevenLabsCallTextToSpeech(
   text: string,
   options: TTSModelOptions,
-  contexts: string[],
   settings: TTSPluginSettings,
+  context: AudioTextContext = {},
 ): Promise<ArrayBuffer> {
   if (!options.voice) {
     throw new Error("Voice is required for ElevenLabs TTS");
@@ -64,6 +65,7 @@ export async function elevenLabsCallTextToSpeech(
       similarity_boost?: number;
     };
     previous_text?: string;
+    next_text?: string;
   } = {
     text: text,
     model_id: options.model,
@@ -83,8 +85,11 @@ export async function elevenLabsCallTextToSpeech(
   }
 
   // Add context if available (ElevenLabs supports context)
-  if (contexts && contexts.length > 0) {
-    requestBody.previous_text = contexts.join(" ");
+  if (context.textBefore) {
+    requestBody.previous_text = context.textBefore;
+  }
+  if (context.textAfter) {
+    requestBody.next_text = context.textAfter;
   }
 
   const response = await fetch(

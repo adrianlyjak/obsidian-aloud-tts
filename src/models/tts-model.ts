@@ -3,14 +3,19 @@ import {
   TTSPluginSettings,
 } from "../player/TTSPluginSettings";
 
+export interface AudioTextContext {
+  textBefore?: string;
+  textAfter?: string;
+}
+
 // Interface for batch text-to-speech requests
 export interface TTSModel {
   /** Calls text to speech, returning an mp3 buffer of the audio (TODO! support other formats) */
   call(
     text: string,
     options: TTSModelOptions,
-    contexts: string[],
     settings: TTSPluginSettings,
+    context?: AudioTextContext,
   ): Promise<ArrayBuffer>;
 
   /** Returns an error message if the connection is not valid, otherwise undefined */

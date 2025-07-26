@@ -1,5 +1,6 @@
 import { TTSPluginSettings } from "../player/TTSPluginSettings";
 import {
+  AudioTextContext,
   ErrorMessage,
   REQUIRE_API_KEY,
   TTSErrorInfo,
@@ -51,8 +52,8 @@ export const openAITextToSpeech: TTSModel = {
 export async function openAICallTextToSpeech(
   text: string,
   options: TTSModelOptions,
-  contexts: string[],
   settings: TTSPluginSettings,
+  context: AudioTextContext = {},
 ): Promise<ArrayBuffer> {
   const headers = await fetch(
     (options.apiUri || OPENAI_API_URL) + "/v1/audio/speech",

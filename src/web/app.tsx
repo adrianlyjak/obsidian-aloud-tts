@@ -255,8 +255,8 @@ const SimplePlayer: FC<{ settingsStore: TTSPluginSettingsStore }> = observer(
         const audio = await model.call(
           text,
           options,
-          [],
           settingsStore.settings,
+          {},
         );
         await sink.switchMedia(audio);
         setSink(sink);

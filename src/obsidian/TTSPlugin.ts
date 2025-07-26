@@ -16,7 +16,11 @@ import {
 } from "../player/TTSPluginSettings";
 import { ObsidianBridge, ObsidianBridgeImpl } from "./ObsidianBridge";
 import { configurableAudioCache } from "./ObsidianPlayer";
-import { TTSModel, TTSModelOptions } from "../models/tts-model";
+import {
+  AudioTextContext,
+  TTSModel,
+  TTSModelOptions,
+} from "../models/tts-model";
 
 // standard lucide.dev icon, but for some reason not working as a ribbon icon without registering it
 // https://lucide.dev/icons/audio-lines
@@ -201,10 +205,10 @@ function ProxiedTTSModel(settings: TTSPluginSettings): TTSModel {
     call: (
       text: string,
       options: TTSModelOptions,
-      contexts: string[],
       settings: TTSPluginSettings,
+      context?: AudioTextContext,
     ) => {
-      return getModel().call(text, options, contexts, settings);
+      return getModel().call(text, options, settings, context);
     },
     validateConnection: (settings: TTSPluginSettings) => {
       return getModel().validateConnection(settings);

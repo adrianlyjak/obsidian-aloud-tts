@@ -2,6 +2,7 @@ import { Content, GenerateContentResponse, GoogleGenAI } from "@google/genai";
 import { pcmBufferToMp3Buffer } from "../util/audioProcessing";
 import { base64ToArrayBuffer } from "../util/misc";
 import {
+  AudioTextContext,
   REQUIRE_API_KEY,
   TTSErrorInfo,
   TTSModel,
@@ -136,15 +137,15 @@ function mapGenAIError(error: unknown): TTSErrorInfo {
 export async function geminiCallTextToSpeech(
   text: string,
   options: TTSModelOptions,
-  contexts: string[],
   settings: TTSPluginSettings,
+  context: AudioTextContext = {},
 ): Promise<ArrayBuffer> {
   const ai = new GoogleGenAI({ apiKey: options.apiKey });
   let response: GenerateContentResponse;
   try {
     response = await ai.models.generateContent({
       model: options.model,
-      contents: formatMessages(options.instructions, contexts, text),
+      contents: formatMessages(options.instructions, context, text),
       config: {
         responseModalities: ["AUDIO"],
         speechConfig: options.voice && {
@@ -173,7 +174,7 @@ export async function geminiCallTextToSpeech(
 
 function formatMessages(
   instructions: string | undefined,
-  contexts: string[] | undefined,
+  context: AudioTextContext = {},
   text: string,
 ): Content[] {
   let prompt =
@@ -184,10 +185,10 @@ function formatMessages(
     ${instructions}
 </instructions>`;
   }
-  if (contexts?.length) {
+  if (context.textBefore) {
     prompt += `\n\nRead the content continuing from this previously ready passage:
 <previous_context>
-    ${contexts.join("")}
+    ${context.textBefore}
 </previous_context>`;
   }
   prompt += `\n\nContent: ${text}`;
