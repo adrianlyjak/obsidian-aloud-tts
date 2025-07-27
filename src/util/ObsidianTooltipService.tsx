@@ -1,5 +1,10 @@
+import React from "react";
 import { setTooltip, TooltipOptions as ObsidianTooltipOptions } from "obsidian";
-import { TooltipService, TooltipOptions } from "./TooltipContext";
+import {
+  TooltipService,
+  TooltipOptions,
+  TooltipProvider,
+} from "./TooltipContext";
 
 export class ObsidianTooltipService implements TooltipService {
   setTooltip(
@@ -17,4 +22,16 @@ export class ObsidianTooltipService implements TooltipService {
 
     setTooltip(element, text, obsidianOptions);
   }
+}
+
+export function ObsidianTooltipProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <TooltipProvider tooltipService={new ObsidianTooltipService()}>
+      {children}
+    </TooltipProvider>
+  );
 }

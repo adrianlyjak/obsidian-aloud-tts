@@ -6,6 +6,8 @@ import { AudioStore } from "../player/AudioStore";
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 
+import { ObsidianTooltipProvider } from "../util/ObsidianTooltipService";
+
 import { Panel } from "@codemirror/view";
 import { ObsidianBridge } from "../obsidian/ObsidianBridge";
 import { PlayerView } from "../components/PlayerView";
@@ -31,12 +33,14 @@ function playerPanel(
   dom.classList.add("tts-toolbar");
   const root = createRoot(dom);
   root.render(
-    React.createElement(PlayerView, {
-      editor,
-      player,
-      settings,
-      obsidian,
-      sink,
+    React.createElement(ObsidianTooltipProvider, {
+      children: React.createElement(PlayerView, {
+        editor,
+        player,
+        settings,
+        obsidian,
+        sink,
+      }),
     }),
   );
   return {
