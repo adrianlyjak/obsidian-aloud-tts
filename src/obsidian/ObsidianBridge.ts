@@ -10,7 +10,7 @@ import {
 } from "obsidian";
 import * as React from "react";
 import { createRoot } from "react-dom/client";
-import { IsPlaying } from "../components/IsPlaying";
+import { IsPlaying } from "../components/ObsidianIsPlaying";
 import { AudioStore } from "../player/AudioStore";
 import { hashStrings } from "../util/Minhash";
 import { TTSPluginSettingsStore } from "../player/TTSPluginSettings";
@@ -166,6 +166,7 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
             audio: this.audio,
             bridge: this,
             editor: this.activeEditor!,
+            className: "tts-toolbar-icon",
           }),
         );
         inner.prepend(iconSpan);

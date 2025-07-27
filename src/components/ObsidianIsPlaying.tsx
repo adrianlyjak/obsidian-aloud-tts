@@ -3,22 +3,24 @@ import { observer } from "mobx-react-lite";
 import * as React from "react";
 import { ObsidianBridge } from "../obsidian/ObsidianBridge";
 import { AudioStore } from "../player/AudioStore";
-import { IconSpan } from "./IconButton";
+import { ObsidianIconSpan } from "./ObsidianIconSpan";
 
 export const IsPlaying = observer(
   ({
     audio,
     bridge,
     editor,
+    className,
   }: {
     audio: AudioStore;
     bridge: ObsidianBridge;
     editor: EditorView;
+    className?: string;
   }) => {
     const isPlaying =
       (audio.activeText?.isPlaying && bridge.activeEditor === editor) || false;
     if (isPlaying) {
-      return <IconSpan icon="volume-2" />;
+      return <ObsidianIconSpan icon="volume-2" className={className} />;
     } else {
       return null;
     }

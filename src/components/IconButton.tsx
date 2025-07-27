@@ -23,6 +23,7 @@ const iconMap: Record<string, LucideIcon> = {
   "external-link": Icons.ExternalLink,
   x: Icons.X,
   "step-forward": Icons.StepForward,
+  "volume-2": Icons.Volume2,
 };
 
 /**
@@ -100,8 +101,8 @@ export function IconSpan({
   }, [tooltip, tooltipOptions, tooltipService]);
 
   return (
-    <span className={className} style={style} ref={ref}>
-      <IconComponent size={16} />
+    <span style={style} ref={ref}>
+      <IconComponent className={className} size={16} />
     </span>
   );
 }
