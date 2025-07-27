@@ -25,7 +25,7 @@ export const SettingsModal: React.FC<{
   return (
     <dialog
       ref={dialogRef}
-      className="tts-settings-modal"
+      className="web-tts-settings-modal"
       onClose={onClose}
       onClick={(e) => {
         // Close modal if clicking on backdrop
@@ -34,12 +34,12 @@ export const SettingsModal: React.FC<{
         }
       }}
     >
-      <div className="tts-settings-modal-header">
-        <h2 className="tts-settings-modal-title">Settings</h2>
+      <div className="web-tts-settings-modal-header">
+        <h2 className="web-tts-settings-modal-title">Settings</h2>
         <IconButton icon="x" tooltip="Close Settings" onClick={onClose} />
       </div>
 
-      <div className="tts-settings-modal-content">
+      <div className="web-tts-settings-modal-content">
         <TTSSettingsTabComponent store={settingsStore} player={audioStore} />
       </div>
     </dialog>

@@ -13,8 +13,8 @@
     "test": "vitest run",
     "format:check": "prettier --check src",
     "format": "prettier --write src",
-    "web:dev": "vite src/web/",
-    "web:build": "vite build src/web/",
+    "web:dev": "vite",
+    "web:build": "vite build",
     "prepare": "husky"
   },
   "keywords": [

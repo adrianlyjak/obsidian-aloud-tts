@@ -120,8 +120,8 @@ export const WebEditor: React.FC<{
   }, [store, onEditorReady, bridge]);
 
   return (
-    <div className="tts-web-editor">
-      <div ref={editorRef} className="tts-web-editor-container" />
+    <div className="web-tts-editor">
+      <div ref={editorRef} className="web-tts-editor-container" />
     </div>
   );
 };

@@ -90,7 +90,7 @@ const App: FC<{
   };
 
   return (
-    <div className="tts-app-root">
+    <div className="web-tts-app-root">
       {/* Command Bar */}
       <CommandBar
         settingsStore={settingsStore}

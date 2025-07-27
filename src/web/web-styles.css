@@ -1,4 +1,4 @@
-/* Theme colors matching app.tsx */
+/* Theme colors for web app */
 :root {
   --bg-primary: #1e1e1e;
   --bg-secondary: #252526;
@@ -14,6 +14,7 @@
   --error-color: #f87171;
   --success-color: #34d399;
 }
+
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
@@ -21,7 +22,182 @@ body {
   padding: 0;
 }
 
-/* Base setting item layout */
+/* Button styling */
+.clickable-icon {
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  padding: 6px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease;
+  color: var(--text-secondary);
+}
+
+.clickable-icon:hover:not(:disabled) {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.clickable-icon:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* =================================================================
+   WEB APP LAYOUT COMPONENTS
+   ================================================================= */
+
+.web-tts-app-root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.web-tts-command-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-primary);
+  background-color: var(--bg-secondary);
+  min-height: 40px;
+  flex-shrink: 0;
+}
+
+.web-tts-command-bar-separator {
+  width: 1px;
+  height: 20px;
+  background-color: var(--border-primary);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+.web-tts-command-bar-player {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0; /* Allow flex child to shrink */
+}
+
+.web-tts-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-primary);
+  overflow: hidden;
+}
+
+.web-tts-editor-container {
+  flex: 1;
+  font-size: 14px;
+  overflow: auto;
+}
+
+/* =================================================================
+   WEB SETTINGS MODAL
+   ================================================================= */
+
+.web-tts-settings-modal {
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  max-width: 800px;
+  width: 90vw;
+  max-height: 80vh;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.web-tts-settings-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-primary);
+  background-color: var(--bg-tertiary);
+}
+
+.web-tts-settings-modal-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.web-tts-settings-modal-content {
+  padding: 20px;
+  overflow: auto;
+  max-height: calc(80vh - 60px);
+}
+
+/* Dialog/Modal backdrop styling */
+dialog {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+/* =================================================================
+   WEB-SPECIFIC TTS COMPONENT OVERRIDES
+   ================================================================= */
+
+/* Web-specific audio visualizer styling */
+.tts-audio-visualizer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 2rem;
+  height: 1.2rem;
+  margin: 0 auto;
+  padding: 2px;
+  gap: 1px;
+}
+
+.tts-audio-visualizer-bar {
+  background-color: #cccccc;
+  border-radius: 1px;
+  width: 2px;
+  min-height: 3px;
+  transition: height 0.04s linear;
+}
+
+/* Web-specific error text styling */
+.tts-audio-status-error-text {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  background-color: var(--error-bg);
+  font-style: italic;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--error-color);
+  cursor: pointer;
+}
+
+.tts-audio-status-error-text:hover {
+  text-decoration: underline;
+}
+
+/* =================================================================
+   OBSIDIAN LIBRARY STYLE EMULATION (Required for shared components)
+   ================================================================= */
+
+/* Emulate Obsidian's setting component styles that shared components depend on */
 .setting-item {
   display: flex;
   align-items: flex-start;
@@ -58,9 +234,14 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  position: relative;
 }
 
-/* Form controls */
+.setting-item-control .clickable-icon {
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
 .setting-item input[type="text"],
 .setting-item input[type="password"],
 .setting-item select,
@@ -86,45 +267,7 @@ body {
   box-shadow: 0 0 0 3px rgba(0, 122, 204, 0.12);
 }
 
-/* Buttons */
-.clickable-icon {
-  cursor: pointer;
-  border: none;
-  background: transparent;
-  padding: 6px;
-  border-radius: 6px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.15s ease;
-  color: var(--text-secondary);
-}
-
-.clickable-icon:hover:not(:disabled) {
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
-}
-
-.clickable-icon:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.tts-toolbar-button {
-  /* Inherits from clickable-icon */
-}
-
-/* Input group with button */
-.setting-item-control {
-  position: relative;
-}
-
-.setting-item-control .clickable-icon {
-  flex-shrink: 0;
-  margin-left: 8px;
-}
-
-/* Error components */
+/* Map shared error components */
 .tts-settings-error-container {
   margin: 16px 0;
 }
@@ -138,254 +281,4 @@ body {
   border: 1px solid var(--error-color);
   border-radius: 4px;
   color: var(--error-color);
-}
-
-/* Validation states */
-.validation-success {
-  color: var(--success-color);
-}
-
-.validation-error {
-  color: var(--error-color);
-}
-
-.validation-loading {
-  color: var(--text-secondary);
-}
-
-/* Better validation icon alignment */
-.clickable-icon.validation-success {
-  color: var(--success-color);
-}
-
-.clickable-icon.validation-error {
-  color: var(--error-color);
-}
-
-.clickable-icon.validation-loading {
-  color: var(--text-secondary);
-}
-
-/* Animations */
-.animate-spin {
-  animation: spin 2s linear infinite;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Layout helpers */
-.opacity-50 {
-  opacity: 0.5;
-}
-
-/* PlayerView styles */
-.tts-toolbar-player {
-  display: flex;
-  padding: 0 16px;
-  height: 32px;
-  gap: 8px;
-  align-items: stretch;
-}
-
-.tts-toolbar-player-button-group {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.tts-audio-status-container {
-  flex: 1 1 auto;
-  display: flex;
-  overflow: hidden;
-  align-items: center;
-}
-
-.tts-audio-status-error {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: flex;
-  align-items: center;
-  justify-content: left;
-}
-
-.tts-audio-status-error-text {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  background-color: var(--error-bg);
-  font-style: italic;
-  font-size: 12px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  color: var(--error-color);
-  cursor: pointer;
-}
-
-.tts-audio-status-error-text:hover {
-  text-decoration: underline;
-}
-
-.tts-audio-status-loading {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.tts-audio-status-error-icon {
-  display: inline-flex;
-  padding-right: 6px;
-  justify-content: center;
-  align-items: center;
-}
-
-.tts-error-details {
-  margin-top: 12px;
-  padding: 12px;
-  background-color: var(--bg-tertiary);
-  border: 1px solid var(--border-primary);
-  border-radius: 6px;
-  font-size: 13px;
-  color: var(--text-primary);
-}
-
-/* Popover styles */
-.popover-container {
-  position: relative;
-}
-
-.popover {
-  position: absolute;
-  z-index: 1000;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-primary);
-  border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  padding: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.popover input[type="range"] {
-  width: 100px;
-}
-
-/* Dialog/Modal styles */
-dialog {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-primary);
-}
-
-dialog::backdrop {
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(2px);
-}
-
-/* Audio visualizer for dark theme - centered wave-like bars */
-.tts-audio-visualizer {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 2rem;
-  height: 1.2rem;
-  margin: 0 auto;
-  padding: 2px;
-  gap: 1px;
-}
-
-.tts-audio-visualizer-bar {
-  background-color: #cccccc;
-  border-radius: 1px;
-  width: 2px;
-  min-height: 3px;
-  transition: height 0.04s linear;
-}
-
-/* Component-specific classes */
-.tts-app-root {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  font-family:
-    system-ui,
-    -apple-system,
-    sans-serif;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-}
-
-.tts-command-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border-primary);
-  background-color: var(--bg-secondary);
-  min-height: 40px;
-}
-
-.tts-command-bar-separator {
-  width: 1px;
-  height: 20px;
-  background-color: var(--border-primary);
-  margin: 0 4px;
-}
-
-.tts-command-bar-player {
-  flex: 1;
-  display: flex;
-  align-items: center;
-}
-
-.tts-settings-modal {
-  padding: 0;
-  border: none;
-  border-radius: 8px;
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-  max-width: 800px;
-  width: 90vw;
-  max-height: 80vh;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-}
-
-.tts-settings-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border-primary);
-  background-color: var(--bg-tertiary);
-}
-
-.tts-settings-modal-title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.tts-settings-modal-content {
-  padding: 20px;
-  overflow: auto;
-  max-height: calc(80vh - 60px);
-}
-
-.tts-web-editor {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background-color: var(--bg-primary);
-}
-
-.tts-web-editor-container {
-  flex: 1;
-  font-size: 14px;
 }

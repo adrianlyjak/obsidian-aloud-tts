@@ -56,7 +56,7 @@ export const CommandBar: React.FC<{
     }, [obsidian]);
 
     return (
-      <div className="tts-command-bar">
+      <div className="web-tts-command-bar">
         {/* Settings gear icon */}
         <IconButton
           icon="settings"
@@ -78,11 +78,11 @@ export const CommandBar: React.FC<{
           disabled={!editor}
         />
         {/* Separator */}
-        <div className="tts-command-bar-separator" />
+        <div className="web-tts-command-bar-separator" />
 
         {/* PlayerView controls when available */}
         {editor && settingsStore && obsidian && (
-          <div className="tts-command-bar-player">
+          <div className="web-tts-command-bar-player">
             <PlayerView
               editor={editor}
               player={store}
