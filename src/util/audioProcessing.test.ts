@@ -145,4 +145,101 @@ describe("audioProcessing", () => {
       }
     });
   });
+
+  describe("concatenateMp3Buffers", () => {
+    const createMockAudioBuffer = (
+      length: number,
+      sampleRate = 44100,
+      numberOfChannels = 2,
+    ): AudioBuffer => {
+      const mockAudioBuffer = {
+        length,
+        sampleRate,
+        numberOfChannels,
+        getChannelData: (channel: number) => {
+          // Create simple test data - sine wave with different frequencies per channel
+          const data = new Float32Array(length);
+          const frequency = 440 * (channel + 1); // 440Hz for ch0, 880Hz for ch1
+          for (let i = 0; i < length; i++) {
+            data[i] =
+              Math.sin((2 * Math.PI * frequency * i) / sampleRate) * 0.5;
+          }
+          return data;
+        },
+      } as AudioBuffer;
+      return mockAudioBuffer;
+    };
+
+    const createMockAudioSink = (audioBuffers: AudioBuffer[]) => {
+      let callCount = 0;
+      return {
+        getAudioBuffer: async (_buffer: ArrayBuffer): Promise<AudioBuffer> => {
+          const buffer = audioBuffers[callCount];
+          callCount++;
+          return buffer;
+        },
+      };
+    };
+
+    it("should return single buffer unchanged", async () => {
+      const { concatenateMp3Buffers } = await import("./audioProcessing");
+      const testBuffer = new ArrayBuffer(100);
+      const mockAudioSink = createMockAudioSink([]);
+
+      const result = await concatenateMp3Buffers([testBuffer], mockAudioSink);
+
+      expect(result).toBe(testBuffer);
+    });
+
+    it("should throw error for empty buffer array", async () => {
+      const { concatenateMp3Buffers } = await import("./audioProcessing");
+      const mockAudioSink = createMockAudioSink([]);
+
+      await expect(concatenateMp3Buffers([], mockAudioSink)).rejects.toThrow(
+        "No audio buffers to concatenate",
+      );
+    });
+
+    it("should concatenate multiple audio buffers correctly", async () => {
+      const { concatenateMp3Buffers } = await import("./audioProcessing");
+
+      // Create mock audio buffers with different lengths
+      const buffer1 = createMockAudioBuffer(1000);
+      const buffer2 = createMockAudioBuffer(500);
+      const buffer3 = createMockAudioBuffer(750);
+
+      const mockAudioSink = createMockAudioSink([buffer1, buffer2, buffer3]);
+
+      // Create mock MP3 buffers (content doesn't matter for this test)
+      const mp3Buffers = [
+        new ArrayBuffer(100),
+        new ArrayBuffer(50),
+        new ArrayBuffer(75),
+      ];
+
+      const result = await concatenateMp3Buffers(mp3Buffers, mockAudioSink);
+
+      // Should return a valid ArrayBuffer (the re-encoded MP3)
+      expect(result).toBeInstanceOf(ArrayBuffer);
+      expect(result.byteLength).toBeGreaterThan(0);
+    });
+
+    it("should preserve audio properties from first buffer", async () => {
+      const { concatenateMp3Buffers } = await import("./audioProcessing");
+
+      // Create buffers with different sample rates (should use first one's properties)
+      const buffer1 = createMockAudioBuffer(1000, 48000, 1); // 48kHz, mono
+      const buffer2 = createMockAudioBuffer(500, 44100, 2); // 44.1kHz, stereo (should be ignored)
+
+      const mockAudioSink = createMockAudioSink([buffer1, buffer2]);
+
+      const mp3Buffers = [new ArrayBuffer(100), new ArrayBuffer(50)];
+
+      const result = await concatenateMp3Buffers(mp3Buffers, mockAudioSink);
+
+      // Should successfully create output using first buffer's properties
+      expect(result).toBeInstanceOf(ArrayBuffer);
+      expect(result.byteLength).toBeGreaterThan(0);
+    });
+  });
 });

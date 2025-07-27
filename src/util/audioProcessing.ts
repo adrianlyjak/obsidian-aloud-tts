@@ -143,3 +143,68 @@ export async function pcmBufferToMp3Buffer(
     }
   });
 }
+
+/**
+ * Concatenate multiple MP3 ArrayBuffers into a single MP3 file
+ * by decoding to PCM, concatenating, and re-encoding
+ */
+export async function concatenateMp3Buffers(
+  buffers: ArrayBuffer[],
+  audioSink: { getAudioBuffer: (audio: ArrayBuffer) => Promise<AudioBuffer> },
+): Promise<ArrayBuffer> {
+  if (buffers.length === 0) {
+    throw new Error("No audio buffers to concatenate");
+  }
+
+  if (buffers.length === 1) {
+    return buffers[0];
+  }
+
+  // Decode all MP3 buffers to AudioBuffer (PCM)
+  const audioBuffers: AudioBuffer[] = [];
+  for (const buffer of buffers) {
+    const audioBuffer = await audioSink.getAudioBuffer(buffer);
+    audioBuffers.push(audioBuffer);
+  }
+
+  // Get audio properties from first buffer
+  const sampleRate = audioBuffers[0].sampleRate;
+  const numberOfChannels = audioBuffers[0].numberOfChannels;
+
+  // Calculate total length and concatenate PCM data
+  const totalLength = audioBuffers.reduce((sum, buf) => sum + buf.length, 0);
+  const concatenatedChannels: Float32Array[] = [];
+
+  // Initialize arrays for each channel
+  for (let ch = 0; ch < numberOfChannels; ch++) {
+    concatenatedChannels[ch] = new Float32Array(totalLength);
+  }
+
+  // Copy each buffer's data into the concatenated arrays
+  let offset = 0;
+  for (const audioBuffer of audioBuffers) {
+    for (let ch = 0; ch < numberOfChannels; ch++) {
+      const channelData = audioBuffer.getChannelData(ch);
+      concatenatedChannels[ch].set(channelData, offset);
+    }
+    offset += audioBuffer.length;
+  }
+
+  // Convert Float32Array to Int16Array (PCM format for lamejs)
+  const pcmSamples = new Int16Array(totalLength * numberOfChannels);
+  for (let i = 0; i < totalLength; i++) {
+    for (let ch = 0; ch < numberOfChannels; ch++) {
+      // Convert float32 [-1,1] to int16 [-32768,32767]
+      const sample = Math.max(-1, Math.min(1, concatenatedChannels[ch][i]));
+      pcmSamples[i * numberOfChannels + ch] = Math.round(sample * 32767);
+    }
+  }
+
+  // Re-encode to MP3
+  return await pcmBufferToMp3Buffer(pcmSamples.buffer, {
+    sampleRate,
+    channels: numberOfChannels,
+    bitDepth: 16,
+    kbps: 128,
+  });
+}
