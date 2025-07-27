@@ -61,16 +61,6 @@ export function IconButton({
       ref={ref}
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "4px",
-        background: "transparent",
-        border: "1px solid transparent",
-        borderRadius: "4px",
-        cursor: disabled ? "not-allowed" : "pointer",
-      }}
       {...(disabled ? { "aria-disabled": "true" } : {})}
     >
       <IconComponent size={16} className={disabled ? "opacity-50" : ""} />
@@ -78,21 +68,20 @@ export function IconButton({
   );
 }
 
-export function IconSpan({
-  icon,
+export function TooltipSpan({
+  children,
   className,
   style,
   tooltip,
   tooltipOptions,
 }: {
-  icon: string;
+  children: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
   tooltip?: string;
   tooltipOptions?: TooltipOptions;
 }) {
   const ref = React.useRef<HTMLSpanElement | null>(null);
-  const IconComponent = iconMap[icon] || Icons.Circle;
   const tooltipService = useTooltip();
 
   React.useEffect(() => {
@@ -102,8 +91,8 @@ export function IconSpan({
   }, [tooltip, tooltipOptions, tooltipService]);
 
   return (
-    <span style={style} ref={ref}>
-      <IconComponent className={className} size={16} />
+    <span style={style} ref={ref} className={className}>
+      {children}
     </span>
   );
 }

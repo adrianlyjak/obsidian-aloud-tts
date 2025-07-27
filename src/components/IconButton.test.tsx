@@ -2,7 +2,8 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
-import { IconButton, IconSpan } from "./IconButton";
+import { IconButton, TooltipSpan } from "./IconButton";
+import { Pause } from "lucide-react";
 
 // Mock obsidian functions
 vi.mock("obsidian", () => ({
@@ -38,9 +39,12 @@ describe("IconButton Components", () => {
   });
 
   describe("IconSpan", () => {
-    it("should render with icon", () => {
-      render(<IconSpan icon="pause" />);
-
+    it("renders correctly", () => {
+      render(
+        <TooltipSpan>
+          <Pause size={16} />
+        </TooltipSpan>,
+      );
       const span = document.querySelector("span");
       expect(span).toBeTruthy();
     });

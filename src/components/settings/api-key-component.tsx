@@ -4,7 +4,8 @@ import {
   ModelProvider,
   TTSPluginSettingsStore,
 } from "../../player/TTSPluginSettings";
-import { IconButton, IconSpan, Spinner } from "../IconButton";
+import { IconButton, TooltipSpan, Spinner } from "../IconButton";
+import { Check, AlertCircle } from "lucide-react";
 
 export interface ApiKeyComponentProps {
   store: TTSPluginSettingsStore;
@@ -79,12 +80,17 @@ export const ApiKeyComponent: React.FC<ApiKeyComponentProps> = observer(
             (validIcon === "loader" ? (
               <Spinner />
             ) : (
-              <IconSpan
-                icon={validIcon}
+              <TooltipSpan
                 tooltip={
                   validIcon === "alert-circle" ? errorMessage : undefined
                 }
-              />
+              >
+                {validIcon === "check" ? (
+                  <Check size={16} />
+                ) : validIcon === "alert-circle" ? (
+                  <AlertCircle size={16} />
+                ) : null}
+              </TooltipSpan>
             ))}
           <input
             type={showPassword ? "text" : "password"}
