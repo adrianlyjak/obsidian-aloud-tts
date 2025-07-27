@@ -13,9 +13,10 @@ import { ChunkLoader } from "../player/ChunkLoader";
 import { REGISTRY } from "../models/registry";
 import { EditorView } from "@codemirror/view";
 import { TooltipProvider } from "../util/TooltipContext";
-import { CommandBar, WebObsidianBridge } from "./components/CommandBar";
+import { CommandBar } from "./components/CommandBar";
 import { WebEditor } from "./components/WebEditor";
 import { SettingsModal } from "./components/SettingsModal";
+import { WebBridgeImpl, WebObsidianBridge } from "./components/WebBridge";
 
 const STORAGE_KEYS = {
   SETTINGS: "tts-settings",
@@ -43,71 +44,6 @@ const THEME = {
     hover: "#1177bb",
   },
 };
-
-// Simple ObsidianBridge adapter for web environment
-class WebObsidianBridgeImpl implements WebObsidianBridge {
-  activeEditor: EditorView | undefined = undefined;
-  focusedEditor: EditorView | undefined = undefined;
-  detachedAudio: boolean = false;
-
-  constructor(
-    private store: AudioStore,
-    private onOpenSettings: () => void,
-  ) {}
-
-  setActiveEditor(editor: EditorView | undefined) {
-    this.activeEditor = editor;
-    this.focusedEditor = editor;
-  }
-
-  playSelection = () => {
-    if (this.activeEditor) {
-      const text = this.activeEditor.state.doc.toString();
-      if (text.trim()) {
-        this.store.startPlayer({
-          filename: "editor.md",
-          text,
-          start: 0,
-          end: text.length,
-        });
-      }
-    }
-  };
-
-  playDetached = (text: string) => {
-    this.detachedAudio = true;
-    this.store.startPlayer({
-      filename: "detached.md",
-      text,
-      start: 0,
-      end: text.length,
-    });
-  };
-
-  onTextChanged = (position: number, type: "add" | "remove", text: string) => {
-    // For web version, we'll handle this if needed
-  };
-
-  triggerSelection = () => {
-    // Not needed for web version
-  };
-
-  openSettings = () => {
-    this.onOpenSettings();
-  };
-
-  destroy = () => {
-    // Cleanup if needed
-  };
-
-  isMobile = () => {
-    return window.innerWidth <= 768; // Simple mobile detection
-  };
-
-  exportAudio = async (text: string, replaceSelection?: boolean) => {
-    // Not implemented for web version
-  };
-}
 
 async function main() {
   const settingsStore = await pluginSettingsStore(
@@ -167,7 +103,7 @@ const App: FC<{
   // Create obsidian bridge
   const obsidianBridge = useRef<WebObsidianBridge>();
   if (!obsidianBridge.current) {
-    obsidianBridge.current = new WebObsidianBridgeImpl(store, () =>
+    obsidianBridge.current = new WebBridgeImpl(store, () =>
       setShowSettings(true),
     );
   }
@@ -204,7 +140,11 @@ const App: FC<{
 
       {/* Editor */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <WebEditor store={store} onEditorReady={setEditorView} />
+        <WebEditor
+          store={store}
+          onEditorReady={setEditorView}
+          bridge={obsidianBridge.current}
+        />
       </div>
 
       {/* Settings Modal */}

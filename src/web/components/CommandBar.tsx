@@ -7,6 +7,7 @@ import { TTSPluginSettingsStore } from "../../player/TTSPluginSettings";
 import { WebAudioSink } from "../../player/AudioSink";
 import { IconButton } from "../../components/IconButton";
 import { PlayerView } from "../../components/PlayerView";
+import { WebObsidianBridge } from "./WebBridge";
 
 // Theme colors - same as in app.tsx
 const THEME = {
@@ -30,26 +31,6 @@ const THEME = {
   },
 };
 
-// Simple ObsidianBridge adapter for web environment
-export interface WebObsidianBridge {
-  activeEditor: EditorView | undefined;
-  focusedEditor: EditorView | undefined;
-  detachedAudio: boolean;
-  setActiveEditor: (editor: EditorView | undefined) => void;
-  playSelection: () => void;
-  playDetached: (text: string) => void;
-  onTextChanged: (
-    position: number,
-    type: "add" | "remove",
-    text: string,
-  ) => void;
-  triggerSelection: () => void;
-  openSettings: () => void;
-  destroy: () => void;
-  isMobile: () => boolean;
-  exportAudio: (text: string, replaceSelection?: boolean) => Promise<void>;
-}
-
 export const CommandBar: React.FC<{
   settingsStore: TTSPluginSettingsStore;
   store: AudioStore;
@@ -60,24 +41,41 @@ export const CommandBar: React.FC<{
 }> = observer(
   ({ settingsStore, store, sink, editor, obsidian, onOpenSettings }) => {
     const handlePlayFromCursor = useCallback(() => {
-      if (editor) {
-        const state = editor.state;
-        const cursor = state.selection.main.head;
-        const doc = state.doc;
+      // Use the bridge's triggerSelection which handles selection vs cursor properly
+      obsidian?.triggerSelection();
+    }, [obsidian]);
 
-        // Get text from cursor to end of document
-        const textFromCursor = doc.sliceString(cursor);
+    const handleExportSelection = useCallback(() => {
+      if (!editor || !obsidian) return;
 
-        if (textFromCursor.trim()) {
-          store.startPlayer({
-            filename: "editor.md",
-            text: textFromCursor,
-            start: cursor,
-            end: doc.length,
-          });
-        }
+      const state = editor.state;
+      const selection = state.selection.main;
+      const doc = state.doc;
+
+      // Get selected text or all text if nothing selected
+      const text =
+        selection.from !== selection.to
+          ? doc.sliceString(selection.from, selection.to)
+          : doc.toString();
+
+      if (text.trim()) {
+        obsidian.exportAudio(text, false);
       }
-    }, [editor, store]);
+    }, [editor, obsidian]);
+
+    const _handleExportFromClipboard = useCallback(async () => {
+      if (!obsidian) return;
+
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text.trim()) {
+          obsidian.exportAudio(text, false);
+        }
+      } catch (ex) {
+        console.error("Failed to read clipboard", ex);
+        alert("Failed to read clipboard");
+      }
+    }, [obsidian]);
 
     return (
       <div
@@ -99,12 +97,18 @@ export const CommandBar: React.FC<{
         />
 
         <IconButton
-          icon="file-text"
-          tooltip="Play from Cursor"
+          icon="play"
+          tooltip="Play Selection (or from Cursor)"
           onClick={handlePlayFromCursor}
           disabled={!editor}
         />
 
+        <IconButton
+          icon="download"
+          tooltip="Export Selection to Audio"
+          onClick={handleExportSelection}
+          disabled={!editor}
+        />
         {/* Separator */}
         <div
           style={{
