@@ -49,9 +49,12 @@ body {
 /* =================================================================
    WEB APP LAYOUT COMPONENTS
    ================================================================= */
+html {
+  height: 100vh;
+  overflow: auto;
+}
 
 .web-tts-app-root {
-  height: 100vh;
   display: flex;
   flex-direction: column;
   font-family:
@@ -71,6 +74,9 @@ body {
   background-color: var(--bg-secondary);
   min-height: 40px;
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .web-tts-command-bar-separator {

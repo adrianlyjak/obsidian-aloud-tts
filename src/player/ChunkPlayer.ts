@@ -435,19 +435,48 @@ const loadCheck = async (
   maxBufferAhead: number,
   isCancelled: () => boolean,
   audioContextChunks: number,
-): Promise<ArrayBuffer | undefined> => {
-  const indexes = indexesToLoad(system.audioStore.activeText!, maxBufferAhead);
+): Promise<[AudioTextChunk, ArrayBuffer] | undefined> => {
+  const activeText = system.audioStore.activeText!;
+  const currentPosition = activeText.position;
+
+  logDebug(
+    `loadCheck ENTER currentPosition=${currentPosition} maxBufferAhead=${maxBufferAhead}`,
+  );
+
+  const indexes = indexesToLoad(activeText, maxBufferAhead);
+  logDebug(`loadCheck indexesToLoad result=[${indexes.join(",")}]`);
+
   if (indexes.length === 0) {
+    logDebug(`loadCheck EXIT no indexes to load`);
     return;
   }
-  const chunks = system.audioStore.activeText!.audio.chunks;
+
+  const chunks = activeText.audio.chunks;
+  const chunkStates = indexes.map((i) => ({
+    index: i,
+    hasAudio: !!chunks[i]?.audio,
+    loading: chunks[i]?.loading,
+    text:
+      chunks[i]?.text.slice(0, 50) + (chunks[i]?.text.length > 50 ? "..." : ""),
+  }));
+  logDebug(`loadCheck chunk states: ${JSON.stringify(chunkStates)}`);
+
   // kick off the preload
   const modelOpts = system.ttsModel.convertToOptions(system.settings);
+  logDebug(`loadCheck starting preloads for indexes=[${indexes.join(",")}]`);
+
   for (const index of indexes) {
     const chunk = chunks[index];
     const context = getContext(chunks, index, audioContextChunks);
     if (chunk?.text.trim()) {
+      logDebug(
+        `loadCheck preload index=${index} chunkHasAudio=${!!chunk.audio} chunkLoading=${chunk.loading} textLength=${chunk.text.length}`,
+      );
       chunkLoader.preload(chunk.text, modelOpts, index, context);
+    } else {
+      logDebug(
+        `loadCheck skipping preload index=${index} - empty text or no chunk`,
+      );
     }
   }
 
@@ -456,24 +485,63 @@ const loadCheck = async (
   const context = getContext(chunks, position, audioContextChunks);
   const text = chunk.text;
 
+  logDebug(
+    `loadCheck targeting position=${position} chunkHasAudio=${!!chunk.audio} chunkLoading=${chunk.loading} textLength=${text.length}`,
+  );
+
+  // Check if already loaded/loading before proceeding
+  if (chunk.audio) {
+    logDebug(
+      `loadCheck WARNING chunk at position=${position} already has audio - potential duplicate!`,
+    );
+  }
+  if (chunk.loading) {
+    logDebug(
+      `loadCheck WARNING chunk at position=${position} already loading - potential race condition!`,
+    );
+  }
+
   // then wait for the next one to complete
   chunk.setLoading();
+  logDebug(`loadCheck set chunk position=${position} to loading state`);
+
   let audio: ArrayBuffer;
   try {
+    logDebug(
+      `loadCheck calling chunkLoader.load for position=${position} textLength=${text.length}`,
+    );
     audio = await chunkLoader.load(text, modelOpts, context);
+    logDebug(
+      `loadCheck chunkLoader.load completed position=${position} audioByteLength=${audio.byteLength}`,
+    );
   } catch (e) {
+    logDebug(
+      `loadCheck chunkLoader.load FAILED position=${position} error=${e}`,
+    );
     chunk.setFailed(e);
     throw e;
   }
 
   if (isCancelled()) {
+    logDebug(
+      `loadCheck cancelled after load position=${position} - discarding audio`,
+    );
     return;
   } else {
+    logDebug(
+      `loadCheck setting chunk position=${position} to loaded state audioByteLength=${audio.byteLength}`,
+    );
     chunk.setLoaded(audio);
-    return audio;
+    logDebug(`loadCheck EXIT returning chunk position=${position}`);
+    return [chunk, audio] as const;
   }
 };
 
+function logDebug(message: string) {
+  console.log(
+    `[ChunkPlayer] date=${new Date().toISOString()} message=${message}`,
+  );
+}
 const loadCheckLoop = (
   system: AudioSystem,
   chunkLoader: ChunkLoader,
@@ -490,10 +558,14 @@ const loadCheckLoop = (
       maxBufferAhead,
       () => cancelled,
       audioContextChunks,
-    ).then((result) => {
+    ).then((maybe) => {
       const activeText = system.audioStore.activeText;
-      if (result && activeText && position !== null && !cancelled) {
-        activeText.audio.chunks[position].setLoaded(result);
+      if (maybe && activeText && position !== null && !cancelled) {
+        const [chunk, result] = maybe;
+        logDebug(
+          `appendMedia text=${chunk.text} loading=${chunk.loading} hasAudio=${!!chunk.audio} hasBuffer=${!!chunk.audioBuffer} length=${result.byteLength}`,
+        );
+        chunk.setLoaded(result);
         return system.audioSink
           .appendMedia(result)
           .then(() => system.audioSink.getAudioBuffer(result))
