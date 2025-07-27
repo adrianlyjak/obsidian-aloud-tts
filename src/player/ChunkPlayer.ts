@@ -435,14 +435,20 @@ const loadCheck = async (
   maxBufferAhead: number,
   isCancelled: () => boolean,
   audioContextChunks: number,
-): Promise<ArrayBuffer | undefined> => {
-  const indexes = indexesToLoad(system.audioStore.activeText!, maxBufferAhead);
+): Promise<[AudioTextChunk, ArrayBuffer] | undefined> => {
+  const activeText = system.audioStore.activeText!;
+
+  const indexes = indexesToLoad(activeText, maxBufferAhead);
+
   if (indexes.length === 0) {
     return;
   }
-  const chunks = system.audioStore.activeText!.audio.chunks;
+
+  const chunks = activeText.audio.chunks;
+
   // kick off the preload
   const modelOpts = system.ttsModel.convertToOptions(system.settings);
+
   for (const index of indexes) {
     const chunk = chunks[index];
     const context = getContext(chunks, index, audioContextChunks);
@@ -458,6 +464,7 @@ const loadCheck = async (
 
   // then wait for the next one to complete
   chunk.setLoading();
+
   let audio: ArrayBuffer;
   try {
     audio = await chunkLoader.load(text, modelOpts, context);
@@ -470,7 +477,7 @@ const loadCheck = async (
     return;
   } else {
     chunk.setLoaded(audio);
-    return audio;
+    return [chunk, audio] as const;
   }
 };
 
@@ -482,6 +489,8 @@ const loadCheckLoop = (
 ): CancellablePromise<void> => {
   let cancelled = false;
   const inner = (): Promise<void> => {
+    // TODO - this process is not great between here and the loadCheck.
+    // There's been some race conditions related to the current position.
     const position = nextToLoad(system.audioStore.activeText!, maxBufferAhead);
     chunkLoader.expireBefore(system.audioStore.activeText!.position);
     return loadCheck(
@@ -490,10 +499,11 @@ const loadCheckLoop = (
       maxBufferAhead,
       () => cancelled,
       audioContextChunks,
-    ).then((result) => {
+    ).then((maybe) => {
       const activeText = system.audioStore.activeText;
-      if (result && activeText && position !== null && !cancelled) {
-        activeText.audio.chunks[position].setLoaded(result);
+      if (maybe && activeText && position !== null && !cancelled) {
+        const [chunk, result] = maybe;
+        chunk.setLoaded(result);
         return system.audioSink
           .appendMedia(result)
           .then(() => system.audioSink.getAudioBuffer(result))

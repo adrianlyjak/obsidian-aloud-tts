@@ -217,7 +217,10 @@ export class WebAudioSink implements AudioSink {
       this._sourceBuffer.timestampOffset = 0;
       await onceBuffUpdateEnd(this._sourceBuffer);
       if (seekComplete) {
-        await seekComplete;
+        await CancellablePromise.race([
+          CancellablePromise.delay(500), // safari implementation doesn't seem to need this. simple kludge for now to prevent waiting forever
+          seekComplete,
+        ]);
       }
       this._updateTrackStatus();
     }

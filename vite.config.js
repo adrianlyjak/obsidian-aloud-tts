@@ -11,9 +11,6 @@ export default defineConfig({
       input: "./src/web/index.html"
     }
   },
-  server: {
-    open: "/src/web/index.html"
-  },
   test: {
     environment: "jsdom",
     setupFiles: ["./test-setup.ts"],
