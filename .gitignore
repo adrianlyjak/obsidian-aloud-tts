@@ -29,3 +29,4 @@ dist
 .metals
 .scala-build
 coverage
+dist-web

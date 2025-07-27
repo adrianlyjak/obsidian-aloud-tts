@@ -1,0 +1,162 @@
+/* Base setting item layout */
+.setting-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.setting-item:last-child {
+  border-bottom: none;
+}
+
+.setting-item-info {
+  flex: 1;
+  margin-right: 16px;
+}
+
+.setting-item-name {
+  font-weight: 500;
+  margin-bottom: 4px;
+  color: #333;
+}
+
+.setting-item-description {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.setting-item-control {
+  flex-shrink: 0;
+  min-width: 200px;
+}
+
+/* Form controls */
+.setting-item input[type="text"],
+.setting-item input[type="password"],
+.setting-item select,
+.setting-item textarea {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.setting-item input[type="text"]:focus,
+.setting-item input[type="password"]:focus,
+.setting-item select:focus,
+.setting-item textarea:focus {
+  outline: none;
+  border-color: #007acc;
+  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.1);
+}
+
+/* Buttons */
+.clickable-icon {
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  padding: 4px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clickable-icon:hover:not(:disabled) {
+  background-color: #f0f0f0;
+}
+
+.clickable-icon:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tts-toolbar-button {
+  /* Inherits from clickable-icon */
+}
+
+/* Error components */
+.tts-settings-error-container {
+  margin: 16px 0;
+}
+
+.tts-settings-error-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 4px;
+  color: #dc2626;
+}
+
+/* Validation states */
+.validation-success {
+  color: #10b981;
+}
+
+.validation-error {
+  color: #ef4444;
+}
+
+.validation-loading {
+  color: #6b7280;
+}
+
+/* Animations */
+.animate-spin {
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Layout helpers */
+.opacity-50 {
+  opacity: 0.5;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .setting-item {
+    border-bottom-color: #444;
+  }
+
+  .setting-item-name {
+    color: #e5e5e5;
+  }
+
+  .setting-item-description {
+    color: #b3b3b3;
+  }
+
+  .setting-item input[type="text"],
+  .setting-item input[type="password"],
+  .setting-item select,
+  .setting-item textarea {
+    background: #2a2a2a;
+    border-color: #555;
+    color: #e5e5e5;
+  }
+
+  .clickable-icon:hover:not(:disabled) {
+    background-color: #3a3a3a;
+  }
+
+  .tts-settings-error-summary {
+    background-color: #422525;
+    border-color: #7f2525;
+    color: #f87171;
+  }
+}

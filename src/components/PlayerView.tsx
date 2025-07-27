@@ -11,7 +11,7 @@ import { AudioVisualizer } from "./AudioVisualizer";
 import { IconButton, IconSpan, Spinner } from "./IconButton";
 import { EditorView } from "@codemirror/view";
 import { TTSErrorInfo } from "../models/tts-model";
-import { setTooltip } from "obsidian";
+import { useTooltip } from "../util/TooltipContext";
 
 export const PlayerView = observer(
   ({
@@ -253,12 +253,13 @@ export function TTSErrorInfoView(props: {
     .filter((x) => x)
     .join("\n");
   const ref = React.useRef<HTMLElement | null>(null);
+  const tooltipService = useTooltip();
 
   React.useEffect(() => {
     if (ref.current) {
-      setTooltip(ref.current, tooltip);
+      tooltipService.setTooltip(ref.current, tooltip);
     }
-  }, [ref.current, tooltip]);
+  }, [ref.current, tooltip, tooltipService]);
 
   return (
     <span className="tts-audio-status-error">
