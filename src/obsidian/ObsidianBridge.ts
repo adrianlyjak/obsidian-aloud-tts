@@ -10,34 +10,19 @@ import {
 } from "obsidian";
 import * as React from "react";
 import { createRoot } from "react-dom/client";
-import { IsPlaying } from "../components/IsPlaying";
+import { IsPlaying } from "../components/ObsidianIsPlaying";
 import { AudioStore } from "../player/AudioStore";
 import { hashStrings } from "../util/Minhash";
 import { TTSPluginSettingsStore } from "../player/TTSPluginSettings";
+import { TTSEditorBridge } from "../codemirror/TTSCodeMirrorCore";
 
-export interface ObsidianBridge {
-  /** editor that is currently playing audio */
-  activeEditor: EditorView | undefined;
-  /** editor that has cursor */
-  focusedEditor: EditorView | undefined;
-  /** set true when playing from the clipboard or other transient audio */
-  detachedAudio: boolean;
-  playSelection: () => void;
-  playDetached: (text: string) => void;
-  onTextChanged: (
-    position: number,
-    type: "add" | "remove",
-    text: string,
-  ) => void;
+export interface ObsidianBridge extends TTSEditorBridge {
+  // Obsidian-specific methods beyond the shared interface
   triggerSelection: (
     file: TFile | null,
     editor: Editor,
     options?: { extendShort?: boolean },
   ) => void;
-  openSettings: () => void;
-  destroy: () => void;
-  isMobile: () => boolean;
-  exportAudio: (text: string, replaceSelection?: boolean) => Promise<void>;
 }
 
 /** observable class for obsidian related implementation to activate audio */
@@ -181,6 +166,7 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
             audio: this.audio,
             bridge: this,
             editor: this.activeEditor!,
+            className: "tts-toolbar-icon",
           }),
         );
         inner.prepend(iconSpan);

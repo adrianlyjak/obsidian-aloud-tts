@@ -1,8 +1,34 @@
-import { TooltipOptions, setIcon, setTooltip } from "obsidian";
 import * as React from "react";
+import { LucideIcon } from "lucide-react";
+import * as Icons from "lucide-react";
+import { useTooltip, TooltipOptions } from "../util/TooltipContext";
+
+// Map common icon names to Lucide components
+const iconMap: Record<string, LucideIcon> = {
+  check: Icons.Check,
+  "alert-circle": Icons.AlertCircle,
+  loader: Icons.Loader2,
+  play: Icons.Play,
+  pause: Icons.Pause,
+  stop: Icons.Square,
+  "skip-forward": Icons.SkipForward,
+  "skip-back": Icons.SkipBack,
+  settings: Icons.Settings,
+  "help-circle": Icons.HelpCircle,
+  eye: Icons.Eye,
+  "eye-off": Icons.EyeOff,
+  "refresh-ccw": Icons.RefreshCcw,
+  "rotate-cw": Icons.RotateCw,
+  trash: Icons.Trash2,
+  download: Icons.Download,
+  "external-link": Icons.ExternalLink,
+  x: Icons.X,
+  "step-forward": Icons.StepForward,
+  "volume-2": Icons.Volume2,
+};
 
 /**
- * obsidian uses https://lucide.dev/
+ * IconButton using lucide-react icons with obsidian-compatible tooltips
  */
 export function IconButton({
   icon,
@@ -17,58 +43,57 @@ export function IconButton({
   className?: string;
   disabled?: boolean;
 }) {
-  const ref = React.useRef<HTMLElement | null>(null);
+  const ref = React.useRef<HTMLButtonElement | null>(null);
+  const IconComponent = iconMap[icon] || Icons.Circle;
+  const tooltipService = useTooltip();
+
   React.useEffect(() => {
-    if (ref.current) {
-      setIcon(ref.current, icon);
-      if (tooltip) {
-        setTooltip(ref.current, tooltip);
-      }
+    if (ref.current && tooltip) {
+      tooltipService.setTooltip(ref.current, tooltip);
     }
-  }, [ref.current, icon, tooltip]);
+  }, [tooltip, tooltipService]);
+
   return (
     <button
       className={(className ? [className] : [])
         .concat(["clickable-icon tts-toolbar-button"])
         .join(" ")}
-      ref={(x) => (ref.current = x)}
+      ref={ref}
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
       {...(disabled ? { "aria-disabled": "true" } : {})}
-    ></button>
+    >
+      <IconComponent size={16} className={disabled ? "opacity-50" : ""} />
+    </button>
   );
 }
 
-export function IconSpan({
-  icon,
+export function TooltipSpan({
+  children,
   className,
   style,
   tooltip,
   tooltipOptions,
 }: {
-  icon: string;
+  children: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
   tooltip?: string;
   tooltipOptions?: TooltipOptions;
 }) {
-  const ref = React.useRef<HTMLElement | null>(null);
+  const ref = React.useRef<HTMLSpanElement | null>(null);
+  const tooltipService = useTooltip();
+
   React.useEffect(() => {
-    if (ref.current) {
-      setIcon(ref.current, icon);
-      if (tooltip) {
-        setTooltip(ref.current, tooltip, tooltipOptions);
-      }
+    if (ref.current && tooltip) {
+      tooltipService.setTooltip(ref.current, tooltip, tooltipOptions);
     }
-  }, [ref.current, icon, tooltip]);
+  }, [tooltip, tooltipOptions, tooltipService]);
+
   return (
-    <span
-      style={style}
-      className={["tts-toolbar-icon"]
-        .concat(className ? [className] : [])
-        .join(" ")}
-      ref={(x) => (ref.current = x)}
-    ></span>
+    <span style={style} ref={ref} className={className}>
+      {children}
+    </span>
   );
 }
 
@@ -81,27 +106,23 @@ export function Spinner({
   style?: React.CSSProperties;
   delay?: number;
 }) {
-  const ref = React.useRef<HTMLElement | null>(null);
   const [visible, setVisible] = React.useState(delay === 0);
 
-  React.useLayoutEffect(() => {
-    if (ref.current) {
-      setIcon(ref.current, "loader");
-      ref.current.children[0].classList.add("tts-spin");
-    }
+  React.useEffect(() => {
     if (delay > 0) {
       const timer = setTimeout(() => setVisible(true), delay);
       return () => clearTimeout(timer);
     } else {
       setVisible(true);
     }
-  }, [ref.current]);
+  }, [delay]);
 
   return (
     <span
       className={`${className || ""} fade-in ${visible ? "visible" : ""}`}
-      ref={(x) => (ref.current = x)}
       style={style}
-    ></span>
+    >
+      <Icons.Loader2 size={16} className="tts-spin" />
+    </span>
   );
 }

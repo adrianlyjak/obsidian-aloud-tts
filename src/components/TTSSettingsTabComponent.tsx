@@ -10,7 +10,8 @@ import {
   modelProviders,
   playViewModes,
 } from "../player/TTSPluginSettings";
-import { IconButton, IconSpan, Spinner } from "./IconButton";
+import { IconButton, Spinner } from "./IconButton";
+import { Play, Pause } from "lucide-react";
 import { TTSErrorInfoDetails, TTSErrorInfoView } from "./PlayerView";
 import { OptionSelect } from "./settings/option-select";
 import { AzureSettings } from "./settings/providers/provider-azure";
@@ -418,10 +419,9 @@ const TestVoiceComponent: React.FC<{
             {isLoading ? (
               <Spinner style={{ marginRight: "0.5em" }} delay={250} />
             ) : (
-              <IconSpan
-                style={{ marginRight: "0.5em" }}
-                icon={isPlaying ? "pause" : "play"}
-              />
+              <span style={{ marginRight: "0.5em" }}>
+                {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+              </span>
             )}{" "}
             Test Voice
           </button>

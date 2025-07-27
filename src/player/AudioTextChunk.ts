@@ -27,16 +27,27 @@ export interface AudioText {
 
 /** A chunk of the text to be played */
 export class AudioTextChunk {
+  /** The raw text from the document that this chunk is derived from */
   rawText: string;
+  /** The text that has been cleaned up for passing to the TTS model */
   text: string;
+  /** The character index of the start of the text track */
   start: number;
+  /** The character index of the end of the text track */
   end: number;
+  /** The duration of the chunk's audio in seconds. Populated from the audioBuffer.duration */
   duration?: number;
+  /** The audio data for the chunk, from the TTS model */
   audio?: ArrayBuffer;
+  /** Whether the chunk is currently loading */
   loading: boolean;
+  /** Whether the chunk failed to load */
   failed?: boolean;
+  /** The error that occurred if the chunk failed to load */
   failureInfo?: TTSErrorInfo;
+  /** The audio data from the TTS model, decoded into a buffer from the AudioSink */
   audioBuffer?: AudioBuffer;
+  /** The duration in seconds from the start of the full track to the start of this chunk */
   offsetDuration?: number;
 
   constructor(opts: { rawText: string; start: number; end: number }) {

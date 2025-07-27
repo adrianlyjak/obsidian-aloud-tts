@@ -4,6 +4,7 @@ import { Root, createRoot } from "react-dom/client";
 import { AudioStore } from "../player/AudioStore";
 import { TTSPluginSettingsStore } from "../player/TTSPluginSettings";
 import { TTSSettingsTabComponent } from "./TTSSettingsTabComponent";
+import { ObsidianTooltipProvider } from "../util/ObsidianTooltipService";
 
 export class TTSSettingTab extends PluginSettingTab {
   settings: TTSPluginSettingsStore;
@@ -29,10 +30,12 @@ export class TTSSettingTab extends PluginSettingTab {
     containerEl.empty();
     this.containerRoot = createRoot(containerEl);
     this.containerRoot.render(
-      <TTSSettingsTabComponent
-        store={this.settings}
-        player={this.mainPlayer}
-      />,
+      <ObsidianTooltipProvider>
+        <TTSSettingsTabComponent
+          store={this.settings}
+          player={this.mainPlayer}
+        />
+      </ObsidianTooltipProvider>,
     );
   }
   hide() {

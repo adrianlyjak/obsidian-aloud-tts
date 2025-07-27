@@ -1,0 +1,284 @@
+/* Theme colors for web app */
+:root {
+  --bg-primary: #1e1e1e;
+  --bg-secondary: #252526;
+  --bg-tertiary: #2d2d30;
+  --border-primary: #3e3e42;
+  --border-secondary: #404040;
+  --text-primary: #cccccc;
+  --text-secondary: #969696;
+  --text-muted: #6a6a6a;
+  --accent-primary: #007acc;
+  --accent-hover: #1177bb;
+  --error-bg: rgba(244, 63, 94, 0.1);
+  --error-color: #f87171;
+  --success-color: #34d399;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  margin: 0;
+  padding: 0;
+}
+
+/* Button styling */
+.clickable-icon {
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  padding: 6px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease;
+  color: var(--text-secondary);
+}
+
+.clickable-icon:hover:not(:disabled) {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.clickable-icon:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* =================================================================
+   WEB APP LAYOUT COMPONENTS
+   ================================================================= */
+
+.web-tts-app-root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.web-tts-command-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-primary);
+  background-color: var(--bg-secondary);
+  min-height: 40px;
+  flex-shrink: 0;
+}
+
+.web-tts-command-bar-separator {
+  width: 1px;
+  height: 20px;
+  background-color: var(--border-primary);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+.web-tts-command-bar-player {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0; /* Allow flex child to shrink */
+}
+
+.web-tts-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-primary);
+  overflow: hidden;
+}
+
+.web-tts-editor-container {
+  flex: 1;
+  font-size: 14px;
+  overflow: auto;
+}
+
+/* =================================================================
+   WEB SETTINGS MODAL
+   ================================================================= */
+
+.web-tts-settings-modal {
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  max-width: 800px;
+  width: 90vw;
+  max-height: 80vh;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.web-tts-settings-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-primary);
+  background-color: var(--bg-tertiary);
+}
+
+.web-tts-settings-modal-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.web-tts-settings-modal-content {
+  padding: 20px;
+  overflow: auto;
+  max-height: calc(80vh - 60px);
+}
+
+/* Dialog/Modal backdrop styling */
+dialog {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+/* =================================================================
+   WEB-SPECIFIC TTS COMPONENT OVERRIDES
+   ================================================================= */
+
+/* Web-specific audio visualizer styling */
+.tts-audio-visualizer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 2rem;
+  height: 1.2rem;
+  margin: 0 auto;
+  padding: 2px;
+  gap: 1px;
+}
+
+.tts-audio-visualizer-bar {
+  background-color: #cccccc;
+  border-radius: 1px;
+  width: 2px;
+  min-height: 3px;
+  transition: height 0.04s linear;
+}
+
+/* Web-specific error text styling */
+.tts-audio-status-error-text {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  background-color: var(--error-bg);
+  font-style: italic;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--error-color);
+  cursor: pointer;
+}
+
+.tts-audio-status-error-text:hover {
+  text-decoration: underline;
+}
+
+/* =================================================================
+   OBSIDIAN LIBRARY STYLE EMULATION (Required for shared components)
+   ================================================================= */
+
+/* Emulate Obsidian's setting component styles that shared components depend on */
+.setting-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.setting-item:last-child {
+  border-bottom: none;
+}
+
+.setting-item-info {
+  flex: 1;
+  margin-right: 16px;
+}
+
+.setting-item-name {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.setting-item-description {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.setting-item-control {
+  flex-shrink: 0;
+  min-width: 240px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.setting-item-control .clickable-icon {
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.setting-item input[type="text"],
+.setting-item input[type="password"],
+.setting-item select,
+.setting-item textarea {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+  font-size: 14px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  transition:
+    border-color 0.15s ease-in-out,
+    box-shadow 0.15s ease-in-out;
+}
+
+.setting-item input[type="text"]:focus,
+.setting-item input[type="password"]:focus,
+.setting-item select:focus,
+.setting-item textarea:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(0, 122, 204, 0.12);
+}
+
+/* Map shared error components */
+.tts-settings-error-container {
+  margin: 16px 0;
+}
+
+.tts-settings-error-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background-color: var(--error-bg);
+  border: 1px solid var(--error-color);
+  border-radius: 4px;
+  color: var(--error-color);
+}

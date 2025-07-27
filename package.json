@@ -10,11 +10,11 @@
     "build": "pnpm run typecheck && node esbuild.config.mjs production",
     "version": "./version-bump.sh",
     "lint": "eslint src",
-    "test": "vitest",
+    "test": "vitest run",
     "format:check": "prettier --check src",
     "format": "prettier --write src",
-    "web:dev": "vite src/web/",
-    "web:build": "vite build src/web/",
+    "web:dev": "vite",
+    "web:build": "vite build",
     "prepare": "husky"
   },
   "keywords": [
@@ -59,6 +59,7 @@
     "@types/react-dom": "^18.3.0",
     "fft.js": "^4.0.4",
     "idb": "^8.0.0",
+    "lucide-react": "^0.526.0",
     "mobx": "^6.13.3",
     "mobx-react-lite": "^4.0.7",
     "react": "^18.3.1",
