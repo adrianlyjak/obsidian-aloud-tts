@@ -18,6 +18,7 @@ vi.mock("../player/TTSPluginSettings", () => ({
       settings: { modelProvider: "openai" },
     }),
   ),
+  MARKETING_NAME_LONG: "Aloud: text to speech",
 }));
 
 vi.mock("./IndexedDBAudioStorage", () => ({
