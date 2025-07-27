@@ -283,7 +283,22 @@ dialog::backdrop {
   backdrop-filter: blur(2px);
 }
 
-/* Audio visualizer bars for dark theme */
+/* Audio visualizer for dark theme - centered wave-like bars */
+.tts-audio-visualizer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 2rem;
+  height: 1.2rem;
+  margin: 0 auto;
+  padding: 2px;
+  gap: 1px;
+}
+
 .tts-audio-visualizer-bar {
-  background-color: var(--text-secondary);
+  background-color: #cccccc;
+  border-radius: 1px;
+  width: 2px;
+  min-height: 3px;
+  transition: height 0.04s linear;
 }

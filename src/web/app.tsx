@@ -7,18 +7,15 @@ import {
 import { IndexedDBAudioStorage } from "./IndexedDBAudioStorage";
 import { WebAudioSink } from "../player/AudioSink";
 import * as React from "react";
-import { useEffect, useState, type FC, useCallback, useRef } from "react";
-import { observer } from "mobx-react-lite";
+import { useEffect, useState, type FC, useRef } from "react";
 import { createAudioSystem } from "../player/AudioSystem";
 import { ChunkLoader } from "../player/ChunkLoader";
 import { REGISTRY } from "../models/registry";
-import { EditorState } from "@codemirror/state";
-import { EditorView, lineNumbers, ViewUpdate } from "@codemirror/view";
-import { TTSSettingsTabComponent } from "../components/TTSSettingsTabComponent";
+import { EditorView } from "@codemirror/view";
 import { TooltipProvider } from "../util/TooltipContext";
-import { PlayerView } from "../components/PlayerView";
-import { ObsidianBridge } from "../obsidian/ObsidianBridge";
-import { IconButton } from "../components/IconButton";
+import { CommandBar, WebObsidianBridge } from "./components/CommandBar";
+import { WebEditor } from "./components/WebEditor";
+import { SettingsModal } from "./components/SettingsModal";
 
 const STORAGE_KEYS = {
   SETTINGS: "tts-settings",
@@ -48,7 +45,7 @@ const THEME = {
 };
 
 // Simple ObsidianBridge adapter for web environment
-class WebObsidianBridge implements ObsidianBridge {
+class WebObsidianBridgeImpl implements WebObsidianBridge {
   activeEditor: EditorView | undefined = undefined;
   focusedEditor: EditorView | undefined = undefined;
   detachedAudio: boolean = false;
@@ -166,12 +163,11 @@ const App: FC<{
 }> = ({ settingsStore, store, sink }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [editorView, setEditorView] = useState<EditorView | undefined>();
-  const dialogRef = useRef<HTMLDialogElement>(null);
 
   // Create obsidian bridge
   const obsidianBridge = useRef<WebObsidianBridge>();
   if (!obsidianBridge.current) {
-    obsidianBridge.current = new WebObsidianBridge(store, () =>
+    obsidianBridge.current = new WebObsidianBridgeImpl(store, () =>
       setShowSettings(true),
     );
   }
@@ -181,18 +177,9 @@ const App: FC<{
     obsidianBridge.current?.setActiveEditor(editorView);
   }, [editorView]);
 
-  // Handle modal open/close
-  useEffect(() => {
-    if (showSettings && dialogRef.current) {
-      dialogRef.current.showModal();
-    } else if (!showSettings && dialogRef.current) {
-      dialogRef.current.close();
-    }
-  }, [showSettings]);
-
-  const handleCloseModal = useCallback(() => {
+  const handleCloseModal = () => {
     setShowSettings(false);
-  }, []);
+  };
 
   return (
     <div
@@ -217,225 +204,15 @@ const App: FC<{
 
       {/* Editor */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <Editor store={store} onEditorReady={setEditorView} />
+        <WebEditor store={store} onEditorReady={setEditorView} />
       </div>
 
       {/* Settings Modal */}
-      <dialog
-        ref={dialogRef}
-        style={{
-          padding: 0,
-          border: "none",
-          borderRadius: "8px",
-          backgroundColor: THEME.background.secondary,
-          color: THEME.text.primary,
-          maxWidth: "800px",
-          width: "90vw",
-          maxHeight: "80vh",
-          boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
-        }}
+      <SettingsModal
+        isOpen={showSettings}
         onClose={handleCloseModal}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "16px 20px",
-            borderBottom: `1px solid ${THEME.border.primary}`,
-            backgroundColor: THEME.background.tertiary,
-          }}
-        >
-          <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600 }}>
-            Settings
-          </h2>
-          <IconButton
-            icon="x"
-            tooltip="Close Settings"
-            onClick={handleCloseModal}
-          />
-        </div>
-
-        <div
-          style={{
-            padding: "20px",
-            overflow: "auto",
-            maxHeight: "calc(80vh - 60px)",
-          }}
-        >
-          <TTSSettingsTabComponent store={settingsStore} player={store} />
-        </div>
-      </dialog>
-    </div>
-  );
-};
-
-const CommandBar: React.FC<{
-  settingsStore: TTSPluginSettingsStore;
-  store: AudioStore;
-  sink: WebAudioSink;
-  editor: EditorView | undefined;
-  obsidian: WebObsidianBridge | undefined;
-  onOpenSettings: () => void;
-}> = observer(
-  ({ settingsStore, store, sink, editor, obsidian, onOpenSettings }) => {
-    const handlePlayAll = useCallback(() => {
-      if (editor && obsidian) {
-        obsidian.playSelection();
-      }
-    }, [editor, obsidian]);
-
-    return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          padding: "8px 12px",
-          borderBottom: `1px solid ${THEME.border.primary}`,
-          backgroundColor: THEME.background.secondary,
-          minHeight: "40px",
-        }}
-      >
-        {/* Settings gear icon */}
-        <IconButton
-          icon="settings"
-          tooltip="Settings"
-          onClick={onOpenSettings}
-        />
-
-        {/* Play all text button */}
-        <IconButton
-          icon="file-text"
-          tooltip="Play All Text"
-          onClick={handlePlayAll}
-          disabled={!editor}
-        />
-
-        {/* Separator */}
-        <div
-          style={{
-            width: "1px",
-            height: "20px",
-            backgroundColor: THEME.border.primary,
-            margin: "0 4px",
-          }}
-        />
-
-        {/* PlayerView controls when available */}
-        {editor && settingsStore && obsidian && (
-          <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
-            <PlayerView
-              editor={editor}
-              player={store}
-              settings={settingsStore}
-              sink={sink}
-              obsidian={obsidian}
-            />
-          </div>
-        )}
-      </div>
-    );
-  },
-);
-
-const Editor: React.FC<{
-  store: AudioStore;
-  onEditorReady: (editor: EditorView) => void;
-}> = ({ store, onEditorReady }) => {
-  const editorRef = useRef<HTMLDivElement>(null);
-  const editorViewRef = useRef<EditorView | null>(null);
-
-  useEffect(() => {
-    if (!editorRef.current) return;
-
-    // Load persisted text
-    const savedText =
-      localStorage.getItem(STORAGE_KEYS.EDITOR_TEXT) ||
-      "Welcome to the TTS Web App!\n\nType your text here and use the player controls to listen to it.\n\nYour text will be automatically saved as you type.";
-
-    const state = EditorState.create({
-      doc: savedText,
-      extensions: [
-        lineNumbers(),
-        EditorView.updateListener.of((update: ViewUpdate) => {
-          if (update.docChanged) {
-            const text = update.state.doc.toString();
-            localStorage.setItem(STORAGE_KEYS.EDITOR_TEXT, text);
-          }
-        }),
-        EditorView.theme({
-          "&": {
-            backgroundColor: THEME.background.primary,
-            color: THEME.text.primary,
-          },
-          ".cm-content": {
-            backgroundColor: THEME.background.primary,
-            color: THEME.text.primary,
-            padding: "16px",
-            fontSize: "14px",
-            lineHeight: "1.6",
-          },
-          ".cm-focused": {
-            outline: "none",
-          },
-          ".cm-editor": {
-            backgroundColor: THEME.background.primary,
-          },
-          ".cm-scroller": {
-            backgroundColor: THEME.background.primary,
-          },
-          ".cm-gutter": {
-            backgroundColor: THEME.background.secondary,
-            borderRight: `1px solid ${THEME.border.primary}`,
-            color: THEME.text.secondary,
-          },
-          ".cm-gutters": {
-            backgroundColor: THEME.background.secondary,
-            borderRight: `1px solid ${THEME.border.primary}`,
-          },
-          ".cm-lineNumbers .cm-gutterElement": {
-            color: THEME.text.muted,
-            padding: "0 8px",
-          },
-          ".cm-cursor": {
-            borderLeftColor: THEME.text.primary,
-          },
-          ".cm-selectionBackground": {
-            backgroundColor: `${THEME.accent.primary}40`,
-          },
-        }),
-      ],
-    });
-
-    const view = new EditorView({
-      state,
-      parent: editorRef.current,
-    });
-
-    editorViewRef.current = view;
-    onEditorReady(view);
-
-    return () => {
-      view.destroy();
-    };
-  }, [onEditorReady]);
-
-  return (
-    <div
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        backgroundColor: THEME.background.primary,
-      }}
-    >
-      <div
-        ref={editorRef}
-        style={{
-          flex: 1,
-          fontSize: "14px",
-        }}
+        settingsStore={settingsStore}
+        audioStore={store}
       />
     </div>
   );
