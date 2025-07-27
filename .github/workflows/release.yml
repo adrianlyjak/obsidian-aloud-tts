@@ -40,8 +40,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }}
         run: |
           tag="${GITHUB_REF#refs/tags/}"
-
-          gh release create "$tag" \
-            --title="$tag" \
-            --draft \
-            main.js manifest.json styles.css
+          
+          # Check if this is a pre-release version
+          if echo "$tag" | grep -qE '-(rc|alpha|beta)'; then
+            # Pre-release version
+            gh release create "$tag" \
+              --title="$tag" \
+              --prerelease \
+              main.js manifest.json styles.css
+          else
+            # Full release version
+            gh release create "$tag" \
+              --title="$tag" \
+              main.js manifest.json styles.css
+          fi
