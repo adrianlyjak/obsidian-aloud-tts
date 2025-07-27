@@ -1,10 +1,27 @@
+/* Theme colors matching app.tsx */
+:root {
+  --bg-primary: #1e1e1e;
+  --bg-secondary: #252526;
+  --bg-tertiary: #2d2d30;
+  --border-primary: #3e3e42;
+  --border-secondary: #404040;
+  --text-primary: #cccccc;
+  --text-secondary: #969696;
+  --text-muted: #6a6a6a;
+  --accent-primary: #007acc;
+  --accent-hover: #1177bb;
+  --error-bg: rgba(244, 63, 94, 0.1);
+  --error-color: #f87171;
+  --success-color: #34d399;
+}
+
 /* Base setting item layout */
 .setting-item {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   padding: 16px 0;
-  border-bottom: 1px solid #e1e4e8;
+  border-bottom: 1px solid var(--border-primary);
 }
 
 .setting-item:last-child {
@@ -19,13 +36,13 @@
 .setting-item-name {
   font-weight: 600;
   margin-bottom: 6px;
-  color: #24292e;
+  color: var(--text-primary);
   font-size: 14px;
 }
 
 .setting-item-description {
   font-size: 13px;
-  color: #586069;
+  color: var(--text-secondary);
   line-height: 1.5;
 }
 
@@ -44,11 +61,14 @@
 .setting-item textarea {
   flex: 1;
   padding: 8px 12px;
-  border: 1px solid #d1d5da;
+  border: 1px solid var(--border-primary);
   border-radius: 6px;
   font-size: 14px;
-  background: #ffffff;
-  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  transition:
+    border-color 0.15s ease-in-out,
+    box-shadow 0.15s ease-in-out;
 }
 
 .setting-item input[type="text"]:focus,
@@ -56,8 +76,8 @@
 .setting-item select:focus,
 .setting-item textarea:focus {
   outline: none;
-  border-color: #0969da;
-  box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.12);
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(0, 122, 204, 0.12);
 }
 
 /* Buttons */
@@ -71,12 +91,12 @@
   align-items: center;
   justify-content: center;
   transition: background-color 0.15s ease;
-  color: #656d76;
+  color: var(--text-secondary);
 }
 
 .clickable-icon:hover:not(:disabled) {
-  background-color: #f3f4f6;
-  color: #24292e;
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
 .clickable-icon:disabled {
@@ -108,36 +128,36 @@
   align-items: center;
   gap: 8px;
   padding: 8px;
-  background-color: #fef2f2;
-  border: 1px solid #fecaca;
+  background-color: var(--error-bg);
+  border: 1px solid var(--error-color);
   border-radius: 4px;
-  color: #dc2626;
+  color: var(--error-color);
 }
 
 /* Validation states */
 .validation-success {
-  color: #1a7f37;
+  color: var(--success-color);
 }
 
 .validation-error {
-  color: #cf222e;
+  color: var(--error-color);
 }
 
 .validation-loading {
-  color: #656d76;
+  color: var(--text-secondary);
 }
 
 /* Better validation icon alignment */
 .clickable-icon.validation-success {
-  color: #1a7f37;
+  color: var(--success-color);
 }
 
 .clickable-icon.validation-error {
-  color: #cf222e;
+  color: var(--error-color);
 }
 
 .clickable-icon.validation-loading {
-  color: #656d76;
+  color: var(--text-secondary);
 }
 
 /* Animations */
@@ -159,49 +179,111 @@
   opacity: 0.5;
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .setting-item {
-    border-bottom-color: #30363d;
-  }
-  
-  .setting-item-name {
-    color: #f0f6fc;
-  }
-  
-  .setting-item-description {
-    color: #8b949e;
-  }
-  
-  .setting-item input[type="text"],
-  .setting-item input[type="password"],
-  .setting-item select,
-  .setting-item textarea {
-    background: #21262d;
-    border-color: #30363d;
-    color: #f0f6fc;
-  }
-  
-  .setting-item input[type="text"]:focus,
-  .setting-item input[type="password"]:focus,
-  .setting-item select:focus,
-  .setting-item textarea:focus {
-    border-color: #58a6ff;
-    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.12);
-  }
-  
-  .clickable-icon {
-    color: #8b949e;
-  }
-  
-  .clickable-icon:hover:not(:disabled) {
-    background-color: #30363d;
-    color: #f0f6fc;
-  }
-  
-  .tts-settings-error-summary {
-    background-color: #321921;
-    border-color: #b62831;
-    color: #ff7b72;
-  }
+/* PlayerView styles */
+.tts-toolbar-player {
+  display: flex;
+  padding: 0 16px;
+  height: 32px;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.tts-toolbar-player-button-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tts-audio-status-container {
+  flex: 1 1 auto;
+  display: flex;
+  overflow: hidden;
+  align-items: center;
+}
+
+.tts-audio-status-error {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  justify-content: left;
+}
+
+.tts-audio-status-error-text {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  background-color: var(--error-bg);
+  font-style: italic;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--error-color);
+  cursor: pointer;
+}
+
+.tts-audio-status-error-text:hover {
+  text-decoration: underline;
+}
+
+.tts-audio-status-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.tts-audio-status-error-icon {
+  display: inline-flex;
+  padding-right: 6px;
+  justify-content: center;
+  align-items: center;
+}
+
+.tts-error-details {
+  margin-top: 12px;
+  padding: 12px;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+/* Popover styles */
+.popover-container {
+  position: relative;
+}
+
+.popover {
+  position: absolute;
+  z-index: 1000;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.popover input[type="range"] {
+  width: 100px;
+}
+
+/* Dialog/Modal styles */
+dialog {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+/* Audio visualizer bars for dark theme */
+.tts-audio-visualizer-bar {
+  background-color: var(--text-secondary);
 }

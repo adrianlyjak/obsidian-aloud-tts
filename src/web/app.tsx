@@ -7,7 +7,6 @@ import {
 import { IndexedDBAudioStorage } from "./IndexedDBAudioStorage";
 import { WebAudioSink } from "../player/AudioSink";
 import * as React from "react";
-import { AudioVisualizer } from "../components/AudioVisualizer";
 import { useEffect, useState, type FC, useCallback, useRef } from "react";
 import { observer } from "mobx-react-lite";
 import { createAudioSystem } from "../player/AudioSystem";
@@ -17,11 +16,101 @@ import { EditorState } from "@codemirror/state";
 import { EditorView, lineNumbers, ViewUpdate } from "@codemirror/view";
 import { TTSSettingsTabComponent } from "../components/TTSSettingsTabComponent";
 import { TooltipProvider } from "../util/TooltipContext";
+import { PlayerView } from "../components/PlayerView";
+import { ObsidianBridge } from "../obsidian/ObsidianBridge";
+import { IconButton } from "../components/IconButton";
 
 const STORAGE_KEYS = {
   SETTINGS: "tts-settings",
   EDITOR_TEXT: "tts-editor-text",
 };
+
+// Theme colors - structured for future toggling
+const THEME = {
+  background: {
+    primary: "#1e1e1e",
+    secondary: "#252526",
+    tertiary: "#2d2d30",
+  },
+  border: {
+    primary: "#3e3e42",
+    secondary: "#404040",
+  },
+  text: {
+    primary: "#cccccc",
+    secondary: "#969696",
+    muted: "#6a6a6a",
+  },
+  accent: {
+    primary: "#007acc",
+    hover: "#1177bb",
+  },
+};
+
+// Simple ObsidianBridge adapter for web environment
+class WebObsidianBridge implements ObsidianBridge {
+  activeEditor: EditorView | undefined = undefined;
+  focusedEditor: EditorView | undefined = undefined;
+  detachedAudio: boolean = false;
+
+  constructor(
+    private store: AudioStore,
+    private onOpenSettings: () => void,
+  ) {}
+
+  setActiveEditor(editor: EditorView | undefined) {
+    this.activeEditor = editor;
+    this.focusedEditor = editor;
+  }
+
+  playSelection = () => {
+    if (this.activeEditor) {
+      const text = this.activeEditor.state.doc.toString();
+      if (text.trim()) {
+        this.store.startPlayer({
+          filename: "editor.md",
+          text,
+          start: 0,
+          end: text.length,
+        });
+      }
+    }
+  };
+
+  playDetached = (text: string) => {
+    this.detachedAudio = true;
+    this.store.startPlayer({
+      filename: "detached.md",
+      text,
+      start: 0,
+      end: text.length,
+    });
+  };
+
+  onTextChanged = (position: number, type: "add" | "remove", text: string) => {
+    // For web version, we'll handle this if needed
+  };
+
+  triggerSelection = () => {
+    // Not needed for web version
+  };
+
+  openSettings = () => {
+    this.onOpenSettings();
+  };
+
+  destroy = () => {
+    // Cleanup if needed
+  };
+
+  isMobile = () => {
+    return window.innerWidth <= 768; // Simple mobile detection
+  };
+
+  exportAudio = async (text: string, replaceSelection?: boolean) => {
+    // Not implemented for web version
+  };
+}
 
 async function main() {
   const settingsStore = await pluginSettingsStore(
@@ -55,6 +144,13 @@ async function main() {
   const root = document.createElement("div");
   root.id = "root";
   document.body.appendChild(root);
+
+  // Apply dark theme to body
+  document.body.style.backgroundColor = THEME.background.primary;
+  document.body.style.color = THEME.text.primary;
+  document.body.style.margin = "0";
+  document.body.style.padding = "0";
+
   const reactRoot = createRoot(root);
   reactRoot.render(
     <TooltipProvider>
@@ -68,73 +164,185 @@ const App: FC<{
   store: AudioStore;
   sink: WebAudioSink;
 }> = ({ settingsStore, store, sink }) => {
+  const [showSettings, setShowSettings] = useState(false);
+  const [editorView, setEditorView] = useState<EditorView | undefined>();
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  // Create obsidian bridge
+  const obsidianBridge = useRef<WebObsidianBridge>();
+  if (!obsidianBridge.current) {
+    obsidianBridge.current = new WebObsidianBridge(store, () =>
+      setShowSettings(true),
+    );
+  }
+
+  // Update active editor when editor view changes
+  useEffect(() => {
+    obsidianBridge.current?.setActiveEditor(editorView);
+  }, [editorView]);
+
+  // Handle modal open/close
+  useEffect(() => {
+    if (showSettings && dialogRef.current) {
+      dialogRef.current.showModal();
+    } else if (!showSettings && dialogRef.current) {
+      dialogRef.current.close();
+    }
+  }, [showSettings]);
+
+  const handleCloseModal = useCallback(() => {
+    setShowSettings(false);
+  }, []);
+
   return (
     <div
       style={{
-        padding: "20px",
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
         fontFamily: "system-ui, -apple-system, sans-serif",
-        maxWidth: "1200px",
-        margin: "0 auto",
+        backgroundColor: THEME.background.primary,
+        color: THEME.text.primary,
       }}
     >
-      <h1>TTS Web App</h1>
+      {/* Command Bar */}
+      <CommandBar
+        settingsStore={settingsStore}
+        store={store}
+        sink={sink}
+        editor={editorView}
+        obsidian={obsidianBridge.current}
+        onOpenSettings={() => setShowSettings(true)}
+      />
 
-      <Settings settingsStore={settingsStore} store={store} />
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 300px",
-          gap: "20px",
-          marginTop: "20px",
-        }}
-      >
-        <Editor store={store} />
-        <Player store={store} sink={sink} />
+      {/* Editor */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <Editor store={store} onEditorReady={setEditorView} />
       </div>
-    </div>
-  );
-};
 
-const Settings: React.FC<{
-  settingsStore: TTSPluginSettingsStore;
-  store: AudioStore;
-}> = observer(({ settingsStore, store }) => {
-  const [showSettings, setShowSettings] = useState(false);
-
-  return (
-    <div style={{ marginBottom: "20px" }}>
-      <button
-        onClick={() => setShowSettings(!showSettings)}
+      {/* Settings Modal */}
+      <dialog
+        ref={dialogRef}
         style={{
-          padding: "8px 16px",
-          backgroundColor: "#f0f0f0",
-          border: "1px solid #ccc",
-          borderRadius: "4px",
-          cursor: "pointer",
+          padding: 0,
+          border: "none",
+          borderRadius: "8px",
+          backgroundColor: THEME.background.secondary,
+          color: THEME.text.primary,
+          maxWidth: "800px",
+          width: "90vw",
+          maxHeight: "80vh",
+          boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
         }}
+        onClose={handleCloseModal}
       >
-        {showSettings ? "Hide Settings" : "Show Settings"}
-      </button>
-
-      {showSettings && (
         <div
           style={{
-            marginTop: "10px",
-            padding: "16px",
-            border: "1px solid #ddd",
-            borderRadius: "4px",
-            backgroundColor: "#f9f9f9",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "16px 20px",
+            borderBottom: `1px solid ${THEME.border.primary}`,
+            backgroundColor: THEME.background.tertiary,
+          }}
+        >
+          <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600 }}>
+            Settings
+          </h2>
+          <IconButton
+            icon="x"
+            tooltip="Close Settings"
+            onClick={handleCloseModal}
+          />
+        </div>
+
+        <div
+          style={{
+            padding: "20px",
+            overflow: "auto",
+            maxHeight: "calc(80vh - 60px)",
           }}
         >
           <TTSSettingsTabComponent store={settingsStore} player={store} />
         </div>
-      )}
+      </dialog>
     </div>
   );
-});
+};
 
-const Editor: React.FC<{ store: AudioStore }> = ({ store }) => {
+const CommandBar: React.FC<{
+  settingsStore: TTSPluginSettingsStore;
+  store: AudioStore;
+  sink: WebAudioSink;
+  editor: EditorView | undefined;
+  obsidian: WebObsidianBridge | undefined;
+  onOpenSettings: () => void;
+}> = observer(
+  ({ settingsStore, store, sink, editor, obsidian, onOpenSettings }) => {
+    const handlePlayAll = useCallback(() => {
+      if (editor && obsidian) {
+        obsidian.playSelection();
+      }
+    }, [editor, obsidian]);
+
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          padding: "8px 12px",
+          borderBottom: `1px solid ${THEME.border.primary}`,
+          backgroundColor: THEME.background.secondary,
+          minHeight: "40px",
+        }}
+      >
+        {/* Settings gear icon */}
+        <IconButton
+          icon="settings"
+          tooltip="Settings"
+          onClick={onOpenSettings}
+        />
+
+        {/* Play all text button */}
+        <IconButton
+          icon="file-text"
+          tooltip="Play All Text"
+          onClick={handlePlayAll}
+          disabled={!editor}
+        />
+
+        {/* Separator */}
+        <div
+          style={{
+            width: "1px",
+            height: "20px",
+            backgroundColor: THEME.border.primary,
+            margin: "0 4px",
+          }}
+        />
+
+        {/* PlayerView controls when available */}
+        {editor && settingsStore && obsidian && (
+          <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
+            <PlayerView
+              editor={editor}
+              player={store}
+              settings={settingsStore}
+              sink={sink}
+              obsidian={obsidian}
+            />
+          </div>
+        )}
+      </div>
+    );
+  },
+);
+
+const Editor: React.FC<{
+  store: AudioStore;
+  onEditorReady: (editor: EditorView) => void;
+}> = ({ store, onEditorReady }) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const editorViewRef = useRef<EditorView | null>(null);
 
@@ -156,6 +364,47 @@ const Editor: React.FC<{ store: AudioStore }> = ({ store }) => {
             localStorage.setItem(STORAGE_KEYS.EDITOR_TEXT, text);
           }
         }),
+        EditorView.theme({
+          "&": {
+            backgroundColor: THEME.background.primary,
+            color: THEME.text.primary,
+          },
+          ".cm-content": {
+            backgroundColor: THEME.background.primary,
+            color: THEME.text.primary,
+            padding: "16px",
+            fontSize: "14px",
+            lineHeight: "1.6",
+          },
+          ".cm-focused": {
+            outline: "none",
+          },
+          ".cm-editor": {
+            backgroundColor: THEME.background.primary,
+          },
+          ".cm-scroller": {
+            backgroundColor: THEME.background.primary,
+          },
+          ".cm-gutter": {
+            backgroundColor: THEME.background.secondary,
+            borderRight: `1px solid ${THEME.border.primary}`,
+            color: THEME.text.secondary,
+          },
+          ".cm-gutters": {
+            backgroundColor: THEME.background.secondary,
+            borderRight: `1px solid ${THEME.border.primary}`,
+          },
+          ".cm-lineNumbers .cm-gutterElement": {
+            color: THEME.text.muted,
+            padding: "0 8px",
+          },
+          ".cm-cursor": {
+            borderLeftColor: THEME.text.primary,
+          },
+          ".cm-selectionBackground": {
+            backgroundColor: `${THEME.accent.primary}40`,
+          },
+        }),
       ],
     });
 
@@ -165,139 +414,31 @@ const Editor: React.FC<{ store: AudioStore }> = ({ store }) => {
     });
 
     editorViewRef.current = view;
+    onEditorReady(view);
 
     return () => {
       view.destroy();
     };
-  }, []);
-
-  const getCurrentText = useCallback(() => {
-    return editorViewRef.current?.state.doc.toString() || "";
-  }, []);
-
-  const handlePlaySelection = useCallback(() => {
-    const text = getCurrentText();
-    if (!text.trim()) return;
-
-    store.startPlayer({
-      filename: "editor.md",
-      text,
-      start: 0,
-      end: text.length,
-    });
-  }, [store, getCurrentText]);
+  }, [onEditorReady]);
 
   return (
-    <div>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "10px",
-        }}
-      >
-        <h3 style={{ margin: 0 }}>Text Editor</h3>
-        <button
-          onClick={handlePlaySelection}
-          style={{
-            padding: "8px 16px",
-            backgroundColor: "#007acc",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-          }}
-        >
-          Play All Text
-        </button>
-      </div>
-
+    <div
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: THEME.background.primary,
+      }}
+    >
       <div
         ref={editorRef}
         style={{
-          border: "1px solid #ddd",
-          borderRadius: "4px",
-          minHeight: "400px",
+          flex: 1,
+          fontSize: "14px",
         }}
       />
     </div>
   );
 };
-
-const Player: React.FC<{ store: AudioStore; sink: WebAudioSink }> = observer(
-  ({ store, sink }) => {
-    return (
-      <div
-        style={{
-          padding: "16px",
-          border: "1px solid #ddd",
-          borderRadius: "4px",
-        }}
-      >
-        <h3 style={{ marginTop: 0 }}>Player Controls</h3>
-
-        <div style={{ marginBottom: "16px" }}>
-          <button
-            onClick={() => {
-              if (store.activeText?.isPlaying) {
-                store.activeText.pause();
-              } else if (store.activeText) {
-                store.activeText.play();
-              }
-            }}
-            disabled={!store.activeText}
-            style={{
-              padding: "12px 24px",
-              backgroundColor: store.activeText?.isPlaying
-                ? "#dc3545"
-                : "#28a745",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: store.activeText ? "pointer" : "not-allowed",
-              width: "100%",
-              fontSize: "16px",
-            }}
-          >
-            {store.activeText?.isPlaying ? "Pause" : "Play"}
-          </button>
-        </div>
-
-        {store.activeText && (
-          <div style={{ marginBottom: "16px" }}>
-            <div
-              style={{ fontSize: "14px", color: "#666", marginBottom: "8px" }}
-            >
-              Status: {store.activeText.isPlaying ? "Playing" : "Paused"}
-            </div>
-
-            {store.activeText.currentChunk && (
-              <div style={{ fontSize: "12px", color: "#888" }}>
-                Chunk {store.activeText.position + 1} of{" "}
-                {store.activeText.audio.chunks.length}
-              </div>
-            )}
-          </div>
-        )}
-
-        {store.activeText?.currentChunk?.audioBuffer && (
-          <div>
-            <div style={{ fontSize: "14px", marginBottom: "8px" }}>
-              Audio Visualizer:
-            </div>
-            <AudioVisualizer
-              audioElement={sink.audio}
-              audioBuffer={store.activeText.currentChunk.audioBuffer}
-              offsetDurationSeconds={
-                store.activeText.currentChunk.offsetDuration!
-              }
-            />
-          </div>
-        )}
-      </div>
-    );
-  },
-);
 
 main().catch(console.error);
