@@ -18,6 +18,7 @@ const iconMap: Record<string, LucideIcon> = {
   eye: Icons.Eye,
   "eye-off": Icons.EyeOff,
   "refresh-ccw": Icons.RefreshCcw,
+  "rotate-cw": Icons.RotateCw,
   trash: Icons.Trash2,
   download: Icons.Download,
   "external-link": Icons.ExternalLink,

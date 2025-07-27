@@ -8,10 +8,11 @@ import {
 import { AudioSink } from "../player/AudioSink";
 import { AudioStore } from "../player/AudioStore";
 import { AudioVisualizer } from "./AudioVisualizer";
-import { IconButton, IconSpan, Spinner } from "./IconButton";
+import { IconButton, Spinner } from "./IconButton";
 import { EditorView } from "@codemirror/view";
 import { TTSErrorInfo } from "../models/tts-model";
 import { useTooltip } from "../util/TooltipContext";
+import { AlertCircle } from "lucide-react";
 
 export const PlayerView = observer(
   ({
@@ -209,10 +210,7 @@ const AudioStatusInfoContents: React.FC<{
     return (
       // Extra span container to absorb the align-items: stretch from the container
       <span className="tts-audio-status-error">
-        <IconSpan
-          className="tts-audio-status-error-icon"
-          icon="alert-circle"
-        ></IconSpan>{" "}
+        <AlertCircle className="tts-audio-status-error-icon" size={16} />{" "}
         <span className="tts-audio-status-error-text">
           <a onClick={() => obsidian.openSettings()}>{settings.apiKeyError}</a>
         </span>
@@ -263,10 +261,7 @@ export function TTSErrorInfoView(props: {
 
   return (
     <span className="tts-audio-status-error">
-      <IconSpan
-        className="tts-audio-status-error-icon"
-        icon="alert-circle"
-      ></IconSpan>{" "}
+      <AlertCircle className="tts-audio-status-error-icon" size={16} />{" "}
       <span
         className="tts-audio-status-error-text"
         ref={(x) => (ref.current = x)}

@@ -10,7 +10,7 @@
     "build": "pnpm run typecheck && node esbuild.config.mjs production",
     "version": "./version-bump.sh",
     "lint": "eslint src",
-    "test": "vitest",
+    "test": "vitest run",
     "format:check": "prettier --check src",
     "format": "prettier --write src",
     "web:dev": "vite src/web/",
