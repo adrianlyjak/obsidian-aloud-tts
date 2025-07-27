@@ -3,8 +3,8 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 12px 0;
-  border-bottom: 1px solid #e5e5e5;
+  padding: 16px 0;
+  border-bottom: 1px solid #e1e4e8;
 }
 
 .setting-item:last-child {
@@ -17,20 +17,24 @@
 }
 
 .setting-item-name {
-  font-weight: 500;
-  margin-bottom: 4px;
-  color: #333;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #24292e;
+  font-size: 14px;
 }
 
 .setting-item-description {
-  font-size: 14px;
-  color: #666;
-  line-height: 1.4;
+  font-size: 13px;
+  color: #586069;
+  line-height: 1.5;
 }
 
 .setting-item-control {
   flex-shrink: 0;
-  min-width: 200px;
+  min-width: 240px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* Form controls */
@@ -38,11 +42,13 @@
 .setting-item input[type="password"],
 .setting-item select,
 .setting-item textarea {
-  width: 100%;
-  padding: 6px 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #d1d5da;
+  border-radius: 6px;
   font-size: 14px;
+  background: #ffffff;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
 
 .setting-item input[type="text"]:focus,
@@ -50,8 +56,8 @@
 .setting-item select:focus,
 .setting-item textarea:focus {
   outline: none;
-  border-color: #007acc;
-  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.1);
+  border-color: #0969da;
+  box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.12);
 }
 
 /* Buttons */
@@ -59,24 +65,37 @@
   cursor: pointer;
   border: none;
   background: transparent;
-  padding: 4px;
-  border-radius: 4px;
+  padding: 6px;
+  border-radius: 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: background-color 0.15s ease;
+  color: #656d76;
 }
 
 .clickable-icon:hover:not(:disabled) {
-  background-color: #f0f0f0;
+  background-color: #f3f4f6;
+  color: #24292e;
 }
 
 .clickable-icon:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 .tts-toolbar-button {
   /* Inherits from clickable-icon */
+}
+
+/* Input group with button */
+.setting-item-control {
+  position: relative;
+}
+
+.setting-item-control .clickable-icon {
+  flex-shrink: 0;
+  margin-left: 8px;
 }
 
 /* Error components */
@@ -97,15 +116,28 @@
 
 /* Validation states */
 .validation-success {
-  color: #10b981;
+  color: #1a7f37;
 }
 
 .validation-error {
-  color: #ef4444;
+  color: #cf222e;
 }
 
 .validation-loading {
-  color: #6b7280;
+  color: #656d76;
+}
+
+/* Better validation icon alignment */
+.clickable-icon.validation-success {
+  color: #1a7f37;
+}
+
+.clickable-icon.validation-error {
+  color: #cf222e;
+}
+
+.clickable-icon.validation-loading {
+  color: #656d76;
 }
 
 /* Animations */
@@ -130,33 +162,46 @@
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
   .setting-item {
-    border-bottom-color: #444;
+    border-bottom-color: #30363d;
   }
-
+  
   .setting-item-name {
-    color: #e5e5e5;
+    color: #f0f6fc;
   }
-
+  
   .setting-item-description {
-    color: #b3b3b3;
+    color: #8b949e;
   }
-
+  
   .setting-item input[type="text"],
   .setting-item input[type="password"],
   .setting-item select,
   .setting-item textarea {
-    background: #2a2a2a;
-    border-color: #555;
-    color: #e5e5e5;
+    background: #21262d;
+    border-color: #30363d;
+    color: #f0f6fc;
   }
-
+  
+  .setting-item input[type="text"]:focus,
+  .setting-item input[type="password"]:focus,
+  .setting-item select:focus,
+  .setting-item textarea:focus {
+    border-color: #58a6ff;
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.12);
+  }
+  
+  .clickable-icon {
+    color: #8b949e;
+  }
+  
   .clickable-icon:hover:not(:disabled) {
-    background-color: #3a3a3a;
+    background-color: #30363d;
+    color: #f0f6fc;
   }
-
+  
   .tts-settings-error-summary {
-    background-color: #422525;
-    border-color: #7f2525;
-    color: #f87171;
+    background-color: #321921;
+    border-color: #b62831;
+    color: #ff7b72;
   }
 }
