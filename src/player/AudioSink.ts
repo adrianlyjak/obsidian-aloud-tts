@@ -43,12 +43,6 @@ export interface AudioSink {
   mediaComplete(): Promise<void>;
 }
 
-function logDebug(message: string) {
-  console.log(
-    `[WebAudioSink] date=${new Date().toISOString()} message=${message}`,
-  );
-}
-
 export class WebAudioSink implements AudioSink {
   _trackStatus: TrackStatus = "paused";
 
@@ -120,12 +114,10 @@ export class WebAudioSink implements AudioSink {
   }
 
   seek(seconds: number = 1): void {
-    logDebug(`seek(${seconds})`);
     this._audio.currentTime = this.audio.currentTime + seconds;
   }
 
   setRate(rate: number) {
-    logDebug(`setRate(${rate})`);
     this._audio.playbackRate = rate;
   }
 
@@ -170,7 +162,6 @@ export class WebAudioSink implements AudioSink {
   }
 
   async switchMedia(data: ArrayBuffer): Promise<void> {
-    logDebug(`switchMedia(${data.byteLength})`);
     await onceBuffUpdateEnd(this._sourceBuffer);
     const buffered = this._sourceBuffer.buffered;
     if (buffered.length > 0) {
@@ -188,7 +179,6 @@ export class WebAudioSink implements AudioSink {
   }
 
   async appendMedia(data: ArrayBuffer): Promise<void> {
-    logDebug(`appendMedia(${data.byteLength})`);
     await onceBuffUpdateEnd(this._sourceBuffer);
     const buffered = this._sourceBuffer.buffered;
     if (buffered.length > 0) {
@@ -202,55 +192,41 @@ export class WebAudioSink implements AudioSink {
   }
 
   async mediaComplete() {
-    logDebug(`mediaComplete()`);
     this._isPlaying = false;
     this._audio.pause();
   }
 
   async clearMedia() {
-    logDebug(`clearMedia()`);
-    try {
-      if (this._sourceBuffer.buffered.length > 0) {
-        const wasZero = this._audio.currentTime === 0;
-        let seekComplete: CancellablePromise<void> | undefined;
-        if (!wasZero) {
-          const wasSeeking = this._audio.seeking;
-          this._audio.currentTime = 0;
-          if (!wasSeeking) {
-            // this doesn't seem to fire in scenarios where it was already seeking
-            // Wait for the HTML audio to emit the 'seeked' event, otherwise
-            seekComplete = CancellablePromise.fromEvent(
-              this._audio,
-              "seeked",
-            ).thenCancellable(() => undefined);
-          }
+    if (this._sourceBuffer.buffered.length > 0) {
+      const wasZero = this._audio.currentTime === 0;
+      let seekComplete: CancellablePromise<void> | undefined;
+      if (!wasZero) {
+        const wasSeeking = this._audio.seeking;
+        this._audio.currentTime = 0;
+        if (!wasSeeking) {
+          // this doesn't seem to fire in scenarios where it was already seeking
+          // Wait for the HTML audio to emit the 'seeked' event, otherwise
+          seekComplete = CancellablePromise.fromEvent(
+            this._audio,
+            "seeked",
+          ).thenCancellable(() => undefined);
         }
-        this._sourceBuffer.remove(0, this._sourceBuffer.buffered.end(0));
-        logDebug(`clearMedia() waiting for updateend`);
-        await onceBuffUpdateEnd(this._sourceBuffer);
-        this._sourceBuffer.timestampOffset = 0;
-        logDebug(`clearMedia() waiting for updateend 2`);
-        await onceBuffUpdateEnd(this._sourceBuffer);
-        logDebug(`clearMedia() waiting for seeked`);
-        if (seekComplete) {
-          await CancellablePromise.race([
-            CancellablePromise.delay(500), // safari implementation doesn't seem to need this. simple kludge for now to prevent waiting forever
-            seekComplete,
-          ]);
-        }
-        logDebug(`clearMedia() updating track status`);
-        this._updateTrackStatus();
       }
-    } catch (e) {
-      logDebug(`clearMedia() error: ${e}`);
-      throw e;
-    } finally {
-      logDebug(`clearMedia() finally`);
+      this._sourceBuffer.remove(0, this._sourceBuffer.buffered.end(0));
+      await onceBuffUpdateEnd(this._sourceBuffer);
+      this._sourceBuffer.timestampOffset = 0;
+      await onceBuffUpdateEnd(this._sourceBuffer);
+      if (seekComplete) {
+        await CancellablePromise.race([
+          CancellablePromise.delay(500), // safari implementation doesn't seem to need this. simple kludge for now to prevent waiting forever
+          seekComplete,
+        ]);
+      }
+      this._updateTrackStatus();
     }
   }
 
   play() {
-    logDebug(`play()`);
     this._audio.play();
   }
 
@@ -278,7 +254,6 @@ export class WebAudioSink implements AudioSink {
   }
 
   pause() {
-    logDebug(`pause()`);
     this._audio.pause();
   }
 
@@ -304,7 +279,6 @@ export class WebAudioSink implements AudioSink {
   };
 
   restart() {
-    logDebug(`restart()`);
     this._audio.currentTime = 0;
     this.play();
   }
