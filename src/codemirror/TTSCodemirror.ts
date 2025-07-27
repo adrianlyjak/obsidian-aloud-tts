@@ -42,10 +42,7 @@ function playerPanel(
   return {
     dom,
     top: true,
-    update(update) {
-      // Panel-specific update logic can stay here
-      // Text change handling is now in the shared core
-    },
+    update(update) {},
   };
 }
 
@@ -72,17 +69,13 @@ export function TTSCodeMirror(
   // Note: disposer cleanup is handled automatically when the extension is destroyed
   createPlayerSynchronizer(player, obsidian);
 
-  // Create Obsidian-specific loading widget factory
   const loadingWidgetFactory = new ObsidianLoadingWidgetFactory(createDOM);
 
   return [
-    // Use shared TTS highlighting extension
     createTTSHighlightExtension(player, obsidian, obsidianTheme),
-    // Obsidian-specific panel
     showPanel.of((editorView: EditorView) =>
       playerPanel(editorView, player, settings, sink, obsidian),
     ),
-    // Use shared loading spinner extension
     createLoadingSpinnerExtension(loadingWidgetFactory),
   ];
 }

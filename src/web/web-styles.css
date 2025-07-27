@@ -14,6 +14,12 @@
   --error-color: #f87171;
   --success-color: #34d399;
 }
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  margin: 0;
+  padding: 0;
+}
 
 /* Base setting item layout */
 .setting-item {
@@ -301,4 +307,85 @@ dialog::backdrop {
   width: 2px;
   min-height: 3px;
   transition: height 0.04s linear;
+}
+
+/* Component-specific classes */
+.tts-app-root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.tts-command-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-primary);
+  background-color: var(--bg-secondary);
+  min-height: 40px;
+}
+
+.tts-command-bar-separator {
+  width: 1px;
+  height: 20px;
+  background-color: var(--border-primary);
+  margin: 0 4px;
+}
+
+.tts-command-bar-player {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.tts-settings-modal {
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  max-width: 800px;
+  width: 90vw;
+  max-height: 80vh;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.tts-settings-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-primary);
+  background-color: var(--bg-tertiary);
+}
+
+.tts-settings-modal-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.tts-settings-modal-content {
+  padding: 20px;
+  overflow: auto;
+  max-height: calc(80vh - 60px);
+}
+
+.tts-web-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-primary);
+}
+
+.tts-web-editor-container {
+  flex: 1;
+  font-size: 14px;
 }

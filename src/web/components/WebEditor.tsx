@@ -9,28 +9,6 @@ import {
 } from "../../codemirror/TTSCodeMirrorCore";
 import { WebObsidianBridge } from "./WebBridge";
 
-// Theme colors - same as in app.tsx
-const THEME = {
-  background: {
-    primary: "#1e1e1e",
-    secondary: "#252526",
-    tertiary: "#2d2d30",
-  },
-  border: {
-    primary: "#3e3e42",
-    secondary: "#404040",
-  },
-  text: {
-    primary: "#cccccc",
-    secondary: "#969696",
-    muted: "#6a6a6a",
-  },
-  accent: {
-    primary: "#007acc",
-    hover: "#1177bb",
-  },
-};
-
 const STORAGE_KEYS = {
   EDITOR_TEXT: "tts-editor-text",
 };
@@ -78,12 +56,12 @@ export const WebEditor: React.FC<{
         }),
         EditorView.theme({
           "&": {
-            backgroundColor: THEME.background.primary,
-            color: THEME.text.primary,
+            backgroundColor: "var(--bg-primary)",
+            color: "var(--text-primary)",
           },
           ".cm-content": {
-            backgroundColor: THEME.background.primary,
-            color: THEME.text.primary,
+            backgroundColor: "var(--bg-primary)",
+            color: "var(--text-primary)",
             padding: "16px",
             fontSize: "14px",
             lineHeight: "1.6",
@@ -93,26 +71,26 @@ export const WebEditor: React.FC<{
             outline: "none",
           },
           ".cm-editor": {
-            backgroundColor: THEME.background.primary,
+            backgroundColor: "var(--bg-primary)",
           },
           ".cm-scroller": {
-            backgroundColor: THEME.background.primary,
+            backgroundColor: "var(--bg-primary)",
           },
           ".cm-gutter": {
-            backgroundColor: THEME.background.secondary,
-            borderRight: `1px solid ${THEME.border.primary}`,
-            color: THEME.text.secondary,
+            backgroundColor: "var(--bg-secondary)",
+            borderRight: "1px solid var(--border-primary)",
+            color: "var(--text-secondary)",
           },
           ".cm-gutters": {
-            backgroundColor: THEME.background.secondary,
-            borderRight: `1px solid ${THEME.border.primary}`,
+            backgroundColor: "var(--bg-secondary)",
+            borderRight: "1px solid var(--border-primary)",
           },
           ".cm-lineNumbers .cm-gutterElement": {
-            color: THEME.text.muted,
+            color: "var(--text-muted)",
             padding: "0 8px",
           },
           ".cm-selectionBackground": {
-            backgroundColor: `${THEME.accent.primary}40`,
+            backgroundColor: "rgba(0, 122, 204, 0.25)",
           },
         }),
       ],
@@ -142,21 +120,8 @@ export const WebEditor: React.FC<{
   }, [store, onEditorReady, bridge]);
 
   return (
-    <div
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        backgroundColor: THEME.background.primary,
-      }}
-    >
-      <div
-        ref={editorRef}
-        style={{
-          flex: 1,
-          fontSize: "14px",
-        }}
-      />
+    <div className="tts-web-editor">
+      <div ref={editorRef} className="tts-web-editor-container" />
     </div>
   );
 };

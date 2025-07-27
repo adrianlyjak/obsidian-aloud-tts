@@ -9,28 +9,6 @@ import { IconButton } from "../../components/IconButton";
 import { PlayerView } from "../../components/PlayerView";
 import { WebObsidianBridge } from "./WebBridge";
 
-// Theme colors - same as in app.tsx
-const THEME = {
-  background: {
-    primary: "#1e1e1e",
-    secondary: "#252526",
-    tertiary: "#2d2d30",
-  },
-  border: {
-    primary: "#3e3e42",
-    secondary: "#404040",
-  },
-  text: {
-    primary: "#cccccc",
-    secondary: "#969696",
-    muted: "#6a6a6a",
-  },
-  accent: {
-    primary: "#007acc",
-    hover: "#1177bb",
-  },
-};
-
 export const CommandBar: React.FC<{
   settingsStore: TTSPluginSettingsStore;
   store: AudioStore;
@@ -78,17 +56,7 @@ export const CommandBar: React.FC<{
     }, [obsidian]);
 
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          padding: "8px 12px",
-          borderBottom: `1px solid ${THEME.border.primary}`,
-          backgroundColor: THEME.background.secondary,
-          minHeight: "40px",
-        }}
-      >
+      <div className="tts-command-bar">
         {/* Settings gear icon */}
         <IconButton
           icon="settings"
@@ -110,18 +78,11 @@ export const CommandBar: React.FC<{
           disabled={!editor}
         />
         {/* Separator */}
-        <div
-          style={{
-            width: "1px",
-            height: "20px",
-            backgroundColor: THEME.border.primary,
-            margin: "0 4px",
-          }}
-        />
+        <div className="tts-command-bar-separator" />
 
         {/* PlayerView controls when available */}
         {editor && settingsStore && obsidian && (
-          <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
+          <div className="tts-command-bar-player">
             <PlayerView
               editor={editor}
               player={store}

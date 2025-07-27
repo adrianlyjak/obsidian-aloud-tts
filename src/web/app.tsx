@@ -23,28 +23,6 @@ const STORAGE_KEYS = {
   EDITOR_TEXT: "tts-editor-text",
 };
 
-// Theme colors - structured for future toggling
-const THEME = {
-  background: {
-    primary: "#1e1e1e",
-    secondary: "#252526",
-    tertiary: "#2d2d30",
-  },
-  border: {
-    primary: "#3e3e42",
-    secondary: "#404040",
-  },
-  text: {
-    primary: "#cccccc",
-    secondary: "#969696",
-    muted: "#6a6a6a",
-  },
-  accent: {
-    primary: "#007acc",
-    hover: "#1177bb",
-  },
-};
-
 async function main() {
   const settingsStore = await pluginSettingsStore(
     async () => {
@@ -77,12 +55,6 @@ async function main() {
   const root = document.createElement("div");
   root.id = "root";
   document.body.appendChild(root);
-
-  // Apply dark theme to body
-  document.body.style.backgroundColor = THEME.background.primary;
-  document.body.style.color = THEME.text.primary;
-  document.body.style.margin = "0";
-  document.body.style.padding = "0";
 
   const reactRoot = createRoot(root);
   reactRoot.render(
@@ -118,16 +90,7 @@ const App: FC<{
   };
 
   return (
-    <div
-      style={{
-        height: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        fontFamily: "system-ui, -apple-system, sans-serif",
-        backgroundColor: THEME.background.primary,
-        color: THEME.text.primary,
-      }}
-    >
+    <div className="tts-app-root">
       {/* Command Bar */}
       <CommandBar
         settingsStore={settingsStore}

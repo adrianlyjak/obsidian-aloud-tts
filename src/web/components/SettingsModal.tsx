@@ -5,28 +5,6 @@ import { AudioStore } from "../../player/AudioStore";
 import { IconButton } from "../../components/IconButton";
 import { TTSSettingsTabComponent } from "../../components/TTSSettingsTabComponent";
 
-// Theme colors - same as in app.tsx
-const THEME = {
-  background: {
-    primary: "#1e1e1e",
-    secondary: "#252526",
-    tertiary: "#2d2d30",
-  },
-  border: {
-    primary: "#3e3e42",
-    secondary: "#404040",
-  },
-  text: {
-    primary: "#cccccc",
-    secondary: "#969696",
-    muted: "#6a6a6a",
-  },
-  accent: {
-    primary: "#007acc",
-    hover: "#1177bb",
-  },
-};
-
 export const SettingsModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -47,17 +25,7 @@ export const SettingsModal: React.FC<{
   return (
     <dialog
       ref={dialogRef}
-      style={{
-        padding: 0,
-        border: "none",
-        borderRadius: "8px",
-        backgroundColor: THEME.background.secondary,
-        color: THEME.text.primary,
-        maxWidth: "800px",
-        width: "90vw",
-        maxHeight: "80vh",
-        boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
-      }}
+      className="tts-settings-modal"
       onClose={onClose}
       onClick={(e) => {
         // Close modal if clicking on backdrop
@@ -66,29 +34,12 @@ export const SettingsModal: React.FC<{
         }
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "16px 20px",
-          borderBottom: `1px solid ${THEME.border.primary}`,
-          backgroundColor: THEME.background.tertiary,
-        }}
-      >
-        <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600 }}>
-          Settings
-        </h2>
+      <div className="tts-settings-modal-header">
+        <h2 className="tts-settings-modal-title">Settings</h2>
         <IconButton icon="x" tooltip="Close Settings" onClick={onClose} />
       </div>
 
-      <div
-        style={{
-          padding: "20px",
-          overflow: "auto",
-          maxHeight: "calc(80vh - 60px)",
-        }}
-      >
+      <div className="tts-settings-modal-content">
         <TTSSettingsTabComponent store={settingsStore} player={audioStore} />
       </div>
     </dialog>
