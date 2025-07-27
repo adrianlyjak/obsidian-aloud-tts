@@ -132,3 +132,88 @@ export function debounce<Args extends any[]>(
   };
   return callable;
 }
+
+export interface TextChunkWithContext {
+  text: string;
+  context: {
+    textBefore?: string;
+    textAfter?: string;
+  };
+}
+
+/**
+ * Split text into chunks that fit within model limits while preserving sentence boundaries
+ * and providing context for seamless audio generation
+ */
+export function splitTextForExport(
+  text: string,
+  maxChunkSize: number,
+  contextSentences: number = 3,
+): TextChunkWithContext[] {
+  // Use existing sentence splitting logic with small min length
+  const sentences = splitSentences(text, { minLength: 1 });
+
+  // Group sentences into chunks that fit within the size limit
+  const chunkGroups: {
+    sentences: string[];
+    startIndex: number;
+    endIndex: number;
+  }[] = [];
+  let currentGroup: string[] = [];
+  let currentSize = 0;
+  let groupStartIndex = 0;
+
+  for (let i = 0; i < sentences.length; i++) {
+    const sentence = sentences[i];
+    const newSize = currentSize + sentence.length;
+
+    // If adding this sentence would exceed the limit, finalize current group
+    if (currentGroup.length > 0 && newSize > maxChunkSize) {
+      chunkGroups.push({
+        sentences: [...currentGroup],
+        startIndex: groupStartIndex,
+        endIndex: i - 1,
+      });
+      currentGroup = [sentence];
+      currentSize = sentence.length;
+      groupStartIndex = i;
+    } else {
+      currentGroup.push(sentence);
+      currentSize = newSize;
+    }
+  }
+
+  // Add the final group if it has content
+  if (currentGroup.length > 0) {
+    chunkGroups.push({
+      sentences: currentGroup,
+      startIndex: groupStartIndex,
+      endIndex: sentences.length - 1,
+    });
+  }
+
+  // Convert groups to chunks with context
+  return chunkGroups.map((group) => {
+    const chunkText = group.sentences.join("").trim();
+
+    // Get context sentences before and after this group
+    const beforeSentences = sentences.slice(
+      Math.max(0, group.startIndex - contextSentences),
+      group.startIndex,
+    );
+    const afterSentences = sentences.slice(
+      group.endIndex + 1,
+      Math.min(sentences.length, group.endIndex + 1 + contextSentences),
+    );
+
+    return {
+      text: chunkText,
+      context: {
+        textBefore:
+          beforeSentences.length > 0 ? beforeSentences.join("") : undefined,
+        textAfter:
+          afterSentences.length > 0 ? afterSentences.join("") : undefined,
+      },
+    };
+  });
+}

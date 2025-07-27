@@ -7,6 +7,8 @@ import {
 } from "./ActiveAudioText";
 import { AudioSystem } from "./AudioSystem";
 import { AudioText, AudioTextOptions } from "./AudioTextChunk";
+import { splitTextForExport } from "../util/misc";
+import { concatenateMp3Buffers } from "../util/audioProcessing";
 
 /** High level track changer interface */
 export interface AudioStore {
@@ -64,9 +66,39 @@ class AudioStoreImpl implements AudioStore {
   }
 
   async exportAudio(text: string): Promise<ArrayBuffer> {
-    // TODO make this an async generator, that gets chunked according to the model's max length
     const options = this.system.ttsModel.convertToOptions(this.system.settings);
-    return await this.system.ttsModel.call(text, options, this.system.settings);
+
+    // Get model's practical character limit (most models have 4000-4096 limit)
+    const maxChunkSize = 4000; // Conservative limit to avoid hitting model limits
+
+    // If text is short enough, process directly
+    if (text.length <= maxChunkSize) {
+      return await this.system.ttsModel.call(
+        text,
+        options,
+        this.system.settings,
+      );
+    }
+
+    // Split text into chunks with context that respect sentence boundaries
+    const chunksWithContext = splitTextForExport(text, maxChunkSize, 2);
+    const audioBuffers: ArrayBuffer[] = [];
+
+    // Generate audio for each chunk
+    for (const chunk of chunksWithContext) {
+      if (chunk.text.trim()) {
+        const audioBuffer = await this.system.ttsModel.call(
+          chunk.text,
+          options,
+          this.system.settings,
+          chunk.context,
+        );
+        audioBuffers.push(audioBuffer);
+      }
+    }
+
+    // Concatenate all audio buffers into a single MP3
+    return await concatenateMp3Buffers(audioBuffers, this.system.audioSink);
   }
 
   _backgroundProcesses: { shutdown: () => void }[] = [];

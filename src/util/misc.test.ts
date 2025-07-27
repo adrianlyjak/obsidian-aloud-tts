@@ -7,6 +7,7 @@ import {
   splitParagraphs,
   createWindows,
   debounce,
+  splitTextForExport,
 } from "./misc";
 
 describe("misc utilities", () => {
@@ -147,6 +148,110 @@ describe("misc utilities", () => {
       expect(mockFn).toHaveBeenCalledWith("second");
 
       vi.useRealTimers();
+    });
+  });
+
+  describe("splitTextForExport", () => {
+    it("should return single chunk for short text", () => {
+      const text = "This is a short sentence.";
+      const result = splitTextForExport(text, 100);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].text).toBe("This is a short sentence.");
+      expect(result[0].context.textBefore).toBeUndefined();
+      expect(result[0].context.textAfter).toBeUndefined();
+    });
+
+    it("should split long text into multiple chunks", () => {
+      const text =
+        "First sentence. Second sentence. Third sentence. Fourth sentence.";
+      const result = splitTextForExport(text, 30); // Force small chunks
+
+      expect(result.length).toBeGreaterThan(1);
+      // Each chunk should be under the limit
+      result.forEach((chunk) => {
+        expect(chunk.text.length).toBeLessThanOrEqual(30);
+      });
+      // All chunks combined should contain the original text
+      const combinedText = result.map((c) => c.text).join(" ");
+      expect(combinedText.replace(/\s+/g, " ")).toContain("First sentence");
+      expect(combinedText.replace(/\s+/g, " ")).toContain("Fourth sentence");
+    });
+
+    it("should provide context for middle chunks", () => {
+      const text =
+        "First sentence. Second sentence. Third sentence. Fourth sentence. Fifth sentence.";
+      const result = splitTextForExport(text, 40, 1); // 1 sentence context
+
+      // Find a middle chunk that should have both before and after context
+      const middleChunk = result.find(
+        (chunk) => chunk.context.textBefore && chunk.context.textAfter,
+      );
+
+      if (middleChunk) {
+        expect(middleChunk.context.textBefore).toBeTruthy();
+        expect(middleChunk.context.textAfter).toBeTruthy();
+        expect(middleChunk.context.textBefore?.length).toBeGreaterThan(0);
+        expect(middleChunk.context.textAfter?.length).toBeGreaterThan(0);
+      }
+    });
+
+    it("should provide no textBefore for first chunk", () => {
+      const text =
+        "First sentence. Second sentence. Third sentence. Fourth sentence.";
+      const result = splitTextForExport(text, 30);
+
+      expect(result[0].context.textBefore).toBeUndefined();
+    });
+
+    it("should provide no textAfter for last chunk", () => {
+      const text =
+        "First sentence. Second sentence. Third sentence. Fourth sentence.";
+      const result = splitTextForExport(text, 30);
+
+      const lastChunk = result[result.length - 1];
+      expect(lastChunk.context.textAfter).toBeUndefined();
+    });
+
+    it("should respect contextSentences parameter", () => {
+      const text = "A. B. C. D. E. F. G. H."; // 8 short sentences
+      const result = splitTextForExport(text, 6, 2); // 2 sentences context
+
+      // Find a chunk that has context
+      const chunkWithContext = result.find((chunk) => chunk.context.textBefore);
+      if (chunkWithContext) {
+        // Should have at most 2 sentences in context (with their separators)
+        const beforeSentences = chunkWithContext.context.textBefore
+          ?.split(".")
+          .filter((s) => s.trim());
+        expect(beforeSentences?.length).toBeLessThanOrEqual(2);
+      }
+    });
+
+    it("should handle empty text", () => {
+      const result = splitTextForExport("", 100);
+      expect(result).toHaveLength(0);
+    });
+
+    it("should preserve sentence boundaries", () => {
+      const text = "First sentence! Second sentence? Third sentence.";
+      const result = splitTextForExport(text, 25);
+
+      // Each chunk should contain complete sentences
+      result.forEach((chunk) => {
+        expect(chunk.text).toMatch(/^[A-Z].*[.!?]\s*$/);
+      });
+    });
+
+    it("should handle different punctuation marks", () => {
+      const text = "Question? Exclamation! Statement. Another statement.";
+      const result = splitTextForExport(text, 30);
+
+      expect(result.length).toBeGreaterThan(0);
+      const combinedText = result.map((c) => c.text).join(" ");
+      expect(combinedText).toContain("Question?");
+      expect(combinedText).toContain("Exclamation!");
+      expect(combinedText).toContain("Statement.");
     });
   });
 });
