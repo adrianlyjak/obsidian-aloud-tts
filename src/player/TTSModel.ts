@@ -99,12 +99,15 @@ export const openAITextToSpeech: TTSModel = async function openAITextToSpeech(
 ): Promise<ArrayBuffer> {
   // 检测API提供商类型
   const apiProvider = detectAPIProvider(options.apiUri);
+
+  // 过滤掉表情符号，将其替换为空格
+  const cleanedText = text.replace(/[\p{Emoji}]/gu, ' ');
   
   // 构建请求体，支持自定义音色参数
   const requestBody: any = {
     model: options.model,
     voice: options.voice,
-    input: text,
+    input: cleanedText,  // 使用清理后的文本
     response_format: "mp3",
   };
 
