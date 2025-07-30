@@ -6,7 +6,7 @@ Highlight and speak text from your Obsidian notes. Converts text to audio using 
 
 Just add your API key from a supported provider. Choose from available voices.
 
-<img alt="Settings View" src="./docs/settings-example.png" width="400p" ></img>
+<img alt="Settings View" src="./docs/public/settings-example.png" width="400p" ></img>
 
 ### Supported TTS Models:
 
@@ -24,19 +24,19 @@ You can also configure a custom API endpoint if you have an OpenAI compatible AP
 
 **Variable Speeds:** On device playback rate adjustor for improved audio quality.
 
-<img src="docs/variable-speeds.png" width="200" ></img>
+<img src="docs/public/variable-speeds.png" width="200" ></img>
 
 **Caching:** Audio is cached in your vault to reduce costs, and automatically removed. Cache duration is configurable. Audio may be cached device local or in a vault directory.
 
-<img src="docs/cache-settings.png" width="400" ></img>
+<img src="docs/public/cache-settings.png" width="400" ></img>
 
 **Export and Embed Audio:** Quickly export to audio files: export audio files from selection, or embed audio by pasting text from your clipboard.
 
-<img src="docs/right-click-menu.png" max="300" ></img>
+<img src="docs/public/right-click-menu.png" max="300" ></img>
 
 **Play text from anywhere:** Lots of commands. Play text to speech directly from your clipboard.
 
-<img src="docs/commands.png" width="300" ></img>
+<img src="docs/public/commands.png" width="300" ></img>
 
 **OS Integration:** Integrates with your mobile phone to play while locked. Pause/Play with OS controls on desktop.
 

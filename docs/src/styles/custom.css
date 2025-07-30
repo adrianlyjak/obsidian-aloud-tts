@@ -1,0 +1,57 @@
+/* Purple-blue accent theme */
+:root {
+	--sl-color-accent-low: #e9e5ff;
+	--sl-color-accent: #7c61f0;
+	--sl-color-accent-high: #6849e5;
+}
+
+/* Dark theme purple-blue accents */
+:root[data-theme='dark'] {
+	--sl-color-accent-low: #1e1b4b;
+	--sl-color-accent: #9084f3;
+	--sl-color-accent-high: #a391f7;
+}
+
+/* Dramatic purple-blue glow for title - white text in dark, black in light */
+.site-title > span {
+	padding: 10px;
+	margin: -10px;
+	text-shadow: 
+		0 0 5px rgba(124, 97, 240, 0.5),
+		0 0 15px rgba(124, 97, 240, 0.4),
+		0 0 25px rgba(124, 97, 240, 0.3),
+		0 0 35px rgba(124, 97, 240, 0.2);
+	animation: pulse-glow 3s ease-in-out infinite alternate;
+}
+
+/* Light mode - black text with purple glow */
+:root[data-theme='light'] .site-title {
+	color: #1f2937;
+}
+
+/* Dark mode - white text with purple glow */
+:root[data-theme='dark'] .site-title {
+	color: #ffffff;
+}
+
+@keyframes pulse-glow {
+	from {
+		text-shadow: 
+			0 0 5px rgba(124, 97, 240, 0.5),
+			0 0 15px rgba(124, 97, 240, 0.4),
+			0 0 25px rgba(124, 97, 240, 0.3),
+			0 0 35px rgba(124, 97, 240, 0.2);
+	}
+	to {
+		text-shadow: 
+			0 0 8px rgba(124, 97, 240, 0.7),
+			0 0 20px rgba(124, 97, 240, 0.5),
+			0 0 30px rgba(124, 97, 240, 0.4),
+			0 0 40px rgba(124, 97, 240, 0.3);
+	}
+}
+
+/* Logo styling - white in dark mode */
+:root[data-theme='dark'] .site-title img {
+	filter: brightness(0) invert(1);
+} 
