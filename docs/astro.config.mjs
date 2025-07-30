@@ -19,8 +19,18 @@ export default defineConfig({
 			],
 			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/adrianlyjak/obsidian-aloud-tts' }],
 			sidebar: [
-				'installation',
-				'guides/example',
+				{
+					label: 'Getting Started',
+					link: '/getting-started/',
+				},
+				{
+					label: 'Features',
+					autogenerate: { directory: 'features' },
+				},
+				{
+					label: 'Configuration',
+					link: '/configuration/',
+				},
 			],
 		}),
 	],
