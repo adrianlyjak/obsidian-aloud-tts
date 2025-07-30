@@ -1,0 +1,18 @@
+{
+  "name": "obsidian-aloud-tts-docs",
+  "type": "module",
+  "version": "0.0.1",
+  "description": "Documentation for Obsidian Aloud TTS Plugin",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.35.2",
+    "astro": "^5.6.1",
+    "sharp": "^0.34.2"
+  }
+}

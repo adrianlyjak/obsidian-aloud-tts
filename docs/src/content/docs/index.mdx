@@ -1,0 +1,41 @@
+---
+title: Obsidian Aloud TTS
+description: Highlight and speak text from your Obsidian notes using lifelike AI voices.
+template: splash
+hero:
+  tagline: Convert your Obsidian notes to audio with AI-powered text-to-speech
+  actions:
+    - text: Get Started
+      link: /obsidian-aloud-tts/installation/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/adrianlyjak/obsidian-aloud-tts
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Features
+
+<CardGrid stagger>
+	<Card title="Multiple TTS Providers" icon="star">
+		Support for OpenAI, Google Gemini, Hume AI, and custom OpenAI-compatible endpoints.
+	</Card>
+	<Card title="Visual Feedback" icon="magnifier">
+		Active sentence highlighting that follows audio playback in real-time.
+	</Card>
+	<Card title="Smart Caching" icon="setting">
+		Automatic audio caching to reduce API costs and improve performance.
+	</Card>
+	<Card title="Flexible Playback" icon="rocket">
+		Variable speed control, sentence navigation, and seamless audio streaming.
+	</Card>
+</CardGrid>
+
+## Quick Start
+
+1. Install the plugin from Obsidian Community Plugins
+2. Add your API key from a supported TTS provider
+3. Select text and choose "Speak selection" from the command palette
+4. Enjoy lifelike audio of your notes!
