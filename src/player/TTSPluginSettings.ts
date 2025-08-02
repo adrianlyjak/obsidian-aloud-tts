@@ -78,9 +78,9 @@ export type ModelProvider = (typeof modelProviders)[number];
 
 export const DEFAULT_SETTINGS: TTSPluginSettings = {
   OPENAI_API_KEY: "",
-  OPENAI_API_URL: "",
-  modelProvider: "openai",
-  model: "gpt-4o-mini-tts",
+  OPENAI_API_URL: "http://localhost:8000",
+  modelProvider: "openaicompat",
+  model: "kokoro",
   ttsVoice: "shimmer",
   instructions: undefined,
   chunkType: "sentence",
