@@ -76,7 +76,12 @@ export function TTSCodeMirror(
   const loadingWidgetFactory = new ObsidianLoadingWidgetFactory(createDOM);
 
   return [
-    createTTSHighlightExtension(player, obsidian, obsidianTheme),
+    createTTSHighlightExtension(
+      player,
+      obsidian,
+      settings.settings,
+      obsidianTheme,
+    ),
     showPanel.of((editorView: EditorView) =>
       playerPanel(editorView, player, settings, sink, obsidian),
     ),

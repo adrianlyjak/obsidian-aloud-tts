@@ -46,7 +46,12 @@ export const WebEditor: React.FC<{
         lineNumbers(),
         EditorView.lineWrapping,
         // Use shared TTS extension
-        createTTSHighlightExtension(store, bridge, webTTSTheme),
+        createTTSHighlightExtension(
+          store,
+          bridge,
+          { autoScrollPlayerView: true },
+          webTTSTheme,
+        ),
         // Save text on changes
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {

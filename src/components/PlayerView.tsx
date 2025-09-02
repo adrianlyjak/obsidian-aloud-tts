@@ -1,6 +1,6 @@
 import { observer } from "mobx-react-lite";
 import * as React from "react";
-import { ObsidianBridge } from "../obsidian/ObsidianBridge";
+import { TTSEditorBridge } from "../codemirror/TTSCodeMirrorCore";
 import {
   MARKETING_NAME,
   TTSPluginSettingsStore,
@@ -26,7 +26,7 @@ export const PlayerView = observer(
     player: AudioStore;
     settings: TTSPluginSettingsStore;
     sink: AudioSink;
-    obsidian: ObsidianBridge;
+    obsidian: TTSEditorBridge;
   }): React.ReactNode => {
     const hasText = !!player.activeText;
     const isActiveEditor =
@@ -204,7 +204,7 @@ const AudioStatusInfoContents: React.FC<{
   audio: AudioSink;
   player: AudioStore;
   settings: TTSPluginSettingsStore;
-  obsidian: ObsidianBridge;
+  obsidian: TTSEditorBridge;
 }> = observer(({ audio, player, settings, obsidian }) => {
   if (settings.apiKeyValid === false) {
     return (

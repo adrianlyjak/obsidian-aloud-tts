@@ -25,6 +25,8 @@ export default function cleanMarkup(md: string) {
     .replace(/!\[(.*?)\][[(].*?[\])]/g, "$1")
     // Remove inline links
     .replace(/\[([^\]]*?)\][[(].*?[\])]/g, "$1")
+    // remove obsidian links
+    .replace(/!\[\[.*?\]\]/g, "")
     // Remove blockquotes
     .replace(/^(\n)?\s{0,3}>\s?/gm, "$1")
     // .replace(/(^|\n)\s{0,3}>\s?/g, '\n\n')

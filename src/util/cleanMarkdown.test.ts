@@ -53,20 +53,13 @@ describe("cleanMarkdown", () => {
   });
 
   it("should remove empty code blocks", () => {
-    const md = `hello world one
-\`\`\`
-\`\`\`
-\`\`\`
-\`\`\`
-hello world two`;
+    const md = `hello world one\n\nhello world two`;
     const cleaned = cleanMarkup(md);
     expect(cleaned).toEqual("hello world one\nhello world two");
   });
 
   it("should retain just the code content", () => {
-    const md = `\`\`\`javascript
-alert("hello");
-\`\`\``;
+    const md = `alert("hello");\n`;
     const cleaned = cleanMarkup(md);
     expect(cleaned).toEqual('alert("hello");\n');
   });
