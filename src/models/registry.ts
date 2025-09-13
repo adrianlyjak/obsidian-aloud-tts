@@ -6,6 +6,7 @@ import { humeTextToSpeech } from "./hume";
 import { openAILikeTextToSpeech } from "./openai-like";
 import { elevenLabsTextToSpeech } from "./elevenlabs";
 import { azureTextToSpeech } from "./azure";
+import { minimaxTextToSpeech } from "./minimax";
 
 export const REGISTRY: Record<ModelProvider, TTSModel> = {
   openai: openAITextToSpeech,
@@ -14,6 +15,7 @@ export const REGISTRY: Record<ModelProvider, TTSModel> = {
   openaicompat: openAILikeTextToSpeech,
   elevenlabs: elevenLabsTextToSpeech,
   azure: azureTextToSpeech,
+  minimax: minimaxTextToSpeech,
 };
 
 export function hasNamedVoice(provider: ModelProvider): boolean {

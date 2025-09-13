@@ -20,6 +20,7 @@ import { GeminiSettings } from "./settings/providers/provider-gemini";
 import { HumeSettings } from "./settings/providers/provider-hume";
 import { OpenAISettings } from "./settings/providers/provider-openai";
 import { OpenAICompatibleSettings } from "./settings/providers/provider-openai-like";
+import { MinimaxSettings } from "./settings/providers/provider-minimax";
 
 export const TTSSettingsTabComponent: React.FC<{
   store: TTSPluginSettingsStore;
@@ -67,6 +68,9 @@ export const TTSSettingsTabComponent: React.FC<{
       )}
       {store.settings.modelProvider === "azure" && (
         <AzureSettings store={store} />
+      )}
+      {store.settings.modelProvider === "minimax" && (
+        <MinimaxSettings store={store} />
       )}
 
       <h1>User Interface</h1>
@@ -137,6 +141,7 @@ const labels: Record<ModelProvider, string> = {
   elevenlabs: "ElevenLabs",
   gemini: "Google Gemini",
   hume: "Hume",
+  minimax: "MiniMax",
 };
 
 const ModelSwitcher: React.FC<{
