@@ -80,12 +80,16 @@ function splitAlongSentenceBoundariesWithMaxLength(
     const chunks = [""];
     for (const sentence of sentences) {
       const currentChunk = chunks[chunks.length - 1];
+      // always append to the current chunk if its empty (even if longer than a chunk!)
+      // this seems better than the alternative of even further splitting.
+      // or if it exceeds the max length (once trimmed)
       if (
         currentChunk &&
         currentChunk.length + sentence.trim().length > maxLength
       ) {
         chunks.push(sentence);
       } else {
+        // otherwise, append the current chunk
         chunks[chunks.length - 1] += sentence;
       }
     }
