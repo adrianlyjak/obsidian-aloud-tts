@@ -74,6 +74,35 @@ export const TTSSettingsTabComponent: React.FC<{
       <h1>Storage</h1>
       <CacheDuration store={store} player={player} />
       <AudioFolderComponent store={store} />
+      <details style={{ marginTop: "1rem" }}>
+        <summary>
+          <div className="setting-item-name">Advanced</div>
+          <div className="setting-item-description">
+            Less commonly used options
+          </div>
+        </summary>
+        <div className="setting-item">
+          <div className="setting-item-info">
+            <div className="setting-item-name">Text chunking</div>
+            <div className="setting-item-description">
+              Split text into sentences or paragraphs for playback
+            </div>
+          </div>
+          <div className="setting-item-control">
+            <select
+              value={store.settings.chunkType}
+              onChange={(e) =>
+                store.updateSettings({
+                  chunkType: e.target.value as "sentence" | "paragraph",
+                })
+              }
+            >
+              <option value="sentence">Sentence</option>
+              <option value="paragraph">Paragraph</option>
+            </select>
+          </div>
+        </div>
+      </details>
     </>
   );
 });
