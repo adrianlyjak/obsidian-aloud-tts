@@ -314,6 +314,29 @@ describe("ElevenLabs Model", () => {
       ]);
     });
 
+    it("should include voice_type query when provided", async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({
+          voices: [],
+        }),
+      };
+
+      vi.mocked(fetch).mockResolvedValue(mockResponse as any);
+
+      await listElevenLabsVoices("test-api-key", "personal");
+
+      expect(fetch).toHaveBeenCalledWith(
+        `${ELEVENLABS_API_URL}/v1/voices?voice_type=personal`,
+        {
+          headers: {
+            "xi-api-key": "test-api-key",
+          },
+        },
+      );
+    });
+
     it("should handle API errors", async () => {
       const mockResponse = {
         ok: false,

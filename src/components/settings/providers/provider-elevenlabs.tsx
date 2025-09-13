@@ -3,7 +3,6 @@ import React from "react";
 import { TTSPluginSettingsStore } from "../../../player/TTSPluginSettings";
 import { ApiKeyComponent } from "../api-key-component";
 import { OptionSelectSetting } from "../setting-components";
-import { TextInputSetting } from "../setting-components";
 import {
   listElevenLabsVoices,
   listElevenLabsModels,
@@ -33,6 +32,7 @@ export const ElevenLabsSettings = observer(
           showValidation={true}
         />
         <ElevenLabsModelComponent store={store} />
+        <ElevenLabsVoiceTypeComponent store={store} />
         <ElevenLabsVoiceComponent store={store} />
         <ElevenLabsStabilityComponent store={store} />
         <ElevenLabsSimilarityComponent store={store} />
@@ -106,6 +106,7 @@ const ElevenLabsVoiceComponent: React.FC<{
   const [error, setError] = React.useState<string | null>(null);
 
   const apiKey = store.settings.elevenlabs_apiKey;
+  const voiceType = store.settings.elevenlabs_voiceType;
 
   React.useEffect(() => {
     if (!apiKey) {
@@ -119,7 +120,7 @@ const ElevenLabsVoiceComponent: React.FC<{
       setLoading(true);
       setError(null);
       try {
-        const fetchedVoices = await listElevenLabsVoices(apiKey);
+        const fetchedVoices = await listElevenLabsVoices(apiKey, voiceType);
         setVoices(fetchedVoices);
 
         // If current voice is not in the list, reset to first available
@@ -142,7 +143,7 @@ const ElevenLabsVoiceComponent: React.FC<{
     };
 
     fetchVoices();
-  }, [apiKey, store]);
+  }, [apiKey, voiceType, store]);
 
   // Group voices by category for better organization
   const groupedVoices = voices.reduce(
@@ -169,17 +170,20 @@ const ElevenLabsVoiceComponent: React.FC<{
       })),
   );
 
-  // If no API key, show text input as fallback
+  // No API key, just prompt to enter one to load voices
   if (!apiKey) {
     return (
-      <TextInputSetting
-        name="ElevenLabs Voice ID"
-        description="Enter your ElevenLabs Voice ID (API key required to load voice list)"
-        store={store}
-        provider="elevenlabs"
-        fieldName="elevenlabs_voice"
-        placeholder="e.g. bVMeCyTHy58xNoL34h3p"
-      />
+      <div className="setting-item">
+        <div className="setting-item-info">
+          <div className="setting-item-name">Voice</div>
+          <div className="setting-item-description">Enter your API key to load available voices.</div>
+        </div>
+        <div className="setting-item-control">
+          <select className="dropdown" disabled>
+            <option>API key required</option>
+          </select>
+        </div>
+      </div>
     );
   }
 
@@ -200,27 +204,22 @@ const ElevenLabsVoiceComponent: React.FC<{
     );
   }
 
-  // If error or no voices, show text input as fallback
+  // If error or no voices, show disabled select with message
   if (error || voices.length === 0) {
     return (
-      <>
-        {error && (
-          <div
-            className="setting-item-description tts-error-text"
-            style={{ marginBottom: "0.5rem" }}
-          >
-            {error}
+      <div className="setting-item">
+        <div className="setting-item-info">
+          <div className="setting-item-name">Voice</div>
+          <div className="setting-item-description">
+            {error || "No voices found for the selected type."}
           </div>
-        )}
-        <TextInputSetting
-          name="ElevenLabs Voice ID"
-          description="No voices found. Enter your ElevenLabs Voice ID manually"
-          store={store}
-          provider="elevenlabs"
-          fieldName="elevenlabs_voice"
-          placeholder="e.g. bVMeCyTHy58xNoL34h3p"
-        />
-      </>
+        </div>
+        <div className="setting-item-control">
+          <select className="dropdown" disabled>
+            <option>No voices available</option>
+          </select>
+        </div>
+      </div>
     );
   }
 
@@ -232,6 +231,28 @@ const ElevenLabsVoiceComponent: React.FC<{
       provider="elevenlabs"
       fieldName="elevenlabs_voice"
       options={voiceOptions}
+    />
+  );
+});
+
+const ElevenLabsVoiceTypeComponent: React.FC<{
+  store: TTSPluginSettingsStore;
+}> = observer(({ store }) => {
+  const options = [
+    { label: "Default", value: "default" },
+    { label: "Personal", value: "personal" },
+    { label: "Community", value: "community" },
+    { label: "Workspace", value: "workspace" },
+  ] as const;
+
+  return (
+    <OptionSelectSetting
+      name="Voice Type"
+      description="Filter voices by type to include non-default voices"
+      store={store}
+      provider="elevenlabs"
+      fieldName="elevenlabs_voiceType"
+      options={options}
     />
   );
 });

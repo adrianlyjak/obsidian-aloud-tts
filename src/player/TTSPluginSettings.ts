@@ -72,6 +72,8 @@ export interface ElevenLabsModelConfig {
   elevenlabs_model: string;
   /** the voice ID to use. Required */
   elevenlabs_voice: string;
+  /** filter voice listing by type */
+  elevenlabs_voiceType?: "personal" | "community" | "workspace" | "default";
   /** voice stability setting (0-1) */
   elevenlabs_stability?: number;
   /** voice similarity boost setting (0-1) */
@@ -152,6 +154,7 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   elevenlabs_apiKey: "",
   elevenlabs_model: "eleven_multilingual_v2",
   elevenlabs_voice: "",
+  elevenlabs_voiceType: "default",
   elevenlabs_stability: 0.5,
   elevenlabs_similarity: 0.75,
   // azure

@@ -110,8 +110,13 @@ export async function elevenLabsCallTextToSpeech(
 
 export async function listElevenLabsVoices(
   apiKey: string,
+  voiceType?: "personal" | "community" | "workspace" | "default" | "non-default",
 ): Promise<{ id: string; name: string; category: string }[]> {
-  const response = await fetch(`${ELEVENLABS_API_URL}/v1/voices`, {
+  const url = new URL(`${ELEVENLABS_API_URL}/v1/voices`);
+  if (voiceType) {
+    url.searchParams.set("voice_type", voiceType);
+  }
+  const response = await fetch(url.toString(), {
     headers: {
       "xi-api-key": apiKey,
     },
