@@ -3,6 +3,7 @@ import React from "react";
 import { TTSPluginSettingsStore } from "../../../player/TTSPluginSettings";
 import { ApiKeyComponent } from "../api-key-component";
 import { OptionSelectSetting, TextareaSetting } from "../setting-components";
+import { DEFAULT_OPENAI_MODELS } from "../../../models/openai";
 
 export const OpenAISettings = observer(
   ({ store }: { store: TTSPluginSettingsStore }) => {
@@ -23,21 +24,6 @@ export const OpenAISettings = observer(
     );
   },
 );
-interface OpenAIModel {
-  label: string;
-  value: string;
-  supportsInstructions?: boolean;
-}
-
-const DEFAULT_OPENAI_MODELS: OpenAIModel[] = [
-  {
-    label: "gpt-4o-mini-tts",
-    value: "gpt-4o-mini-tts",
-    supportsInstructions: true,
-  },
-  { label: "tts-1", value: "tts-1" },
-  { label: "tts-1-hd", value: "tts-1-hd" },
-] as const;
 
 const OpenAIModelComponent: React.FC<{
   store: TTSPluginSettingsStore;
