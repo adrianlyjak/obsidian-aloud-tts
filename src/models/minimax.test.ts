@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { minimaxTextToSpeech, minimaxCallTextToSpeech, MINIMAX_API_URL } from "./minimax";
+import {
+  minimaxTextToSpeech,
+  minimaxCallTextToSpeech,
+  MINIMAX_API_URL,
+} from "./minimax";
 import { DEFAULT_SETTINGS } from "../player/TTSPluginSettings";
 import { TTSModelOptions } from "./tts-model";
 
@@ -137,4 +141,3 @@ describe("MiniMax Model", () => {
     });
   });
 });
-

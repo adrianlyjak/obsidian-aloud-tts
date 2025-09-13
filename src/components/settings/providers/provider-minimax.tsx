@@ -54,9 +54,7 @@ const MinimaxModelComponent: React.FC<{ store: TTSPluginSettingsStore }> =
     );
   });
 
-const MINIMAX_VOICES = [
-  { label: "Grinch", value: "Grinch" },
-] as const;
+const MINIMAX_VOICES = [{ label: "Grinch", value: "Grinch" }] as const;
 
 const MinimaxVoiceComponent: React.FC<{ store: TTSPluginSettingsStore }> =
   observer(({ store }) => {
@@ -71,4 +69,3 @@ const MinimaxVoiceComponent: React.FC<{ store: TTSPluginSettingsStore }> =
       />
     );
   });
-
