@@ -54,7 +54,14 @@ export async function elevenLabsCallTextToSpeech(
   context: AudioTextContext = {},
 ): Promise<ArrayBuffer> {
   if (!options.voice) {
-    throw new Error("Voice is required for ElevenLabs TTS");
+    throw new TTSErrorInfo("Voice is required for ElevenLabs TTS", {
+      error: {
+        message: "Voice is required for ElevenLabs TTS",
+        type: "invalid_request_error",
+        code: "missing_voice",
+        param: null,
+      },
+    });
   }
 
   const requestBody: {
@@ -108,22 +115,44 @@ export async function elevenLabsCallTextToSpeech(
   return await response.arrayBuffer();
 }
 
+export type ElevenLabsVoice = {
+  voice_id: string;
+  name: string;
+  category: string;
+  // and a crap ton of other fields
+};
+
 export async function listElevenLabsVoices(
   apiKey: string,
-): Promise<{ id: string; name: string; category: string }[]> {
-  const response = await fetch(`${ELEVENLABS_API_URL}/v1/voices`, {
-    headers: {
-      "xi-api-key": apiKey,
+  voice_type?:
+    | "personal"
+    | "community"
+    | "workspace"
+    | "default"
+    | "non-default",
+): Promise<ElevenLabsVoice[]> {
+  const params = new URLSearchParams();
+  if (voice_type) {
+    params.set("voice_type", voice_type);
+  }
+  const response = await fetch(
+    `${ELEVENLABS_API_URL}/v2/voices` +
+      (params.toString() ? `?${params.toString()}` : ""),
+    {
+      headers: {
+        "xi-api-key": apiKey,
+      },
     },
-  });
+  );
 
   await validate200ElevenLabs(response);
   const data = await response.json();
 
   return data.voices.map((voice: any) => ({
-    id: voice.voice_id,
+    ...voice,
+    voice_id: voice.voice_id,
     name: voice.name,
-    category: voice.category || "premade",
+    category: voice.category || "default",
   }));
 }
 

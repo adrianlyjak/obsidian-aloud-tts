@@ -1,12 +1,14 @@
 import { observer } from "mobx-react-lite";
-import React from "react";
+import React, { useCallback } from "react";
 import { TTSPluginSettingsStore } from "../../../player/TTSPluginSettings";
 import { ApiKeyComponent } from "../api-key-component";
 import { OptionSelectSetting } from "../setting-components";
 import {
   listElevenLabsVoices,
   listElevenLabsModels,
+  ElevenLabsVoice,
 } from "../../../models/elevenlabs";
+import { OptionSelect } from "../option-select";
 
 export const ElevenLabsSettings = observer(
   ({ store }: { store: TTSPluginSettingsStore }) => {
@@ -98,10 +100,11 @@ const ElevenLabsModelComponent: React.FC<{
 const ElevenLabsVoiceComponent: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
-  const [voices, setVoices] = React.useState<
-    { id: string; name: string; category: string }[]
-  >([]);
+  const [voices, setVoices] = React.useState<ElevenLabsVoice[]>([]);
   const [error, setError] = React.useState<string | null>(null);
+  const [voiceCategory, setVoiceCategory] = React.useState<
+    "default" | "non-default"
+  >("default");
 
   const apiKey = store.settings.elevenlabs_apiKey;
 
@@ -115,17 +118,29 @@ const ElevenLabsVoiceComponent: React.FC<{
     const fetchVoices = async () => {
       setError(null);
       try {
-        const fetchedVoices = await listElevenLabsVoices(apiKey);
-        setVoices(fetchedVoices);
-
-        // If current voice is not in the list, reset to first available
-        const currentVoice = store.settings.elevenlabs_voice;
-        if (
-          fetchedVoices.length > 0 &&
-          !fetchedVoices.find((v) => v.id === currentVoice)
-        ) {
+        const fetchedVoices = await listElevenLabsVoices(apiKey, voiceCategory);
+        const prevVoices = voices;
+        let prevVoice = prevVoices.find(
+          (x) => x.voice_id === store.settings.elevenlabs_voice,
+        );
+        const currentVoice = fetchedVoices.find(
+          (x) => x.voice_id === store.settings.elevenlabs_voice,
+        );
+        if (!prevVoice && !currentVoice) {
+          const otherVoices = await listElevenLabsVoices(
+            apiKey,
+            voiceCategory === "default" ? "non-default" : "default",
+          );
+          prevVoice = otherVoices.find(
+            (x) => x.voice_id === store.settings.elevenlabs_voice,
+          );
+        }
+        setVoices(
+          (prevVoice && !currentVoice ? [prevVoice] : []).concat(fetchedVoices),
+        );
+        if (!currentVoice && !prevVoice && fetchedVoices.length > 0) {
           store.updateModelSpecificSettings("elevenlabs", {
-            elevenlabs_voice: fetchedVoices[0].id,
+            elevenlabs_voice: fetchedVoices[0].voice_id,
           });
         }
       } catch (err) {
@@ -136,7 +151,11 @@ const ElevenLabsVoiceComponent: React.FC<{
     };
 
     fetchVoices();
-  }, [apiKey, store]);
+  }, [apiKey, store, voiceCategory]);
+
+  const handleVoiceUpdated = useCallback((v: string) => {
+    setVoiceCategory(v as "default" | "non-default");
+  }, []);
 
   // Group voices by category for better organization
   const groupedVoices = voices.reduce(
@@ -147,7 +166,7 @@ const ElevenLabsVoiceComponent: React.FC<{
       }
       acc[category].push({
         label: voice.name,
-        value: voice.id,
+        value: voice.voice_id,
       });
       return acc;
     },
@@ -180,14 +199,34 @@ const ElevenLabsVoiceComponent: React.FC<{
   }
 
   return (
-    <OptionSelectSetting
-      name="Voice"
-      description="The ElevenLabs voice to use"
-      store={store}
-      provider="elevenlabs"
-      fieldName="elevenlabs_voice"
-      options={voiceOptions}
-    />
+    <>
+      <div className="setting-item">
+        <div className="setting-item-info">
+          <div className="setting-item-name">Voice Category</div>
+          <div className="setting-item-description">
+            Switch between Custom Voices or Default Voices
+          </div>
+        </div>
+        <div className="setting-item-control">
+          <OptionSelect
+            options={[
+              { label: "Default", value: "default" },
+              { label: "Custom", value: "non-default" },
+            ]}
+            value={voiceCategory}
+            onChange={handleVoiceUpdated}
+          />
+        </div>
+      </div>
+      <OptionSelectSetting
+        name="Voice"
+        description="The ElevenLabs voice to use"
+        store={store}
+        provider="elevenlabs"
+        fieldName="elevenlabs_voice"
+        options={voiceOptions}
+      />
+    </>
   );
 });
 
