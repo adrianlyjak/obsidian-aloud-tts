@@ -84,6 +84,20 @@ describe("misc utilities", () => {
       expect(paragraphs[1]).toContain("Second paragraph");
       expect(paragraphs[2]).toContain("Third paragraph");
     });
+    it("should split really long text", () => {
+      const maxChunkSize = 1000;
+      // 20 characters per sentence, so 2000 chars total. Perfectly splits at the sentence boundary.
+      const sentence = "This is a sentence. ";
+      const text = sentence.repeat(100);
+      const paragraphs = splitParagraphs(text, { maxChunkSize });
+      expect(paragraphs).toHaveLength(2);
+      expect(paragraphs[0]).toContain(
+        "This is a sentence. ".repeat(maxChunkSize / sentence.length),
+      );
+      expect(paragraphs[1]).toContain(
+        "This is a sentence. ".repeat(maxChunkSize / sentence.length),
+      );
+    });
 
     it("should handle single paragraph", () => {
       const text = "Single paragraph with no breaks.";
