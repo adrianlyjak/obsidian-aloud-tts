@@ -158,6 +158,31 @@ export default class TTSPlugin extends Plugin {
       },
     });
 
+    // track navigation
+    this.addCommand({
+      id: "next-track",
+      name: "Next track",
+      checkCallback: (checking) => {
+        const hasActive = !!this.player.activeText;
+        if (checking) {
+          return hasActive;
+        }
+        this.player.activeText?.goToNext();
+      },
+    });
+
+    this.addCommand({
+      id: "previous-track",
+      name: "Previous track",
+      checkCallback: (checking) => {
+        const hasActive = !!this.player.activeText;
+        if (checking) {
+          return hasActive;
+        }
+        this.player.activeText?.goToPrevious();
+      },
+    });
+
     this.registerEditorExtension(
       TTSCodeMirror(this.player, this.settings, this.audio, this.bridge),
     );
