@@ -11,7 +11,7 @@ The Aloud TTS plugin offers a variety of settings to customize your text-to-spee
 
 These settings control the core behavior of the plugin.
 
--   **TTS Provider**: Choose the text-to-speech service you want to use. Each provider offers different voices and pricing. Supported providers include OpenAI, Google Gemini, Hume AI, and any OpenAI-compatible API.
+-   **TTS Provider**: Choose the text-to-speech service you want to use. Each provider offers different voices and pricing. Supported providers include OpenAI, Google Gemini, Hume AI, Azure, ElevenLabs, MiniMax, and any OpenAI-compatible API.
 -   **Playback Speed**: Adjust the default playback speed. The default is `1.0x`. This can also be adjusted from the player UI.
 -   **Audio Folder**: The directory in your vault where exported audio files are saved. The default is `aloud/`.
 
@@ -53,3 +53,14 @@ For users who self-host a TTS service or use a third-party provider with an Open
 -   **API Base URL**: The URL of your API endpoint (e.g., `http://localhost:8020/v1`).
 -   **Model**: The name of the model your service uses.
 -   **Voice**: The name of the voice to use. 
+
+### MiniMax
+
+-   **API Key**: Your API key from `https://www.minimax.ai/`.
+-   **GroupId**: Your MiniMax GroupId. This is required and is appended to requests as a `?GroupId=` query parameter.
+-   **Model**: One of: `speech-2.5-hd-preview`, `speech-2.5-turbo-preview`, `speech-02-hd`, `speech-02-turbo`, `speech-01-hd`, `speech-01-turbo`.
+-   **Voice**: A supported voice id (e.g., `Grinch`).
+
+Notes:
+-   MiniMax integration currently uses non-streaming synthesis and returns `mp3` decoded from `hex`.
+-   Advanced options like `language_boost`, `timbre_weights`, or streaming are not yet exposed in settings.
