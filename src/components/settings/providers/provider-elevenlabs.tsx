@@ -3,6 +3,7 @@ import React from "react";
 import { TTSPluginSettingsStore } from "../../../player/TTSPluginSettings";
 import { ApiKeyComponent } from "../api-key-component";
 import { OptionSelectSetting } from "../setting-components";
+import { TextInputSetting } from "../setting-components";
 import {
   listElevenLabsVoices,
   listElevenLabsModels,
@@ -101,6 +102,7 @@ const ElevenLabsVoiceComponent: React.FC<{
   const [voices, setVoices] = React.useState<
     { id: string; name: string; category: string }[]
   >([]);
+  const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   const apiKey = store.settings.elevenlabs_apiKey;
@@ -109,10 +111,12 @@ const ElevenLabsVoiceComponent: React.FC<{
     if (!apiKey) {
       setVoices([]);
       setError(null);
+      setLoading(false);
       return;
     }
 
     const fetchVoices = async () => {
+      setLoading(true);
       setError(null);
       try {
         const fetchedVoices = await listElevenLabsVoices(apiKey);
@@ -132,6 +136,8 @@ const ElevenLabsVoiceComponent: React.FC<{
         console.error("Failed to fetch ElevenLabs voices:", err);
         setError("Failed to load voices. Please check your API key.");
         setVoices([]);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -163,19 +169,58 @@ const ElevenLabsVoiceComponent: React.FC<{
       })),
   );
 
-  if (error) {
+  // If no API key, show text input as fallback
+  if (!apiKey) {
     return (
-      <div>
-        <p style={{ color: "var(--text-error)" }}>{error}</p>
+      <TextInputSetting
+        name="ElevenLabs Voice ID"
+        description="Enter your ElevenLabs Voice ID (API key required to load voice list)"
+        store={store}
+        provider="elevenlabs"
+        fieldName="elevenlabs_voice"
+        placeholder="e.g. bVMeCyTHy58xNoL34h3p"
+      />
+    );
+  }
+
+  // If loading, show loading state
+  if (loading) {
+    return (
+      <div className="setting-item">
+        <div className="setting-item-info">
+          <div className="setting-item-name">Voice</div>
+          <div className="setting-item-description">Loading available voices...</div>
+        </div>
+        <div className="setting-item-control">
+          <select className="dropdown" disabled>
+            <option>Loading...</option>
+          </select>
+        </div>
       </div>
     );
   }
 
-  if (!apiKey) {
+  // If error or no voices, show text input as fallback
+  if (error || voices.length === 0) {
     return (
-      <div>
-        <p>Enter your API key to load available voices.</p>
-      </div>
+      <>
+        {error && (
+          <div
+            className="setting-item-description tts-error-text"
+            style={{ marginBottom: "0.5rem" }}
+          >
+            {error}
+          </div>
+        )}
+        <TextInputSetting
+          name="ElevenLabs Voice ID"
+          description="No voices found. Enter your ElevenLabs Voice ID manually"
+          store={store}
+          provider="elevenlabs"
+          fieldName="elevenlabs_voice"
+          placeholder="e.g. bVMeCyTHy58xNoL34h3p"
+        />
+      </>
     );
   }
 
