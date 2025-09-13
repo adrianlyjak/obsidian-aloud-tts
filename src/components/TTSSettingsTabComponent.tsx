@@ -71,6 +71,24 @@ export const TTSSettingsTabComponent: React.FC<{
 
       <h1>User Interface</h1>
       <PlayerDisplayMode store={store} />
+      <div className="setting-item">
+        <div className="setting-item-info">
+          <div className="setting-item-name">Autoscroll Player View</div>
+          <div className="setting-item-description">
+            Automatically scroll the player view to keep the active text
+            visible.
+          </div>
+        </div>
+        <div className="setting-item-control">
+          <input
+            type="checkbox"
+            checked={store.settings.autoScrollPlayerView}
+            onChange={(e) =>
+              store.updateSettings({ autoScrollPlayerView: e.target.checked })
+            }
+          />
+        </div>
+      </div>
       <h1>Storage</h1>
       <CacheDuration store={store} player={player} />
       <AudioFolderComponent store={store} />

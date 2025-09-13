@@ -16,7 +16,11 @@ import { hashStrings } from "../util/Minhash";
 import { TTSPluginSettingsStore } from "../player/TTSPluginSettings";
 import { TTSEditorBridge } from "../codemirror/TTSCodeMirrorCore";
 
-export interface ObsidianBridge extends TTSEditorBridge {
+export interface ObsidianBridgeSpecifics {
+  activeObsidianEditor: Editor | undefined;
+}
+
+export interface ObsidianBridge extends TTSEditorBridge, ObsidianBridgeSpecifics {
   // Obsidian-specific methods beyond the shared interface
   triggerSelection: (
     file: TFile | null,
@@ -31,6 +35,7 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
   active: MarkdownFileInfo | null = null;
   activeEditorView: MarkdownView | null;
   activeFilename: string | null = null;
+  activeObsidianEditor: Editor | undefined = undefined;
   // the focused editor, or last focused editor if none
   focusedEditorView: MarkdownView | null = null;
 
@@ -58,6 +63,7 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     mobx.makeObservable(this, {
       active: mobx.observable.ref,
       activeEditor: mobx.computed,
+      activeObsidianEditor: mobx.observable.ref,
       focusedEditorView: mobx.observable.ref,
       _setFocusedEditor: mobx.action,
       _setActiveEditor: mobx.action,
@@ -145,6 +151,7 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     this.active = this.app.workspace?.activeEditor || null;
     this.activeEditorView =
       this.app.workspace.getActiveViewOfType(MarkdownView);
+    this.activeObsidianEditor = this.activeEditorView?.editor || undefined;
 
     this.activeFilename = this.active?.file?.name || null;
 
@@ -283,4 +290,8 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
       "app:open-settings"
     ]?.callback?.();
   }
+}
+
+export function isObsidianBridgeSpecifics(bridge: TTSEditorBridge): bridge is TTSEditorBridge & ObsidianBridgeSpecifics {
+  return (bridge as any).activeObsidianEditor !== undefined;
 }

@@ -462,6 +462,16 @@ const loadCheck = async (
   const context = getContext(chunks, position, audioContextChunks);
   const text = chunk.text;
 
+  // Handle empty chunks
+  if (!text.trim()) {
+    const emptyAudioBuffer = new ArrayBuffer(0);
+    const audioContext = new AudioContext(); // Create a dummy AudioContext
+    const dummyAudioBuffer = audioContext.createBuffer(1, 1, 44100); // Create a dummy AudioBuffer
+    chunk.setLoaded(emptyAudioBuffer);
+    chunk.setAudioBuffer(dummyAudioBuffer, 0);
+    return [chunk, emptyAudioBuffer] as const;
+  }
+
   // then wait for the next one to complete
   chunk.setLoading();
 
