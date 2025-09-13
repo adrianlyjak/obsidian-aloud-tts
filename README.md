@@ -10,9 +10,12 @@ Just add your API key from a supported provider. Choose from available voices.
 
 ### Supported TTS Models:
 
-*   **OpenAI:** (e.g., `tts-1`, `tts-1-hd`, `gpt-4o-mini`). OpenAI charges Audio at [$0.015 per 1,000 characters](https://openai.com/pricing).
-*   **Google Gemini:** (Currently supporting Gemini 2.5 series)
-*   **Hume AI:** (Supports various Hume AI voices with customization options)
+*   **OpenAI:** (e.g., `tts-1`, `tts-1-hd`, `gpt-4o-mini`). OpenAI charges Audio at [OpenAI pricing](https://openai.com/pricing).
+*   **Google Gemini:** (Gemini 2.5 series)
+*   **Hume AI:** (Hume preset and custom voices)
+*   **Azure Speech Services**
+*   **ElevenLabs**
+*   **MiniMax:** (speech-2.5-hd-preview, speech-2.5-turbo-preview, speech-02-hd, speech-02-turbo, speech-01-hd, speech-01-turbo)
 
 You can also configure a custom API endpoint if you have an OpenAI compatible API server that has an `/v1/audio/speech` endpoint. For example [openedai-speech](https://github.com/matatonic/openedai-speech).
 
