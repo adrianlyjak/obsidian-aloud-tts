@@ -41,6 +41,8 @@ export default function cleanMarkup(md: string) {
     //   1. Either there is a whitespace character before opening _ and after closing _.
     //   2. Or _ is at the start/end of the string.
     .replace(/(^|\W)([_]+)(\S)(.*?\S)??\2($|\W)/g, "$1$3$4$5")
+    // Remove == highlight markup (e.g., ==highlight==)
+    .replace(/(==)(\S)(.*?\S)??\1/g, "$2$3")
     // Remove code blocks
     .replace(/^```\w*$\n?/gm, "")
     // Remove inline code

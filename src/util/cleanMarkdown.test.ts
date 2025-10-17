@@ -52,6 +52,24 @@ describe("cleanMarkdown", () => {
     expect(cleaned).toEqual("be strong");
   });
 
+  it("should remove ==highlight== wrappers (single sentence)", () => {
+    const md = "==This is a sentence==";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("This is a sentence");
+  });
+
+  it("should remove ==highlight== wrappers (multiple sentences)", () => {
+    const md = "==This is a sentence. This is a sentence.==";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("This is a sentence. This is a sentence.");
+  });
+
+  it("should remove ==highlight== wrappers embedded in text", () => {
+    const md = "We only ==highlight this phrase== in the sentence.";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("We only highlight this phrase in the sentence.");
+  });
+
   it("should remove empty code blocks", () => {
     const md = `hello world one
 \`\`\`
