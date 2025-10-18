@@ -1,0 +1,90 @@
+name: Version bump and tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump option (matches ./version-bump.sh usage)"
+        type: choice
+        required: true
+        options:
+          - patch
+          - "patch rc"
+          - minor
+          - "minor rc"
+          - major
+          - "major rc"
+          - rc
+          - release
+          - specified
+        default: patch
+      version:
+        description: "Exact version when bump is 'specified'"
+        type: string
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Ensure jq is installed
+        run: |
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y jq
+          fi
+
+      - name: Configure Git author
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Run version bump script
+        env:
+          BUMP: ${{ github.event.inputs.bump }}
+          SPECIFIED_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          set -euo pipefail
+
+          case "$BUMP" in
+            "specified")
+              if [ -z "${SPECIFIED_VERSION}" ]; then
+                echo "Error: version input is required when bump='specified'" >&2
+                exit 1
+              fi
+              bash ./version-bump.sh specified "${SPECIFIED_VERSION}"
+              ;;
+            "rc"|"release"|"major"|"minor"|"patch")
+              bash ./version-bump.sh "$BUMP"
+              ;;
+            "major rc")
+              bash ./version-bump.sh major rc
+              ;;
+            "minor rc")
+              bash ./version-bump.sh minor rc
+              ;;
+            "patch rc")
+              bash ./version-bump.sh patch rc
+              ;;
+            *)
+              echo "Unknown bump option: $BUMP" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Output new version
+        run: echo "New version: $(jq -r .version package.json)"
