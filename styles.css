@@ -36,6 +36,11 @@
   align-items: center;
 }
 
+.tts-toolbar-button.tts-toolbar-button-active {
+  color: var(--interactive-accent);
+  background-color: var(--interactive-accent-hover);
+}
+
 .tts-toolbar-player-item-margin-right {
   margin-right: 0.5rem;
 }
@@ -166,8 +171,6 @@
   display: block;
 }
 
-
-
 /** player view */
 
 details .tts-error-details {
@@ -186,4 +189,3 @@ details[open] .tts-error-details {
     opacity: 1;
   }
 }
-

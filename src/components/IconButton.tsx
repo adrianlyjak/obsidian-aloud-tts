@@ -36,12 +36,14 @@ export function IconButton({
   tooltip,
   className,
   disabled,
+  highlight,
 }: {
   icon: string;
   onClick: () => void;
   tooltip?: string;
   className?: string;
   disabled?: boolean;
+  highlight?: boolean;
 }) {
   const ref = React.useRef<HTMLButtonElement | null>(null);
   const IconComponent = iconMap[icon] || Icons.Circle;
@@ -57,6 +59,7 @@ export function IconButton({
     <button
       className={(className ? [className] : [])
         .concat(["clickable-icon tts-toolbar-button"])
+        .concat(highlight ? ["tts-toolbar-button-active"] : [])
         .join(" ")}
       ref={ref}
       onClick={disabled ? undefined : onClick}

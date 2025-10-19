@@ -71,6 +71,7 @@ export function playerToCodeMirrorState(
 function createTTSHighlightField(
   autoscrollSetting: { autoScrollPlayerView: boolean },
   bridge: TTSEditorBridge,
+  player: AudioStore,
 ) {
   return StateField.define<TTSCodeMirrorState>({
     create() {
@@ -145,7 +146,8 @@ function createTTSHighlightField(
           bridge.activeObsidianEditor &&
           currentState.playerState?.isPlaying &&
           currentState.playerState?.playingTrack &&
-          autoscrollSetting.autoScrollPlayerView
+          autoscrollSetting.autoScrollPlayerView &&
+          player.autoScrollEnabled
         ) {
           const obsidianEditor = bridge.activeObsidianEditor;
           const { from, to } = currentTextPosition;
@@ -200,6 +202,18 @@ export function createTextChangeHandler(
         }, 0);
       });
     }
+
+    // Handle scroll events - disable autoscroll when user scrolls
+    if (update.viewportChanged && bridge.activeEditor === update.view) {
+      // Check if this is a user-initiated scroll (not programmatic)
+      if (
+        update.transactions.some(
+          (tr) => !tr.isUserEvent("select") && !tr.isUserEvent("input"),
+        )
+      ) {
+        player.disableAutoScroll();
+      }
+    }
   });
 }
 
@@ -245,7 +259,11 @@ export function createTTSHighlightExtension(
   autoscrollSetting: { autoScrollPlayerView: boolean },
   customTheme?: Extension,
 ): Extension {
-  const ttsHighlightField = createTTSHighlightField(autoscrollSetting, bridge);
+  const ttsHighlightField = createTTSHighlightField(
+    autoscrollSetting,
+    bridge,
+    player,
+  );
   const defaultTheme = EditorView.theme({
     ".tts-cm-playing-before, .tts-cm-playing-after": {
       backgroundColor: "rgba(128, 0, 128, 0.2)",

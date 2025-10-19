@@ -59,6 +59,8 @@ export const PlayerView = observer(
             icon="play"
             tooltip="Play selection"
             onClick={() => {
+              // Re-enable autoscroll when user starts playing
+              player.setAutoScrollEnabled(true);
               obsidian.playSelection();
             }}
           />
@@ -83,7 +85,11 @@ export const PlayerView = observer(
               key="play"
               icon="step-forward"
               tooltip="Resume"
-              onClick={() => player.activeText?.play()}
+              onClick={() => {
+                // Re-enable autoscroll when user resumes playing
+                player.setAutoScrollEnabled(true);
+                player.activeText?.play();
+              }}
               disabled={!player.activeText}
             />
           )}
@@ -92,6 +98,22 @@ export const PlayerView = observer(
             tooltip="Next"
             onClick={() => player.activeText?.goToNext()}
             disabled={!player.activeText}
+          />
+          <IconButton
+            icon={player.autoScrollEnabled ? "eye" : "eye-off"}
+            tooltip={
+              player.autoScrollEnabled
+                ? "Autoscroll enabled (click to disable)"
+                : "Autoscroll disabled (click to enable and scroll to current position)"
+            }
+            onClick={() => {
+              if (player.autoScrollEnabled) {
+                player.disableAutoScroll();
+              } else {
+                player.enableAutoScrollAndScrollToCurrent();
+              }
+            }}
+            highlight={player.autoScrollEnabled}
           />
           <EditPlaybackSpeedButton settings={settings} />
         </div>

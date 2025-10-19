@@ -14,6 +14,7 @@ import { concatenateMp3Buffers } from "../util/audioProcessing";
 export interface AudioStore {
   // observables
   activeText: ActiveAudioText | null;
+  autoScrollEnabled: boolean;
 
   // switches the active track
   // returns a track ID
@@ -35,8 +36,16 @@ export interface AudioStore {
   clearStorage(): Promise<void>;
 
   /** gets the cache disk usage in bytes */
-
   getStorageSize(): Promise<number>;
+
+  /** enable/disable autoscroll */
+  setAutoScrollEnabled(enabled: boolean): void;
+
+  /** disable autoscroll (when user scrolls manually) */
+  disableAutoScroll(): void;
+
+  /** enable autoscroll and scroll to current position */
+  enableAutoScrollAndScrollToCurrent(): void;
 }
 
 export function loadAudioStore({
@@ -50,12 +59,14 @@ export function loadAudioStore({
 
 class AudioStoreImpl implements AudioStore {
   activeText: ActiveAudioText | null = null;
+  autoScrollEnabled = true;
   system: AudioSystem;
 
   constructor(system: AudioSystem) {
     this.system = system;
     mobx.makeObservable(this, {
       activeText: observable,
+      autoScrollEnabled: observable,
       closePlayer: action,
     });
     this.initializeBackgroundProcessors();
@@ -173,6 +184,26 @@ class AudioStoreImpl implements AudioStore {
     this.activeText?.destroy();
     this.activeText = null;
   }
+
+  setAutoScrollEnabled(enabled: boolean): void {
+    this.autoScrollEnabled = enabled;
+  }
+
+  disableAutoScroll(): void {
+    this.autoScrollEnabled = false;
+  }
+
+  enableAutoScrollAndScrollToCurrent(): void {
+    this.autoScrollEnabled = true;
+    // Trigger a scroll to current position by forcing a state update
+    if (this.activeText) {
+      // This will trigger the autoscroll logic in TTSCodeMirrorCore
+      const currentPosition = this.activeText.position;
+      this.activeText.position = -1; // Force change
+      this.activeText.position = currentPosition; // Restore position
+    }
+  }
+
   destroy(): void {
     this.closePlayer();
     this.system.audioSink.pause();
