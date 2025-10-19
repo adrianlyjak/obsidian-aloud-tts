@@ -80,3 +80,16 @@ For users who self-host a TTS service or use a third-party provider with an Open
 Notes:
 -   MiniMax integration currently uses non-streaming synthesis and returns `mp3` decoded from `hex`.
 -   Advanced options like `language_boost`, `timbre_weights`, or streaming are not yet exposed in settings.
+-   **Output Format**: Select the desired audio format (e.g., MP3/WAV variants).
+
+### AWS Polly
+
+-   **AWS Access Key ID**: Your IAM access key with `polly:SynthesizeSpeech` and `polly:DescribeVoices` permissions.
+-   **AWS Secret Access Key**: The corresponding secret key.
+-   **Region**: The AWS region to use (e.g., `us-east-1`).
+-   **Voice**: The Polly voice to use (e.g., `Joanna`).
+-   **Engine**: Select `neural` (recommended where available) or `standard`.
+
+Notes:
+-   Keys are stored locally inside Obsidian's plugin data. For best security, consider using a limited-permission IAM user.
+-   The voice list is loaded from Polly when credentials and region are set.

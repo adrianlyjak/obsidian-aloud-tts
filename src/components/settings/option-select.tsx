@@ -1,7 +1,7 @@
 import React from "react";
 
 export const OptionSelect: React.FC<{
-  options: readonly { label: string; value: string }[];
+  options: readonly { label: string; value: string; disabled?: boolean }[];
   value: string;
   onChange: (v: string) => void;
 }> = ({ options, value, onChange }) => {
@@ -15,7 +15,11 @@ export const OptionSelect: React.FC<{
         onChange={(evt) => onChange(evt.target.value)}
       >
         {options.concat(unknownValue).map((option) => (
-          <option key={option.value} value={option.value}>
+          <option
+            key={option.value}
+            value={option.value}
+            disabled={option.disabled}
+          >
             {option.label}
           </option>
         ))}
