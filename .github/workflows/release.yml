@@ -7,6 +7,12 @@ on:
   push:
     tags:
       - "*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g., 0.10.1 or 0.10.1-rc1)"
+        required: true
+        type: string
 
 jobs:
   build:
@@ -35,12 +41,16 @@ jobs:
           pnpm run build
 
       - name: Create release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         env:
           GITHUB_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }}
         run: |
-          tag="${GITHUB_REF#refs/tags/}"
-          
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            tag="${{ github.event.inputs.version }}"
+          else
+            tag="${GITHUB_REF#refs/tags/}"
+          fi
+
           # Check if this is a pre-release version
           if echo "$tag" | grep -qE '-(rc|alpha|beta)'; then
             # Pre-release version
