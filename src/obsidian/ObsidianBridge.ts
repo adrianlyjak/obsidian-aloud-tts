@@ -20,7 +20,9 @@ export interface ObsidianBridgeSpecifics {
   activeObsidianEditor: Editor | undefined;
 }
 
-export interface ObsidianBridge extends TTSEditorBridge, ObsidianBridgeSpecifics {
+export interface ObsidianBridge
+  extends TTSEditorBridge,
+    ObsidianBridgeSpecifics {
   // Obsidian-specific methods beyond the shared interface
   triggerSelection: (
     file: TFile | null,
@@ -262,6 +264,8 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     const selection = editor.getRange(from, to);
     if (selection) {
       try {
+        // Apply autoscroll setting when starting playback
+        player.applyAutoScrollSetting();
         player
           .startPlayer({
             text: selection,
@@ -292,6 +296,8 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
   }
 }
 
-export function isObsidianBridgeSpecifics(bridge: TTSEditorBridge): bridge is TTSEditorBridge & ObsidianBridgeSpecifics {
+export function isObsidianBridgeSpecifics(
+  bridge: TTSEditorBridge,
+): bridge is TTSEditorBridge & ObsidianBridgeSpecifics {
   return (bridge as any).activeObsidianEditor !== undefined;
 }

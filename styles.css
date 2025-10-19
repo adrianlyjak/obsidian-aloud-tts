@@ -38,7 +38,14 @@
 
 .tts-toolbar-button.tts-toolbar-button-active {
   color: var(--interactive-accent);
-  background-color: var(--interactive-accent-hover);
+}
+
+.tts-toolbar-button:not(.tts-toolbar-button-active) {
+  color: var(--text-muted);
+}
+
+.tts-toolbar-button:hover {
+  color: var(--interactive-accent) !important;
 }
 
 .tts-toolbar-player-item-margin-right {

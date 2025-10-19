@@ -46,6 +46,9 @@ export interface AudioStore {
 
   /** enable autoscroll and scroll to current position */
   enableAutoScrollAndScrollToCurrent(): void;
+
+  /** apply autoscroll based on persistent setting */
+  applyAutoScrollSetting(): void;
 }
 
 export function loadAudioStore({
@@ -64,11 +67,14 @@ class AudioStoreImpl implements AudioStore {
 
   constructor(system: AudioSystem) {
     this.system = system;
+    // Always start with autoscroll enabled (feature is always available)
+    this.autoScrollEnabled = true;
     mobx.makeObservable(this, {
       activeText: observable,
       autoScrollEnabled: observable,
       closePlayer: action,
     });
+
     this.initializeBackgroundProcessors();
   }
 
@@ -202,6 +208,15 @@ class AudioStoreImpl implements AudioStore {
       this.activeText.position = -1; // Force change
       this.activeText.position = currentPosition; // Restore position
     }
+  }
+
+  // Apply autoscroll based on persistent setting
+  applyAutoScrollSetting(): void {
+    // Only enable autoscroll if the setting allows it
+    if (this.system.settings.autoScrollPlayerView) {
+      this.autoScrollEnabled = true;
+    }
+    // If setting is disabled, don't change the current state (let user control manually)
   }
 
   destroy(): void {

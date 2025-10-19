@@ -59,8 +59,10 @@ export const PlayerView = observer(
             icon="play"
             tooltip="Play selection"
             onClick={() => {
-              // Re-enable autoscroll when user starts playing
-              player.setAutoScrollEnabled(true);
+              // Re-enable autoscroll when user starts playing, only if enabled in settings
+              if (settings.settings.autoScrollPlayerView) {
+                player.setAutoScrollEnabled(true);
+              }
               obsidian.playSelection();
             }}
           />
@@ -86,8 +88,8 @@ export const PlayerView = observer(
               icon="step-forward"
               tooltip="Resume"
               onClick={() => {
-                // Re-enable autoscroll when user resumes playing
-                player.setAutoScrollEnabled(true);
+                // Apply autoscroll setting when resuming
+                player.applyAutoScrollSetting();
                 player.activeText?.play();
               }}
               disabled={!player.activeText}

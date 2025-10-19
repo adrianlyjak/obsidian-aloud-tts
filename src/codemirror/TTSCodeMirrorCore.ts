@@ -146,7 +146,6 @@ function createTTSHighlightField(
           bridge.activeObsidianEditor &&
           currentState.playerState?.isPlaying &&
           currentState.playerState?.playingTrack &&
-          autoscrollSetting.autoScrollPlayerView &&
           player.autoScrollEnabled
         ) {
           const obsidianEditor = bridge.activeObsidianEditor;
@@ -205,12 +204,9 @@ export function createTextChangeHandler(
 
     // Handle scroll events - disable autoscroll when user scrolls
     if (update.viewportChanged && bridge.activeEditor === update.view) {
-      // Check if this is a user-initiated scroll (not programmatic)
-      if (
-        update.transactions.some(
-          (tr) => !tr.isUserEvent("select") && !tr.isUserEvent("input"),
-        )
-      ) {
+      // Only disable autoscroll if there are no transactions (indicating user scroll)
+      // Programmatic scrolls from our autoscroll will have transactions
+      if (update.transactions.length === 0) {
         player.disableAutoScroll();
       }
     }

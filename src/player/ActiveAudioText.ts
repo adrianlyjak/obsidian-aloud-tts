@@ -168,8 +168,14 @@ export function buildTrack(
       start,
       end,
     });
-    start = end;
-    chunks.push(chunk);
+    // Only include chunks that have actual text content after cleaning
+    if (chunk.text.trim().length > 0) {
+      start = end;
+      chunks.push(chunk);
+    } else {
+      // Skip empty chunks but maintain the character position
+      start = end;
+    }
   }
   return observable({
     id: randomId(),
