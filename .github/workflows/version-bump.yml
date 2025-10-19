@@ -28,6 +28,7 @@ on:
 permissions:
   contents: write
   actions: write
+  pull-requests: write
 
 jobs:
   bump:
@@ -92,14 +93,17 @@ jobs:
           echo "VERSION=$(jq -r .version package.json)" >> $GITHUB_ENV
           echo "New version: $(jq -r .version package.json)"
 
-      - name: Trigger release workflow
-        uses: actions/github-script@v7
+      - name: Create pull request for version bump
+        uses: peter-evans/create-pull-request@v6
         with:
-          script: |
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'release.yml',
-              ref: process.env.VERSION,
-              inputs: { version: process.env.VERSION }
-            });
+          commit-message: "chore: bump version to ${{ env.VERSION }}"
+          title: "chore: bump version to ${{ env.VERSION }}"
+          body: |
+            Automated version bump to `${{ env.VERSION }}`.
+
+            - This PR was created because `main` is protected.
+            - Merge this PR to apply the version change.
+            - After merge, create a tag `${{ env.VERSION }}` and run the "Release Obsidian plugin" workflow if desired.
+          branch: chore/version-bump/${{ env.VERSION }}
+          delete-branch: true
+          base: main

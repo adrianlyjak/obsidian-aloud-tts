@@ -16,9 +16,17 @@ commands
 fi
 
 node version-bump.mjs $1 $2
+
+# In CI (GitHub Actions), do not create commits/tags or push directly.
+# Leave changes uncommitted so the workflow can open a PR with them.
+if [ "${GITHUB_ACTIONS:-}" = "true" ] || [ "${CI:-}" = "true" ]; then
+  echo "CI detected; skipping git commit, tag, and push. A PR will be created by the workflow."
+  exit 0
+fi
+
 git add manifest.json versions.json package.json
-VERSION="$(cat package.json | jq .version -r)"
+VERSION="$(jq -r .version package.json)"
 git commit -m "update version to $VERSION"
-git tag -a $VERSION -m "Version $VERSION"
+git tag -a "$VERSION" -m "Version $VERSION"
 git push
-git push origin $VERSION
+git push origin "$VERSION"
