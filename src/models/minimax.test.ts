@@ -26,7 +26,7 @@ describe("MiniMax Model", () => {
         minimax_apiKey: "test-api-key",
         minimax_groupId: "g-123",
         minimax_ttsModel: "speech-2.5-turbo-preview",
-        minimax_ttsVoice: "Grinch",
+        minimax_ttsVoice: "English_expressive_narrator",
       };
 
       const options = minimaxTextToSpeech.convertToOptions(testSettings);
@@ -34,7 +34,7 @@ describe("MiniMax Model", () => {
       expect(options).toEqual({
         apiKey: "test-api-key",
         model: "speech-2.5-turbo-preview",
-        voice: "Grinch",
+        voice: "English_expressive_narrator",
         instructions: undefined,
         apiUri: undefined,
       });
@@ -77,7 +77,7 @@ describe("MiniMax Model", () => {
     const mockOptions: TTSModelOptions = {
       apiKey: "sk-abc",
       model: "speech-2.5-turbo-preview",
-      voice: "Grinch",
+      voice: "English_expressive_narrator",
     };
 
     it("should call t2a_v2 and decode hex audio", async () => {

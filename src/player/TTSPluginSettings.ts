@@ -177,7 +177,7 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   minimax_apiKey: "",
   minimax_groupId: "",
   minimax_ttsModel: "speech-2.5-turbo-preview",
-  minimax_ttsVoice: "Grinch",
+  minimax_ttsVoice: "English_expressive_narrator",
 
   version: 2,
   audioFolder: "aloud",
