@@ -191,15 +191,15 @@ class AudioStoreImpl implements AudioStore {
     this.activeText = null;
   }
 
-  setAutoScrollEnabled(enabled: boolean): void {
+  setAutoScrollEnabled = mobx.action((enabled: boolean): void => {
     this.autoScrollEnabled = enabled;
-  }
+  });
 
-  disableAutoScroll(): void {
+  disableAutoScroll = mobx.action((): void => {
     this.autoScrollEnabled = false;
-  }
+  });
 
-  enableAutoScrollAndScrollToCurrent(): void {
+  enableAutoScrollAndScrollToCurrent = mobx.action((): void => {
     this.autoScrollEnabled = true;
     // Trigger a scroll to current position by forcing a state update
     if (this.activeText) {
@@ -208,16 +208,16 @@ class AudioStoreImpl implements AudioStore {
       this.activeText.position = -1; // Force change
       this.activeText.position = currentPosition; // Restore position
     }
-  }
+  });
 
   // Apply autoscroll based on persistent setting
-  applyAutoScrollSetting(): void {
+  applyAutoScrollSetting = mobx.action((): void => {
     // Only enable autoscroll if the setting allows it
     if (this.system.settings.autoScrollPlayerView) {
       this.autoScrollEnabled = true;
     }
     // If setting is disabled, don't change the current state (let user control manually)
-  }
+  });
 
   destroy(): void {
     this.closePlayer();

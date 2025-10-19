@@ -152,6 +152,9 @@ function createTTSHighlightField(
           const { from, to } = currentTextPosition;
           const fromPos = obsidianEditor.offsetToPos(from);
           const toPos = obsidianEditor.offsetToPos(to);
+
+          // Mark that we're about to do a programmatic scroll
+          (player as any)._lastProgrammaticScroll = Date.now();
           obsidianEditor.scrollIntoView({ from: fromPos, to: toPos }, true);
         }
 
@@ -204,9 +207,14 @@ export function createTextChangeHandler(
 
     // Handle scroll events - disable autoscroll when user scrolls
     if (update.viewportChanged && bridge.activeEditor === update.view) {
-      // Only disable autoscroll if there are no transactions (indicating user scroll)
-      // Programmatic scrolls from our autoscroll will have transactions
-      if (update.transactions.length === 0) {
+      // Check if this viewport change happened shortly after our programmatic scroll
+      const lastProgrammaticScroll =
+        (player as any)._lastProgrammaticScroll || 0;
+      const timeSinceProgrammatic = Date.now() - lastProgrammaticScroll;
+
+      // If it's been more than 100ms since our last programmatic scroll,
+      // this is likely a user scroll
+      if (timeSinceProgrammatic > 100) {
         player.disableAutoScroll();
       }
     }
