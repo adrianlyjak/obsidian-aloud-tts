@@ -153,4 +153,23 @@ Just some text with dashes`;
       "---not frontmatter---\nJust some text with dashes",
     );
   });
+
+  it("should handle tables by removing markup and preserving content", () => {
+    const tableText = `| Column 1 | Column 2 | Column 3 |
+|----------|----------|----------|
+| Cell 1   | Cell 2   | Cell 3   |
+| Cell 4   | Cell 5   | Cell 6   |`;
+
+    const cleaned = cleanMarkup(tableText);
+
+    // Should not contain table separator lines
+    expect(cleaned).not.toContain("---");
+    // Should contain the actual content (pipes replaced with spaces for better position mapping)
+    expect(cleaned).toContain("Cell 1");
+    expect(cleaned).toContain("Cell 2");
+    expect(cleaned).toContain("Cell 3");
+    expect(cleaned).toContain("Column 1");
+    expect(cleaned).toContain("Column 2");
+    expect(cleaned).toContain("Column 3");
+  });
 });

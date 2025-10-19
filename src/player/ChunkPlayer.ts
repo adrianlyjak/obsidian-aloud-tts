@@ -504,8 +504,10 @@ const loadCheckLoop = (
       if (maybe && activeText && position !== null && !cancelled) {
         const [chunk, result] = maybe;
         chunk.setLoaded(result);
+        // Clone the buffer before appending to prevent detachment during decodeAudioData
+        const bufferForAppend = result.slice(0);
         return system.audioSink
-          .appendMedia(result)
+          .appendMedia(bufferForAppend)
           .then(() => system.audioSink.getAudioBuffer(result))
           .then((buff) => {
             const chunk = activeText.audio.chunks[position];

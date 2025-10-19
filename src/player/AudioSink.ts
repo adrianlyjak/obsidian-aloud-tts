@@ -59,7 +59,10 @@ export class WebAudioSink implements AudioSink {
   async getAudioBuffer(audio: ArrayBuffer): Promise<AudioBuffer> {
     const context = new AudioContext();
     try {
-      return await context.decodeAudioData(audio);
+      // Clone the ArrayBuffer to prevent detachment issues
+      // when the same buffer is used for both appendMedia and decodeAudioData
+      const clonedBuffer = audio.slice(0);
+      return await context.decodeAudioData(clonedBuffer);
     } finally {
       await context.close();
     }
