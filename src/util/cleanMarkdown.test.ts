@@ -64,6 +64,24 @@ describe("cleanMarkdown", () => {
     expect(cleaned).toEqual("This is a sentence. This is a sentence.");
   });
 
+  it("should remove ==highlight== when content has trailing space before close", () => {
+    const md = "==This is a sentence. This is a sentence. ==";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("This is a sentence. This is a sentence.");
+  });
+
+  it("should remove ==highlight== when content has leading spaces after open", () => {
+    const md = "==   This is a sentence. This is a sentence.==";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("This is a sentence. This is a sentence.");
+  });
+
+  it("should remove ==highlight== wrappers spanning newlines", () => {
+    const md = "==This is a sentence.\nThis is a sentence.==";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("This is a sentence.\nThis is a sentence.");
+  });
+
   it("should remove ==highlight== wrappers embedded in text", () => {
     const md = "We only ==highlight this phrase== in the sentence.";
     const cleaned = cleanMarkup(md);
