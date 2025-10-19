@@ -164,6 +164,20 @@ export function createWindows<T>(
   return windows;
 }
 
+export function hexToArrayBuffer(hex: string): ArrayBuffer {
+  const clean = hex.replace(/\s+/g, "").toLowerCase();
+  if (clean.length % 2 !== 0) {
+    throw new Error("Invalid hex string length");
+  }
+  const length = clean.length / 2;
+  const array = new Uint8Array(length);
+  for (let i = 0; i < length; i++) {
+    const byte = clean.substr(i * 2, 2);
+    array[i] = parseInt(byte, 16);
+  }
+  return array.buffer;
+}
+
 export function debounce<Args extends any[]>(
   cb: (...args: Args) => void,
   wait: number,

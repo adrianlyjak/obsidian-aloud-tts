@@ -19,7 +19,8 @@ export type TTSPluginSettings = {
   OpenAIModelConfig &
   OpenAICompatModelConfig &
   ElevenLabsModelConfig &
-  AzureModelConfig);
+  AzureModelConfig &
+  MinimaxModelConfig);
 
 export interface GeminiModelConfig {
   /** the API key to use */
@@ -89,6 +90,17 @@ export interface AzureModelConfig {
   azure_outputFormat: string;
 }
 
+export interface MinimaxModelConfig {
+  /** the API key to use */
+  minimax_apiKey: string;
+  /** the Minimax GroupId to use (required) */
+  minimax_groupId: string;
+  /** the model to use */
+  minimax_ttsModel: string;
+  /** the voice id to use */
+  minimax_ttsVoice: string;
+}
+
 export const playViewModes = [
   "always",
   "always-mobile",
@@ -118,6 +130,7 @@ export const modelProviders = [
   "elevenlabs",
   "gemini",
   "hume",
+  "minimax",
 ] as const;
 export type ModelProvider = (typeof modelProviders)[number];
 
@@ -159,6 +172,12 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   azure_region: "eastus",
   azure_voice: "en-US-JennyNeural",
   azure_outputFormat: "audio-24khz-96kbitrate-mono-mp3",
+
+  // minimax
+  minimax_apiKey: "",
+  minimax_groupId: "",
+  minimax_ttsModel: "speech-2.5-turbo-preview",
+  minimax_ttsVoice: "English_expressive_narrator",
 
   version: 2,
   audioFolder: "aloud",
