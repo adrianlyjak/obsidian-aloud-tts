@@ -89,9 +89,9 @@ describe("cleanMarkdown", () => {
   });
 
   it("should remove empty code blocks", () => {
-    const md = `hello world one\n\nhello world two`;
+    const md = "```\n\n```";
     const cleaned = cleanMarkup(md);
-    expect(cleaned).toEqual("hello world one\nhello world two");
+    expect(cleaned).toEqual("\n");
   });
 
   it("should retain just the code content", () => {
@@ -131,6 +131,18 @@ tags:
 This is the real content.`;
     const cleaned = cleanMarkup(md);
     expect(cleaned).toEqual("\nActual Content\nThis is the real content.");
+  });
+
+  it("should remove obsidian image links", () => {
+    const md = "Here is an image ![image name](path/to/image.png) in text";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("Here is an image image name in text");
+  });
+
+  it("should remove obsidian wiki links", () => {
+    const md = "Here is a link ![[Page Name]] in text";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("Here is a link  in text");
   });
 
   it("should not remove text that just happens to have dashes", () => {

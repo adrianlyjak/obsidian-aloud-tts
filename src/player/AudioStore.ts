@@ -98,8 +98,7 @@ class AudioStoreImpl implements AudioStore {
     }
 
     // Concatenate all audio buffers into a single MP3
-    const copiedAudioBuffers: ArrayBuffer[] = audioBuffers.map(buffer => buffer.slice(0));
-    return await concatenateMp3Buffers(copiedAudioBuffers, this.system.audioSink);
+    return await concatenateMp3Buffers(audioBuffers, this.system.audioSink);
   }
 
   _backgroundProcesses: { shutdown: () => void }[] = [];

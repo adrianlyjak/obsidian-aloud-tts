@@ -9,14 +9,12 @@ import {
   DecorationSet,
   EditorView,
   ViewUpdate,
-  ViewPlugin,
 } from "@codemirror/view";
-import { Editor } from "obsidian";
 import * as mobx from "mobx";
 import { AudioStore } from "../player/AudioStore";
 import { AudioTextChunk } from "../player/AudioTextChunk";
 import { TextEdit } from "../player/ActiveAudioText";
-import { isObsidianBridgeSpecifics, ObsidianBridgeSpecifics } from "../obsidian/ObsidianBridge";
+import { isObsidianBridgeSpecifics } from "../obsidian/ObsidianBridge";
 
 // Unified bridge interface - common subset that both implementations need
 export interface TTSEditorBridge {
@@ -70,7 +68,10 @@ export function playerToCodeMirrorState(
 }
 
 /** Highlights the currently selected and playing text */
-function createTTSHighlightField(autoscrollSetting: { autoScrollPlayerView: boolean }, bridge: TTSEditorBridge) {
+function createTTSHighlightField(
+  autoscrollSetting: { autoScrollPlayerView: boolean },
+  bridge: TTSEditorBridge,
+) {
   return StateField.define<TTSCodeMirrorState>({
     create() {
       return {};
@@ -139,7 +140,13 @@ function createTTSHighlightField(autoscrollSetting: { autoScrollPlayerView: bool
         const newDecoration = b.finish();
 
         // Autoscroll logic
-        if (isObsidianBridgeSpecifics(bridge) && bridge.activeObsidianEditor && currentState.playerState?.isPlaying && currentState.playerState?.playingTrack && autoscrollSetting.autoScrollPlayerView) {
+        if (
+          isObsidianBridgeSpecifics(bridge) &&
+          bridge.activeObsidianEditor &&
+          currentState.playerState?.isPlaying &&
+          currentState.playerState?.playingTrack &&
+          autoscrollSetting.autoScrollPlayerView
+        ) {
           const obsidianEditor = bridge.activeObsidianEditor;
           const { from, to } = currentTextPosition;
           const fromPos = obsidianEditor.offsetToPos(from);
