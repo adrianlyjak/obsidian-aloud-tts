@@ -11,7 +11,7 @@ The Aloud TTS plugin offers a variety of settings to customize your text-to-spee
 
 These settings control the core behavior of the plugin.
 
--   **TTS Provider**: Choose the text-to-speech service you want to use. Each provider offers different voices and pricing. Supported providers include OpenAI, Google Gemini, Hume AI, and any OpenAI-compatible API.
+-   **TTS Provider**: Choose the text-to-speech service you want to use. Each provider offers different voices and pricing. Supported providers include OpenAI, Google Gemini, Hume AI, ElevenLabs, Azure Speech Services, and any OpenAI-compatible API.
 -   **Playback Speed**: Adjust the default playback speed. The default is `1.0x`. This can also be adjusted from the player UI.
 -   **Audio Folder**: The directory in your vault where exported audio files are saved. The default is `aloud/`.
 
@@ -53,3 +53,19 @@ For users who self-host a TTS service or use a third-party provider with an Open
 -   **API Base URL**: The URL of your API endpoint (e.g., `http://localhost:8020/v1`).
 -   **Model**: The name of the model your service uses.
 -   **Voice**: The name of the voice to use. 
+
+### ElevenLabs
+
+-   **API Key**: Your API key from [ElevenLabs](https://elevenlabs.io/app/settings/api-keys).
+-   **Model**: One of the supported ElevenLabs TTS models (e.g., `eleven_multilingual_v2`, `eleven_flash_v2.5`).
+-   **Voice**: The ElevenLabs voice ID to use.
+-   **Stability**: Controls how stable/consistent the voice is (0–1).
+-   **Similarity Boost**: Controls how closely the output matches the base voice (0–1).
+-   **Context Mode**: Optionally include previous sentences for continuity.
+
+### Azure Speech Services
+
+-   **API Key**: Your Azure Speech Services API key.
+-   **Region**: Your Azure Speech resource region (e.g., `eastus`).
+-   **Voice**: The Azure voice to use (e.g., `en-US-JennyNeural`).
+-   **Output Format**: Select the desired audio format (e.g., MP3/WAV variants).

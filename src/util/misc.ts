@@ -35,20 +35,65 @@ export function createSlidingWindowGroups(
   return createWindows(sentences, windowSize, stepSize);
 }
 
-export function splitParagraphs(text: string): string[] {
-  return [...genParagraphs(text)];
+export function splitParagraphs(
+  text: string,
+  { maxChunkSize }: { maxChunkSize?: number } = {},
+): string[] {
+  return [...genParagraphs(text, { maxChunkSize })];
 }
-function* genParagraphs(text: string): Iterable<string> {
+function* genParagraphs(
+  text: string,
+  { maxChunkSize = 4000 }: { maxChunkSize?: number } = {},
+): Iterable<string> {
   let lastIndex = 0;
   const splitRegex = /\n\s*\n\s*/g;
   let result: RegExpExecArray | null;
   while ((result = splitRegex.exec(text))) {
     const index = result.index;
-    yield text.substring(lastIndex, index) + result[0];
+    const paragraph = text.substring(lastIndex, index) + result[0];
     lastIndex = index + result[0].length;
+    for (const chunk of splitAlongSentenceBoundariesWithMaxLength(
+      paragraph,
+      maxChunkSize,
+    )) {
+      yield chunk;
+    }
   }
   if (lastIndex < text.length) {
-    yield text.substring(lastIndex);
+    for (const chunk of splitAlongSentenceBoundariesWithMaxLength(
+      text.substring(lastIndex),
+      maxChunkSize,
+    )) {
+      yield chunk;
+    }
+  }
+}
+
+function splitAlongSentenceBoundariesWithMaxLength(
+  text: string,
+  maxLength: number,
+): string[] {
+  if (text.length <= maxLength) {
+    return [text];
+  } else {
+    const sentences = splitSentences(text, { minLength: 20 });
+    const chunks = [""];
+    for (const sentence of sentences) {
+      const currentChunk = chunks[chunks.length - 1];
+      // always append to the current chunk if its empty (even if longer than a chunk!)
+      // this seems better than the alternative of even further splitting.
+      // or if it exceeds the max length (once trimmed)
+      if (
+        currentChunk &&
+        currentChunk.length + sentence.trim().length > maxLength
+      ) {
+        chunks.push(sentence);
+      } else {
+        // otherwise, append the current chunk
+        chunks[chunks.length - 1] += sentence;
+      }
+    }
+    return chunks;
   }
 }
 

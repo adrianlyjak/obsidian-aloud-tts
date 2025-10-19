@@ -32,6 +32,8 @@ In addition to the visual player, you can use the following commands from the Co
 -   `Stop`: Halts playback completely and closes the player.
 -   `Increase playback speed`: Increases the playback rate by 0.1.
 -   `Decrease playback speed`: Decreases the playback rate by 0.1.
+-   `Next track`: Skips to the next chunk/track of the active audio.
+-   `Previous track`: Goes back to the previous chunk/track of the active audio.
 
 ## Visual Feedback
 

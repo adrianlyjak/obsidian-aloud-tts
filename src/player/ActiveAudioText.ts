@@ -154,8 +154,10 @@ export function buildTrack(
 ): AudioText {
   const splits =
     chunkType === "sentence"
-      ? splitSentences(opts.text, { minLength: opts.minChunkLength ?? 20 })
-      : splitParagraphs(opts.text);
+      ? splitSentences(opts.text, {
+          minLength: opts.minChunkLength ?? 20,
+        })
+      : splitParagraphs(opts.text, { maxChunkSize: 1000 });
 
   let start = opts.start;
   const chunks = [];

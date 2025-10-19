@@ -1,0 +1,105 @@
+name: Version bump and trigger release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump type"
+        type: choice
+        required: true
+        options:
+          - patch
+          - minor
+          - major
+          - rc
+          - release
+          - specified
+        default: patch
+      rc:
+        description: "Add rc suffix (only with major/minor/patch)"
+        type: boolean
+        required: false
+        default: false
+      version:
+        description: "Exact version when bump is 'specified'"
+        type: string
+        required: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Ensure jq is installed
+        run: |
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y jq
+          fi
+
+      - name: Configure Git author
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Run version bump script
+        env:
+          BUMP: ${{ github.event.inputs.bump }}
+          SPECIFIED_VERSION: ${{ github.event.inputs.version }}
+          RC: ${{ github.event.inputs.rc }}
+        run: |
+          set -euo pipefail
+          case "$BUMP" in
+            major|minor|patch)
+              if [ "$RC" = "true" ]; then
+                bash ./version-bump.sh "$BUMP" rc
+              else
+                bash ./version-bump.sh "$BUMP"
+              fi
+              ;;
+            rc|release)
+              bash ./version-bump.sh "$BUMP"
+              ;;
+            specified)
+              if [ -z "${SPECIFIED_VERSION}" ]; then
+                echo "Error: version input is required when bump='specified'" >&2
+                exit 1
+              fi
+              bash ./version-bump.sh specified "${SPECIFIED_VERSION}"
+              ;;
+            *)
+              echo "Unknown bump option: $BUMP" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Extract new version
+        run: |
+          echo "VERSION=$(jq -r .version package.json)" >> $GITHUB_ENV
+          echo "New version: $(jq -r .version package.json)"
+
+      - name: Trigger release workflow
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'release.yml',
+              ref: process.env.VERSION,
+              inputs: { version: process.env.VERSION }
+            });

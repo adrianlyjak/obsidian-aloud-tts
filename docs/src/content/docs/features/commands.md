@@ -16,6 +16,8 @@ The following commands are available:
 | `Play selection`          | Starts playback of the currently selected text.                                                         |
 | `Play from clipboard`     | Starts playback of the text currently in your system clipboard.                                         |
 | `Play/pause`              | Toggles playback of the current audio. If nothing is playing, it will try to play the current selection. |
+| `Next track`              | Skips to the next chunk/track of the active audio.                                                      |
+| `Previous track`          | Goes back to the previous chunk/track of the active audio.                                              |
 | `Stop`                    | Halts audio playback completely.                                                                        |
 | `Increase playback speed` | Increases the audio playback speed by 0.1x. Maximum speed is 2.5x.                                      |
 | `Decrease playback speed` | Decreases the audio playback speed by 0.1x. Minimum speed is 0.5x.                                      |

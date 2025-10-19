@@ -55,6 +55,16 @@ export async function openAICallTextToSpeech(
   settings: TTSPluginSettings,
   context: AudioTextContext = {},
 ): Promise<ArrayBuffer> {
+  const canInstruct = supportsInstructions(options.model);
+  let instructions = options.instructions;
+  if (canInstruct && context.textBefore) {
+    instructions = instructions ? instructions + "\n\n" : "";
+    instructions +=
+      "Maintain tone and pacing with the following speech before and after this text:\n\n";
+    instructions +=
+      "<previous_context>\n" + context.textBefore + "\n</previous_context>\n";
+  }
+
   const headers = await fetch(
     (options.apiUri || OPENAI_API_URL) + "/v1/audio/speech",
     {
@@ -66,9 +76,7 @@ export async function openAICallTextToSpeech(
       body: JSON.stringify({
         model: options.model,
         voice: options.voice ? options.voice : "",
-        ...(options.instructions && {
-          instructions: options.instructions,
-        }),
+        ...(instructions ? { instructions } : {}),
         input: text,
         speed: 1.0,
       }),
@@ -100,3 +108,26 @@ export async function validate200OpenAI(response: Response) {
   };
   await validate200(response, getErrorMessage);
 }
+
+export interface OpenAIModel {
+  label: string;
+  value: string;
+  supportsInstructions?: boolean;
+}
+
+export function supportsInstructions(model: string): boolean {
+  return (
+    DEFAULT_OPENAI_MODELS.find((x) => x.value === model)
+      ?.supportsInstructions || false
+  );
+}
+
+export const DEFAULT_OPENAI_MODELS: OpenAIModel[] = [
+  {
+    label: "gpt-4o-mini-tts",
+    value: "gpt-4o-mini-tts",
+    supportsInstructions: true,
+  },
+  { label: "tts-1", value: "tts-1" },
+  { label: "tts-1-hd", value: "tts-1-hd" },
+] as const;

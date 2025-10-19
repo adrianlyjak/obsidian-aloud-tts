@@ -1,7 +1,8 @@
 import { readFileSync, writeFileSync } from "fs";
 
 const bumpStyle = process.argv[2] || "patch";
-const releaseCandidate = bumpStyle === "rc" || process.argv[3] === "rc";
+// Whether the caller explicitly requested an RC bump (controls appending -rcN)
+const rcBumpRequested = bumpStyle === "rc" || process.argv[3] === "rc";
 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
 const pkgVersion = pkg.version.split(/[\\.\\-]/g);
 let targetVersion;
@@ -23,7 +24,7 @@ if (bumpStyle === "major") {
   targetVersion = pkgVersion.slice(0, 3).join(".");
 }
 
-if (releaseCandidate) {
+if (rcBumpRequested) {
   const current = pkgVersion[3]
     ? Number.parseInt(pkgVersion[3].match(/\d+/))
     : 0;
@@ -35,7 +36,9 @@ pkg.version = targetVersion;
 writeFileSync("package.json", JSON.stringify(pkg, null, 2));
 
 // Only update manifest.json and versions.json for full releases, not pre-releases
-if (!releaseCandidate) {
+// Detect prerelease by inspecting the computed target version (handles specified versions like 1.2.3-rc1)
+const isPreRelease = /-(?:rc|alpha|beta)/i.test(targetVersion);
+if (!isPreRelease) {
   // read minAppVersion from manifest.json and bump version to target version
   const manifest = JSON.parse(readFileSync("manifest.json", "utf8"));
   const { minAppVersion } = manifest;

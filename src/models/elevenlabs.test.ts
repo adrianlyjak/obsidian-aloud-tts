@@ -78,7 +78,7 @@ describe("ElevenLabs Model", () => {
 
         expect(result).toBeUndefined();
         expect(fetch).toHaveBeenCalledWith(
-          `${ELEVENLABS_API_URL}/v1/voices`,
+          `${ELEVENLABS_API_URL}/v2/voices`,
           expect.objectContaining({
             headers: expect.objectContaining({
               "xi-api-key": "valid-api-key",
@@ -301,16 +301,16 @@ describe("ElevenLabs Model", () => {
 
       const result = await listElevenLabsVoices("test-api-key");
 
-      expect(fetch).toHaveBeenCalledWith(`${ELEVENLABS_API_URL}/v1/voices`, {
+      expect(fetch).toHaveBeenCalledWith(`${ELEVENLABS_API_URL}/v2/voices`, {
         headers: {
           "xi-api-key": "test-api-key",
         },
       });
 
       expect(result).toEqual([
-        { id: "voice1", name: "Voice One", category: "premade" },
-        { id: "voice2", name: "Voice Two", category: "cloned" },
-        { id: "voice3", name: "Voice Three", category: "premade" },
+        { voice_id: "voice1", name: "Voice One", category: "premade" },
+        { voice_id: "voice2", name: "Voice Two", category: "cloned" },
+        { voice_id: "voice3", name: "Voice Three", category: "default" },
       ]);
     });
 
