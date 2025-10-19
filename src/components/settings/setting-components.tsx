@@ -9,7 +9,7 @@ import { OptionSelect } from "./option-select";
 // Common props for all setting components
 interface BaseSettingProps {
   name: string;
-  description: string;
+  description: React.ReactNode;
 }
 
 // Option select setting component for dropdowns
@@ -17,7 +17,7 @@ export interface OptionSelectSettingProps extends BaseSettingProps {
   store: TTSPluginSettingsStore;
   provider: ModelProvider;
   fieldName: keyof TTSPluginSettingsStore["settings"];
-  options: readonly { label: string; value: string }[];
+  options: readonly { label: string; value: string; disabled?: boolean }[];
 }
 
 export const OptionSelectSetting: React.FC<OptionSelectSettingProps> = observer(

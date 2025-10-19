@@ -113,8 +113,6 @@ export interface PollyModelConfig {
   polly_voiceId: string;
   /** Polly engine (standard or neural) */
   polly_engine: "standard" | "neural";
-  /** Output format for audio */
-  polly_outputFormat: "mp3" | "ogg_vorbis" | "pcm";
 }
 
 export const playViewModes = [
@@ -202,7 +200,6 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   polly_region: "us-east-1",
   polly_voiceId: "Joanna",
   polly_engine: "neural",
-  polly_outputFormat: "mp3",
 
   version: 2,
   audioFolder: "aloud",

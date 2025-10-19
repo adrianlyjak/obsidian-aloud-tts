@@ -8,15 +8,19 @@ import {
   TTSModelOptions,
 } from "./tts-model";
 
-export const POLLY_OUTPUT_FORMATS = [
-  { label: "MP3", value: "mp3" },
-  { label: "OGG Vorbis", value: "ogg_vorbis" },
-  { label: "PCM (raw)", value: "pcm" },
-] as const;
-
 export const POLLY_ENGINES = [
   { label: "Neural", value: "neural" },
   { label: "Standard", value: "standard" },
+  {
+    label: "Generative (coming soon)",
+    value: "generative",
+    disabled: true as any,
+  },
+  {
+    label: "Long-form (coming soon)",
+    value: "long-form",
+    disabled: true as any,
+  },
 ] as const;
 
 export const POLLY_REGIONS = [
@@ -44,6 +48,7 @@ export type PollyVoice = {
   id: string;
   name: string;
   languageName: string;
+  supportedEngines?: string[];
 };
 
 export const pollyTextToSpeech: TTSModel = {
@@ -104,11 +109,12 @@ export async function pollyCallTextToSpeech(
 
   const endpoint = `https://polly.${settings.polly_region}.amazonaws.com/v1/speech`;
 
-  const bodyParams = new URLSearchParams();
-  bodyParams.set("Text", text);
-  bodyParams.set("OutputFormat", settings.polly_outputFormat);
-  bodyParams.set("VoiceId", settings.polly_voiceId);
-  bodyParams.set("Engine", settings.polly_engine);
+  const requestBody = JSON.stringify({
+    Text: text,
+    OutputFormat: "mp3",
+    VoiceId: settings.polly_voiceId,
+    Engine: settings.polly_engine,
+  });
 
   const signed = await signAwsRequest({
     method: "POST",
@@ -117,9 +123,9 @@ export async function pollyCallTextToSpeech(
     host: `polly.${settings.polly_region}.amazonaws.com`,
     path: "/v1/speech",
     headers: {
-      "content-type": "application/x-www-form-urlencoded; charset=utf-8",
+      "content-type": "application/json",
     },
-    body: bodyParams.toString(),
+    body: requestBody,
     accessKeyId: settings.polly_accessKeyId,
     secretAccessKey: settings.polly_secretAccessKey,
   });
@@ -127,7 +133,7 @@ export async function pollyCallTextToSpeech(
   const response = await fetch(endpoint, {
     method: "POST",
     headers: signed.headers,
-    body: bodyParams.toString(),
+    body: requestBody,
   });
 
   await validate200Polly(response);
@@ -162,6 +168,9 @@ export async function listPollyVoices(
     id: v.Id,
     name: v.Name,
     languageName: v.LanguageName,
+    supportedEngines: Array.isArray(v.SupportedEngines)
+      ? (v.SupportedEngines as string[])
+      : [],
   }));
 }
 
@@ -293,10 +302,15 @@ async function sha256Hex(message: string): Promise<string> {
   return bufferToHex(hashBuffer);
 }
 
-async function hmac(key: ArrayBuffer, data: string): Promise<ArrayBuffer> {
+async function hmac(
+  key: ArrayBuffer | Uint8Array,
+  data: string,
+): Promise<ArrayBuffer> {
+  const rawKey: ArrayBuffer =
+    key instanceof Uint8Array ? new Uint8Array(key).buffer : key;
   const cryptoKey = await crypto.subtle.importKey(
     "raw",
-    key,
+    rawKey,
     { name: "HMAC", hash: { name: "SHA-256" } },
     false,
     ["sign"],

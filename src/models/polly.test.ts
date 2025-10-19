@@ -21,7 +21,6 @@ describe("AWS Polly Model", () => {
       polly_region: "us-east-1",
       polly_voiceId: "Joanna",
       polly_engine: "neural" as const,
-      polly_outputFormat: "mp3" as const,
     };
     const opts = pollyTextToSpeech.convertToOptions(s);
     expect(opts).toMatchObject({
@@ -72,7 +71,6 @@ describe("AWS Polly Model", () => {
       polly_region: "us-east-1",
       polly_voiceId: "Joanna",
       polly_engine: "neural" as const,
-      polly_outputFormat: "mp3" as const,
     } as const;
     const opts = pollyTextToSpeech.convertToOptions(s as any);
     const out = await pollyCallTextToSpeech("hello", opts, s as any);
