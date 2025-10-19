@@ -126,6 +126,11 @@ Notes
 - Use `TTSErrorInfo` for HTTP errors so messages render consistently in the UI.
 - If you need to list voices/models, add helpers like `listFooVoices`, `listFooModels`.
 
+Example: AWS Polly specifics
+- Polly requires AWS Signature Version 4 authentication. In this project we implement a minimal SigV4 signer using WebCrypto to avoid bundling the full AWS SDK, which keeps the plugin light and compatible with Obsidian environments.
+- Required fields: `polly_accessKeyId`, `polly_secretAccessKey`, `polly_region`, `polly_voiceId`, `polly_engine`, `polly_outputFormat`.
+- Endpoints used: `POST /v1/speech` for synthesis, `GET /v1/voices` to enumerate voices.
+
 ---
 
 ### 3) Register the provider (`src/models/registry.ts`)

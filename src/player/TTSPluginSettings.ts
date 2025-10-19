@@ -20,7 +20,8 @@ export type TTSPluginSettings = {
   OpenAICompatModelConfig &
   ElevenLabsModelConfig &
   AzureModelConfig &
-  MinimaxModelConfig);
+  MinimaxModelConfig &
+  PollyModelConfig);
 
 export interface GeminiModelConfig {
   /** the API key to use */
@@ -101,6 +102,21 @@ export interface MinimaxModelConfig {
   minimax_ttsVoice: string;
 }
 
+export interface PollyModelConfig {
+  /** AWS Access Key ID */
+  polly_accessKeyId: string;
+  /** AWS Secret Access Key */
+  polly_secretAccessKey: string;
+  /** AWS region (e.g., us-east-1) */
+  polly_region: string;
+  /** Polly voice id to use (e.g., Joanna) */
+  polly_voiceId: string;
+  /** Polly engine (standard or neural) */
+  polly_engine: "standard" | "neural";
+  /** Output format for audio */
+  polly_outputFormat: "mp3" | "ogg_vorbis" | "pcm";
+}
+
 export const playViewModes = [
   "always",
   "always-mobile",
@@ -131,6 +147,7 @@ export const modelProviders = [
   "gemini",
   "hume",
   "minimax",
+  "polly",
 ] as const;
 export type ModelProvider = (typeof modelProviders)[number];
 
@@ -178,6 +195,14 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   minimax_groupId: "",
   minimax_ttsModel: "speech-2.5-turbo-preview",
   minimax_ttsVoice: "English_expressive_narrator",
+
+  // polly
+  polly_accessKeyId: "",
+  polly_secretAccessKey: "",
+  polly_region: "us-east-1",
+  polly_voiceId: "Joanna",
+  polly_engine: "neural",
+  polly_outputFormat: "mp3",
 
   version: 2,
   audioFolder: "aloud",
