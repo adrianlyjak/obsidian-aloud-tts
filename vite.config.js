@@ -8,8 +8,13 @@ export default defineConfig({
   build: {
     outDir: "dist/web",
     rollupOptions: {
-      input: "./src/web/index.html"
-    }
+      input: "./src/web/index.html",
+    },
+  },
+  resolve: {
+    alias: {
+      obsidian: path.resolve(__dirname, "__mocks__/obsidian.ts"),
+    },
   },
   test: {
     environment: "jsdom",
@@ -18,7 +23,7 @@ export default defineConfig({
       obsidian: path.resolve(__dirname, "__mocks__/obsidian.ts"),
     },
     coverage: {
-      include: ["src/**/*"]
+      include: ["src/**/*"],
     },
   },
 });

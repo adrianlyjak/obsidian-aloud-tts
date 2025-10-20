@@ -36,6 +36,18 @@
   align-items: center;
 }
 
+.tts-toolbar-button.tts-toolbar-button-active {
+  color: var(--interactive-accent);
+}
+
+.tts-toolbar-button:not(.tts-toolbar-button-active) {
+  color: var(--text-muted);
+}
+
+.tts-toolbar-button:hover {
+  color: var(--interactive-accent) !important;
+}
+
 .tts-toolbar-player-item-margin-right {
   margin-right: 0.5rem;
 }
@@ -166,8 +178,6 @@
   display: block;
 }
 
-
-
 /** player view */
 
 details .tts-error-details {
@@ -186,4 +196,3 @@ details[open] .tts-error-details {
     opacity: 1;
   }
 }
-

@@ -1,6 +1,6 @@
 import { observer } from "mobx-react-lite";
 import * as React from "react";
-import { ObsidianBridge } from "../obsidian/ObsidianBridge";
+import { TTSEditorBridge } from "../codemirror/TTSCodeMirrorCore";
 import {
   MARKETING_NAME,
   TTSPluginSettingsStore,
@@ -26,7 +26,7 @@ export const PlayerView = observer(
     player: AudioStore;
     settings: TTSPluginSettingsStore;
     sink: AudioSink;
-    obsidian: ObsidianBridge;
+    obsidian: TTSEditorBridge;
   }): React.ReactNode => {
     const hasText = !!player.activeText;
     const isActiveEditor =
@@ -59,6 +59,10 @@ export const PlayerView = observer(
             icon="play"
             tooltip="Play selection"
             onClick={() => {
+              // Re-enable autoscroll when user starts playing, only if enabled in settings
+              if (settings.settings.autoScrollPlayerView) {
+                player.setAutoScrollEnabled(true);
+              }
               obsidian.playSelection();
             }}
           />
@@ -83,7 +87,11 @@ export const PlayerView = observer(
               key="play"
               icon="step-forward"
               tooltip="Resume"
-              onClick={() => player.activeText?.play()}
+              onClick={() => {
+                // Apply autoscroll setting when resuming
+                player.applyAutoScrollSetting();
+                player.activeText?.play();
+              }}
               disabled={!player.activeText}
             />
           )}
@@ -92,6 +100,22 @@ export const PlayerView = observer(
             tooltip="Next"
             onClick={() => player.activeText?.goToNext()}
             disabled={!player.activeText}
+          />
+          <IconButton
+            icon={player.autoScrollEnabled ? "eye" : "eye-off"}
+            tooltip={
+              player.autoScrollEnabled
+                ? "Autoscroll enabled (click to disable)"
+                : "Autoscroll disabled (click to enable and scroll to current position)"
+            }
+            onClick={() => {
+              if (player.autoScrollEnabled) {
+                player.disableAutoScroll();
+              } else {
+                player.enableAutoScrollAndScrollToCurrent();
+              }
+            }}
+            highlight={player.autoScrollEnabled}
           />
           <EditPlaybackSpeedButton settings={settings} />
         </div>
@@ -204,7 +228,7 @@ const AudioStatusInfoContents: React.FC<{
   audio: AudioSink;
   player: AudioStore;
   settings: TTSPluginSettingsStore;
-  obsidian: ObsidianBridge;
+  obsidian: TTSEditorBridge;
 }> = observer(({ audio, player, settings, obsidian }) => {
   if (settings.apiKeyValid === false) {
     return (

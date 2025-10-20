@@ -14,6 +14,7 @@ import * as mobx from "mobx";
 import { AudioStore } from "../player/AudioStore";
 import { AudioTextChunk } from "../player/AudioTextChunk";
 import { TextEdit } from "../player/ActiveAudioText";
+import { isObsidianBridgeSpecifics } from "../obsidian/ObsidianBridge";
 
 // Unified bridge interface - common subset that both implementations need
 export interface TTSEditorBridge {
@@ -37,7 +38,7 @@ export interface TTSEditorBridge {
 }
 
 // State Management
-const setViewState = StateEffect.define<TTSCodeMirrorState>();
+export const setViewState = StateEffect.define<TTSCodeMirrorState>();
 
 export interface TTSCodeMirrorState {
   playerState?: {
@@ -67,84 +68,110 @@ export function playerToCodeMirrorState(
 }
 
 /** Highlights the currently selected and playing text */
-const ttsHighlightField = StateField.define<TTSCodeMirrorState>({
-  create() {
-    return {};
-  },
-  update(value, tr): TTSCodeMirrorState {
-    const effects: StateEffect<TTSCodeMirrorState>[] = tr.effects.flatMap(
-      (e) => (e.is(setViewState) ? [e] : []),
-    );
-    if (!effects.length && !tr.docChanged) {
-      return value;
-    }
-
-    const currentState = effects.reverse()[0]?.value || value;
-
-    let currentTextPosition: { from: number; to: number } | undefined;
-    let textPosition: { from: number; to: number } | undefined;
-
-    if (currentState.playerState?.playingTrack) {
-      const tracks = currentState.playerState.tracks;
-      if (tracks?.length) {
-        textPosition = {
-          from: tracks.at(0)!.start,
-          to: tracks.at(-1)!.end,
-        };
-      }
-      const active = currentState.playerState.playingTrack;
-      if (active) {
-        currentTextPosition = {
-          from: active.start,
-          to: active.end,
-        };
-      }
-    }
-
-    if (!currentTextPosition) {
-      return {
-        playerState: currentState.playerState,
-      };
-    } else {
-      const b = new RangeSetBuilder<Decoration>();
-      if (textPosition) {
-        b.add(
-          textPosition.from,
-          currentTextPosition.from,
-          Decoration.mark({
-            class: "tts-cm-playing-before",
-          }),
-        );
-      }
-      b.add(
-        currentTextPosition.from,
-        currentTextPosition.to,
-        Decoration.mark({
-          class: "tts-cm-playing-now",
-        }),
+function createTTSHighlightField(
+  autoscrollSetting: { autoScrollPlayerView: boolean },
+  bridge: TTSEditorBridge,
+  player: AudioStore,
+) {
+  return StateField.define<TTSCodeMirrorState>({
+    create() {
+      return {};
+    },
+    update(value, tr): TTSCodeMirrorState {
+      const effects: StateEffect<TTSCodeMirrorState>[] = tr.effects.flatMap(
+        (e) => (e.is(setViewState) ? [e] : []),
       );
-      if (textPosition) {
+      if (!effects.length && !tr.docChanged) {
+        return value;
+      }
+
+      const currentState = effects.reverse()[0]?.value || value;
+
+      let currentTextPosition: { from: number; to: number } | undefined;
+      let textPosition: { from: number; to: number } | undefined;
+
+      if (currentState.playerState?.playingTrack) {
+        const tracks = currentState.playerState.tracks;
+        if (tracks?.length) {
+          textPosition = {
+            from: tracks.at(0)!.start,
+            to: tracks.at(-1)!.end,
+          };
+        }
+        const active = currentState.playerState.playingTrack;
+        if (active) {
+          currentTextPosition = {
+            from: active.start,
+            to: active.end,
+          };
+        }
+      }
+
+      if (!currentTextPosition) {
+        return {
+          playerState: currentState.playerState,
+        };
+      } else {
+        const b = new RangeSetBuilder<Decoration>();
+        if (textPosition) {
+          b.add(
+            textPosition.from,
+            currentTextPosition.from,
+            Decoration.mark({
+              class: "tts-cm-playing-before",
+            }),
+          );
+        }
         b.add(
+          currentTextPosition.from,
           currentTextPosition.to,
-          textPosition.to,
           Decoration.mark({
-            class: "tts-cm-playing-after",
+            class: "tts-cm-playing-now",
           }),
         );
+        if (textPosition) {
+          b.add(
+            currentTextPosition.to,
+            textPosition.to,
+            Decoration.mark({
+              class: "tts-cm-playing-after",
+            }),
+          );
+        }
+        const newDecoration = b.finish();
+
+        // Autoscroll logic
+        if (
+          isObsidianBridgeSpecifics(bridge) &&
+          bridge.activeObsidianEditor &&
+          currentState.playerState?.isPlaying &&
+          currentState.playerState?.playingTrack &&
+          player.autoScrollEnabled
+        ) {
+          const obsidianEditor = bridge.activeObsidianEditor;
+          const { from, to } = currentTextPosition;
+          const fromPos = obsidianEditor.offsetToPos(from);
+          const toPos = obsidianEditor.offsetToPos(to);
+
+          // Mark that we're about to do a programmatic scroll
+          (player as any)._lastProgrammaticScroll = Date.now();
+          obsidianEditor.scrollIntoView({ from: fromPos, to: toPos }, true);
+        }
+
+        return {
+          playerState: currentState.playerState,
+          decoration: newDecoration,
+        };
       }
-      return {
-        playerState: currentState.playerState,
-        decoration: b.finish(),
-      };
-    }
-  },
-  provide: (field) => {
-    return EditorView.decorations.from(
-      field,
-      (x) => x.decoration || Decoration.none,
-    );
-  },
-});
+    },
+    provide: (field) => {
+      return EditorView.decorations.from(
+        field,
+        (x) => x.decoration || Decoration.none,
+      );
+    },
+  });
+}
 
 /** Handle text changes for TTS */
 export function createTextChangeHandler(
@@ -176,6 +203,20 @@ export function createTextChangeHandler(
           }
         }, 0);
       });
+    }
+
+    // Handle scroll events - disable autoscroll when user scrolls
+    if (update.viewportChanged && bridge.activeEditor === update.view) {
+      // Check if this viewport change happened shortly after our programmatic scroll
+      const lastProgrammaticScroll =
+        (player as any)._lastProgrammaticScroll || 0;
+      const timeSinceProgrammatic = Date.now() - lastProgrammaticScroll;
+
+      // If it's been more than 100ms since our last programmatic scroll,
+      // this is likely a user scroll
+      if (timeSinceProgrammatic > 100) {
+        player.disableAutoScroll();
+      }
     }
   });
 }
@@ -219,8 +260,14 @@ export function createPlayerSynchronizer(
 export function createTTSHighlightExtension(
   player: AudioStore,
   bridge: TTSEditorBridge,
+  autoscrollSetting: { autoScrollPlayerView: boolean },
   customTheme?: Extension,
 ): Extension {
+  const ttsHighlightField = createTTSHighlightField(
+    autoscrollSetting,
+    bridge,
+    player,
+  );
   const defaultTheme = EditorView.theme({
     ".tts-cm-playing-before, .tts-cm-playing-after": {
       backgroundColor: "rgba(128, 0, 128, 0.2)",
@@ -236,6 +283,3 @@ export function createTTSHighlightExtension(
     createTextChangeHandler(player, bridge),
   ];
 }
-
-// Export the state effect for manual dispatching
-export { setViewState };

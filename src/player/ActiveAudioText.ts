@@ -15,20 +15,24 @@ export interface TextEdit {
 /** Player interface for loading and controlling a track */
 export interface ActiveAudioText {
   audio: AudioText;
-  readonly isPlaying: boolean;
-  readonly isLoading: boolean;
-  readonly error?: TTSErrorInfo;
-  position: number | -1; // -1 represents complete
-  readonly currentChunk: AudioTextChunk | null;
-  //   position && audio.tracks[position]
+  queue: ChunkPlayer | undefined;
+  isPlaying: boolean;
+  isLoading: boolean;
+  error: TTSErrorInfo | undefined;
+  position: number;
+  lastPositionChange: number;
+  currentChunk: AudioTextChunk | null;
+
   play(): void;
-  onTextChanged(position: number, type: "add" | "remove", text: string): void;
-  onMultiTextChanged(changes: TextEdit[]): void;
   pause(): void;
   destroy(): void;
   goToNext(): void;
   goToPrevious(): void;
   setPosition(position: number): void;
+  onTextChanged(position: number, type: "add" | "remove", text: string): void;
+  onMultiTextChanged(
+    changes: { position: number; type: "add" | "remove"; text: string }[],
+  ): void;
 }
 
 export class ActiveAudioTextImpl implements ActiveAudioText {
@@ -40,6 +44,7 @@ export class ActiveAudioTextImpl implements ActiveAudioText {
 
   // goes to -1 once completed
   position = 0;
+  lastPositionChange = Date.now();
   get currentChunk(): AudioTextChunk | null {
     if (this.position < 0) {
       return null;
@@ -145,6 +150,7 @@ export class ActiveAudioTextImpl implements ActiveAudioText {
   }
   setPosition(position: number): void {
     this.position = position;
+    this.lastPositionChange = Date.now();
   }
 }
 
@@ -168,8 +174,14 @@ export function buildTrack(
       start,
       end,
     });
-    start = end;
-    chunks.push(chunk);
+    // Only include chunks that have actual text content after cleaning
+    if (chunk.text.trim().length > 0) {
+      start = end;
+      chunks.push(chunk);
+    } else {
+      // Skip empty chunks but maintain the character position
+      start = end;
+    }
   }
   return observable({
     id: randomId(),

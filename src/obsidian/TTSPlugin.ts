@@ -183,6 +183,22 @@ export default class TTSPlugin extends Plugin {
       },
     });
 
+    this.addCommand({
+      id: "toggle-autoscroll",
+      name: "Toggle autoscroll focus",
+      checkCallback: (checking) => {
+        const hasSettings = !!this.settings;
+        if (checking) {
+          return hasSettings;
+        }
+        if (this.player.autoScrollEnabled) {
+          this.player.disableAutoScroll();
+        } else {
+          this.player.enableAutoScrollAndScrollToCurrent();
+        }
+      },
+    });
+
     this.registerEditorExtension(
       TTSCodeMirror(this.player, this.settings, this.audio, this.bridge),
     );

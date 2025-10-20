@@ -167,8 +167,14 @@ export const createMockAudioBuffer = () => ({
 });
 
 export const createMockObsidianBridge = () => ({
-  activeEditor: { state: { doc: { toString: () => "test content" } } },
-  focusedEditor: { state: { doc: { toString: () => "test content" } } },
+  activeEditor: {
+    state: { doc: { toString: () => "test content" } },
+    dispatch: vi.fn(),
+  },
+  focusedEditor: {
+    state: { doc: { toString: () => "test content" } },
+    dispatch: vi.fn(),
+  },
   detachedAudio: false,
   setActiveEditor: vi.fn(),
   isMobile: vi.fn(() => false),

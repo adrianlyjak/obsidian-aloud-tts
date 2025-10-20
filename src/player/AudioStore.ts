@@ -14,6 +14,7 @@ import { concatenateMp3Buffers } from "../util/audioProcessing";
 export interface AudioStore {
   // observables
   activeText: ActiveAudioText | null;
+  autoScrollEnabled: boolean;
 
   // switches the active track
   // returns a track ID
@@ -35,8 +36,19 @@ export interface AudioStore {
   clearStorage(): Promise<void>;
 
   /** gets the cache disk usage in bytes */
-
   getStorageSize(): Promise<number>;
+
+  /** enable/disable autoscroll */
+  setAutoScrollEnabled(enabled: boolean): void;
+
+  /** disable autoscroll (when user scrolls manually) */
+  disableAutoScroll(): void;
+
+  /** enable autoscroll and scroll to current position */
+  enableAutoScrollAndScrollToCurrent(): void;
+
+  /** apply autoscroll based on persistent setting */
+  applyAutoScrollSetting(): void;
 }
 
 export function loadAudioStore({
@@ -50,14 +62,19 @@ export function loadAudioStore({
 
 class AudioStoreImpl implements AudioStore {
   activeText: ActiveAudioText | null = null;
+  autoScrollEnabled = true;
   system: AudioSystem;
 
   constructor(system: AudioSystem) {
     this.system = system;
+    // Always start with autoscroll enabled (feature is always available)
+    this.autoScrollEnabled = true;
     mobx.makeObservable(this, {
       activeText: observable,
+      autoScrollEnabled: observable,
       closePlayer: action,
     });
+
     this.initializeBackgroundProcessors();
   }
 
@@ -173,6 +190,35 @@ class AudioStoreImpl implements AudioStore {
     this.activeText?.destroy();
     this.activeText = null;
   }
+
+  setAutoScrollEnabled = mobx.action((enabled: boolean): void => {
+    this.autoScrollEnabled = enabled;
+  });
+
+  disableAutoScroll = mobx.action((): void => {
+    this.autoScrollEnabled = false;
+  });
+
+  enableAutoScrollAndScrollToCurrent = mobx.action((): void => {
+    this.autoScrollEnabled = true;
+    // Trigger a scroll to current position by forcing a state update
+    if (this.activeText) {
+      // This will trigger the autoscroll logic in TTSCodeMirrorCore
+      const currentPosition = this.activeText.position;
+      this.activeText.position = -1; // Force change
+      this.activeText.position = currentPosition; // Restore position
+    }
+  });
+
+  // Apply autoscroll based on persistent setting
+  applyAutoScrollSetting = mobx.action((): void => {
+    // Only enable autoscroll if the setting allows it
+    if (this.system.settings.autoScrollPlayerView) {
+      this.autoScrollEnabled = true;
+    }
+    // If setting is disabled, don't change the current state (let user control manually)
+  });
+
   destroy(): void {
     this.closePlayer();
     this.system.audioSink.pause();

@@ -25,6 +25,8 @@ export default function cleanMarkup(md: string) {
     .replace(/!\[(.*?)\][[(].*?[\])]/g, "$1")
     // Remove inline links
     .replace(/\[([^\]]*?)\][[(].*?[\])]/g, "$1")
+    // remove obsidian links
+    .replace(/!\[\[.*?\]\]/g, "")
     // Remove blockquotes
     .replace(/^(\n)?\s{0,3}>\s?/gm, "$1")
     // .replace(/(^|\n)\s{0,3}>\s?/g, '\n\n')
@@ -54,6 +56,24 @@ export default function cleanMarkup(md: string) {
     .replace(/\[\s*@[\w,\s]+\s*\]/g, "")
     // remove criticmarkup comments
     .replace(/\{>>.*?<<\}/g, "");
+
+  // Handle tables after all other markdown processing
+  // Remove markdown table separator lines (e.g., |---|---|---|)
+  output = output.replace(/^\s*\|[\s\-|:]*\|\s*$/gm, "");
+
+  // For table rows, replace the pipe separators with spaces to maintain readability
+  // but avoid changing the text length too much to preserve position mapping
+  const lines = output.split("\n");
+  const processedLines = lines.map((line) => {
+    // Only process lines that look like table rows (start and end with | and have at least one more | inside)
+    if (/^\s*\|.*\|\s*$/.test(line) && line.split("|").length >= 3) {
+      // Replace pipe separators with spaces, preserving the overall structure
+      // This maintains better position mapping than completely removing the pipes
+      return line.replace(/\|/g, " ");
+    }
+    return line;
+  });
+  output = processedLines.join("\n");
 
   return output;
 }

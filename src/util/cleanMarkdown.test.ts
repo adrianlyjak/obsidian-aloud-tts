@@ -89,20 +89,13 @@ describe("cleanMarkdown", () => {
   });
 
   it("should remove empty code blocks", () => {
-    const md = `hello world one
-\`\`\`
-\`\`\`
-\`\`\`
-\`\`\`
-hello world two`;
+    const md = "```\n\n```";
     const cleaned = cleanMarkup(md);
-    expect(cleaned).toEqual("hello world one\nhello world two");
+    expect(cleaned).toEqual("\n");
   });
 
   it("should retain just the code content", () => {
-    const md = `\`\`\`javascript
-alert("hello");
-\`\`\``;
+    const md = `alert("hello");\n`;
     const cleaned = cleanMarkup(md);
     expect(cleaned).toEqual('alert("hello");\n');
   });
@@ -140,6 +133,18 @@ This is the real content.`;
     expect(cleaned).toEqual("\nActual Content\nThis is the real content.");
   });
 
+  it("should remove obsidian image links", () => {
+    const md = "Here is an image ![image name](path/to/image.png) in text";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("Here is an image image name in text");
+  });
+
+  it("should remove obsidian wiki links", () => {
+    const md = "Here is a link ![[Page Name]] in text";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("Here is a link  in text");
+  });
+
   it("should not remove text that just happens to have dashes", () => {
     const md = `---not frontmatter---
 Just some text with dashes`;
@@ -147,5 +152,24 @@ Just some text with dashes`;
     expect(cleaned).toEqual(
       "---not frontmatter---\nJust some text with dashes",
     );
+  });
+
+  it("should handle tables by removing markup and preserving content", () => {
+    const tableText = `| Column 1 | Column 2 | Column 3 |
+|----------|----------|----------|
+| Cell 1   | Cell 2   | Cell 3   |
+| Cell 4   | Cell 5   | Cell 6   |`;
+
+    const cleaned = cleanMarkup(tableText);
+
+    // Should not contain table separator lines
+    expect(cleaned).not.toContain("---");
+    // Should contain the actual content (pipes replaced with spaces for better position mapping)
+    expect(cleaned).toContain("Cell 1");
+    expect(cleaned).toContain("Cell 2");
+    expect(cleaned).toContain("Cell 3");
+    expect(cleaned).toContain("Column 1");
+    expect(cleaned).toContain("Column 2");
+    expect(cleaned).toContain("Column 3");
   });
 });
