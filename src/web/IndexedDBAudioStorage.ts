@@ -86,7 +86,12 @@ export class IndexedDBAudioStorage implements AudioCache {
       const now = Date.now().valueOf();
       const metadata =
         (await this.db.get("audioMetadata", hash)) ||
-        ({ lastread: now, size: buff.byteLength, hash, format: got.format ?? ("mp3" as MediaFormat) } as const);
+        ({
+          lastread: now,
+          size: buff.byteLength,
+          hash,
+          format: got.format ?? ("mp3" as MediaFormat),
+        } as const);
       await this.db.put("audioMetadata", { ...metadata, lastread: now });
     }
     return got && buff
