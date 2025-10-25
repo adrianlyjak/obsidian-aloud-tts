@@ -195,30 +195,21 @@ export class ChunkLoader {
     options: TTSModelOptions,
     context: AudioTextContext = {},
   ): Promise<AudioData> {
-    // copy the settings to make sure audio isn't stored under under the wrong key
-    // if the settings are changed while request is in flight
-    const desiredFormat = "mp3" as const; // current player supports mp3 only
-    const stored = await this.system.storage.getAudio(
+    // First, check cache for common format (mp3) to avoid redundant provider calls
+    const cached = await this.system.storage.getAudio(text, options, "mp3");
+    if (cached) {
+      return cached;
+    }
+
+    // Call provider and save audio as-is (format-aware cache key)
+    const audio = await this.system.ttsModel.call(
       text,
       options,
-      desiredFormat,
+      this.system.settings,
+      context,
     );
-    if (stored && stored.format === desiredFormat) {
-      return stored;
-    } else {
-      // likely some race conditions here, if the options have changed since the request was enqueued
-      const audio = await this.system.ttsModel.call(
-        text,
-        options,
-        this.system.settings,
-        context,
-      );
-      // Save only if the format matches the desired, otherwise skip for now
-      if (audio.format === desiredFormat) {
-        await this.system.storage.saveAudio(text, options, audio);
-      }
-      return audio;
-    }
+    await this.system.storage.saveAudio(text, options, audio);
+    return audio;
   }
 }
 
