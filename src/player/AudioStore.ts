@@ -9,6 +9,7 @@ import { AudioSystem } from "./AudioSystem";
 import { AudioText, AudioTextOptions } from "./AudioTextChunk";
 import { splitTextForExport } from "../util/misc";
 import { concatenateMp3Buffers } from "../util/audioProcessing";
+// AudioData is returned from provider calls, but exportAudio concatenates raw bytes
 
 /** High level track changer interface */
 export interface AudioStore {
@@ -90,11 +91,13 @@ class AudioStoreImpl implements AudioStore {
 
     // If text is short enough, process directly
     if (text.length <= maxChunkSize) {
-      return await this.system.ttsModel.call(
+      const audio = await this.system.ttsModel.call(
         text,
         options,
         this.system.settings,
       );
+      // export remains mp3 for now; if not mp3, we could convert later
+      return audio.data;
     }
 
     // Split text into chunks with context that respect sentence boundaries
@@ -104,13 +107,13 @@ class AudioStoreImpl implements AudioStore {
     // Generate audio for each chunk
     for (const chunk of chunksWithContext) {
       if (chunk.text.trim()) {
-        const audioBuffer = await this.system.ttsModel.call(
+        const audio = await this.system.ttsModel.call(
           chunk.text,
           options,
           this.system.settings,
           chunk.context,
         );
-        audioBuffers.push(audioBuffer);
+        audioBuffers.push(audio.data);
       }
     }
 

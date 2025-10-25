@@ -1,6 +1,7 @@
 import cleanMarkup from "../util/cleanMarkdown";
 import { CancellablePromise } from "./CancellablePromise";
 import { TTSErrorInfo } from "../models/tts-model";
+import { AudioData } from "../models/tts-model";
 import * as mobx from "mobx";
 import { action, observable } from "mobx";
 
@@ -38,7 +39,7 @@ export class AudioTextChunk {
   /** The duration of the chunk's audio in seconds. Populated from the audioBuffer.duration */
   duration?: number;
   /** The audio data for the chunk, from the TTS model */
-  audio?: ArrayBuffer;
+  audio?: AudioData;
   /** Whether the chunk is currently loading */
   loading: boolean;
   /** Whether the chunk failed to load */
@@ -114,7 +115,7 @@ export class AudioTextChunk {
     this.failed = undefined;
     this.failureInfo = undefined;
   }
-  setLoaded(audio: ArrayBuffer) {
+  setLoaded(audio: AudioData) {
     this.audio = audio;
     this.loading = false;
   }
@@ -124,7 +125,7 @@ export class AudioTextChunk {
     this.offsetDuration = offsetDuration;
   }
 
-  onceLoaded(fully: boolean = false): CancellablePromise<ArrayBuffer> {
+  onceLoaded(fully: boolean = false): CancellablePromise<AudioData> {
     const when = mobx.when(
       () =>
         !this.loading &&

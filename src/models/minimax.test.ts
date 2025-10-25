@@ -213,8 +213,9 @@ describe("MiniMax Model", () => {
         }),
       );
 
-      const bytes = new Uint8Array(buf);
+      const bytes = new Uint8Array(buf.data);
       expect(Array.from(bytes)).toEqual([104, 101, 108, 108, 111]);
+      expect(buf.format).toBe("mp3");
     });
   });
 });

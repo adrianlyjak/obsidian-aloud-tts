@@ -8,6 +8,7 @@ import {
 } from "./tts-model";
 import { validate200 } from "./tts-model";
 import { base64ToArrayBuffer } from "../util/misc";
+import { AudioData } from "./tts-model";
 import { TTSPluginSettings } from "../player/TTSPluginSettings";
 
 export const HUME_API_URL = "https://api.hume.ai";
@@ -35,7 +36,7 @@ export async function humeCallTextToSpeech(
   options: TTSModelOptions,
   settings: TTSPluginSettings,
   context: AudioTextContext = {},
-): Promise<ArrayBuffer> {
+): Promise<AudioData> {
   // Construct the utterances array for the Hume API request
   const utterance: {
     text: string;
@@ -90,7 +91,7 @@ export async function humeCallTextToSpeech(
     throw new Error("Hume response missing generations");
   }
 
-  return base64ToArrayBuffer(generation.audio);
+  return { data: base64ToArrayBuffer(generation.audio), format: "mp3" };
 }
 
 async function validateApiKeyHume(apiKey: string): Promise<string | undefined> {

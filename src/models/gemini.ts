@@ -8,6 +8,7 @@ import {
   TTSModel,
   TTSModelOptions,
 } from "./tts-model";
+import { AudioData } from "./tts-model";
 import { TTSPluginSettings } from "../player/TTSPluginSettings";
 
 export const GEMINI_API_URL = "https://generativelanguage.googleapis.com";
@@ -139,7 +140,7 @@ export async function geminiCallTextToSpeech(
   options: TTSModelOptions,
   settings: TTSPluginSettings,
   context: AudioTextContext = {},
-): Promise<ArrayBuffer> {
+): Promise<AudioData> {
   const ai = new GoogleGenAI({ apiKey: options.apiKey });
   let response: GenerateContentResponse;
   try {
@@ -165,11 +166,12 @@ export async function geminiCallTextToSpeech(
     throw new Error("Gemini response missing generations");
   }
 
-  return pcmBufferToMp3Buffer(base64ToArrayBuffer(generation), {
+  const data = await pcmBufferToMp3Buffer(base64ToArrayBuffer(generation), {
     sampleRate: 24000,
     channels: 1,
     bitDepth: 16,
   });
+  return { data, format: "mp3" };
 }
 
 function formatMessages(
