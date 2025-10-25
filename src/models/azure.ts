@@ -1,4 +1,5 @@
 import { TTSPluginSettings } from "../player/TTSPluginSettings";
+import { AudioData, MediaFormat } from "./tts-model";
 import {
   AudioTextContext,
   ErrorMessage,
@@ -58,7 +59,7 @@ export async function azureCallTextToSpeech(
   options: TTSModelOptions,
   settings: TTSPluginSettings,
   context: AudioTextContext = {},
-): Promise<ArrayBuffer> {
+): Promise<AudioData> {
   if (!options.voice) {
     throw new Error("Voice is required for Azure TTS");
   }
@@ -81,7 +82,10 @@ export async function azureCallTextToSpeech(
   });
 
   await validate200Azure(response);
-  return await response.arrayBuffer();
+  const buf = await response.arrayBuffer();
+  // Azure format is set in X-Microsoft-OutputFormat header via options.model, e.g. mp3 or pcm.
+  const fmt: MediaFormat = options.model?.includes("mp3") ? "mp3" : "wav";
+  return { data: buf, format: fmt };
 }
 
 export async function listAzureVoices(

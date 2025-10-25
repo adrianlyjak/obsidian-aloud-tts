@@ -101,7 +101,9 @@ describe("AudioStore", () => {
         },
       });
       const tts = vi.mockObject(createTestModel());
-      tts.call.mockReturnValue(Promise.resolve(new ArrayBuffer(0)));
+      tts.call.mockReturnValue(
+        Promise.resolve({ data: new ArrayBuffer(0), format: "mp3" }),
+      );
       tts.convertToOptions = vi.fn().mockReturnValue({
         model: "gpt-4o-mini-tts",
         voice: "shimmer",
@@ -148,7 +150,9 @@ describe("AudioStore", () => {
 
     test("should switch out the queue when the settings change", async () => {
       const tts = vi.mockObject(createTestModel());
-      tts.call.mockReturnValue(Promise.resolve(new ArrayBuffer(0)));
+      tts.call.mockReturnValue(
+        Promise.resolve({ data: new ArrayBuffer(0), format: "mp3" }),
+      );
       tts.validateConnection = vi.fn().mockResolvedValue(undefined);
       tts.convertToOptions = vi
         .fn()
@@ -233,7 +237,9 @@ describe("AudioStore", () => {
       vi.useFakeTimers();
       const duration = 5;
       const tts = vi.mockObject(createTestModel());
-      tts.call.mockReturnValue(Promise.resolve(new ArrayBuffer(0)));
+      tts.call.mockReturnValue(
+        Promise.resolve({ data: new ArrayBuffer(0), format: "mp3" }),
+      );
       tts.convertToOptions = vi.fn().mockReturnValue({
         model: "gpt-4o-mini-tts",
         voice: "shimmer",

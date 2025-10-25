@@ -1,4 +1,5 @@
 import { TTSPluginSettings } from "../player/TTSPluginSettings";
+import { AudioData } from "./tts-model";
 import {
   AudioTextContext,
   ErrorMessage,
@@ -95,7 +96,7 @@ export async function pollyCallTextToSpeech(
   options: TTSModelOptions,
   settings: TTSPluginSettings,
   _context: AudioTextContext = {},
-): Promise<ArrayBuffer> {
+): Promise<AudioData> {
   if (!settings.polly_voiceId) {
     throw new TTSErrorInfo("Voice is required for AWS Polly", {
       error: {
@@ -137,7 +138,9 @@ export async function pollyCallTextToSpeech(
   });
 
   await validate200Polly(response);
-  return await response.arrayBuffer();
+  const buf = await response.arrayBuffer();
+  // Output format is controlled by X-Microsoft-OutputFormat-like header (here Polly OutputFormat field) set to mp3
+  return { data: buf, format: "mp3" };
 }
 
 export async function listPollyVoices(

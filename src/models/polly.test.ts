@@ -74,6 +74,7 @@ describe("AWS Polly Model", () => {
     } as const;
     const opts = pollyTextToSpeech.convertToOptions(s as any);
     const out = await pollyCallTextToSpeech("hello", opts, s as any);
-    expect(out).toBe(buf);
+    expect(out.data).toBe(buf);
+    expect(out.format).toBe("mp3");
   });
 });

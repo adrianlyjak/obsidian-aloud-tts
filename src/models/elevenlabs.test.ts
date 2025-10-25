@@ -154,7 +154,8 @@ describe("ElevenLabs Model", () => {
         },
       );
 
-      expect(result).toBe(mockAudioBuffer);
+      expect(result.data).toBe(mockAudioBuffer);
+      expect(result.format).toBe("mp3");
     });
 
     it("should include voice settings when provided", async () => {

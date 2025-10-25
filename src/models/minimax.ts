@@ -7,6 +7,7 @@ import {
   validate200,
 } from "./tts-model";
 import { hexToArrayBuffer } from "../util/misc";
+import { AudioData } from "./tts-model";
 
 export const MINIMAX_API_URL = "https://api.minimax.io";
 
@@ -36,7 +37,7 @@ export async function minimaxCallTextToSpeech(
   options: TTSModelOptions,
   settings: TTSPluginSettings,
   _context: AudioTextContext = {},
-): Promise<ArrayBuffer> {
+): Promise<AudioData> {
   const groupId = settings.minimax_groupId;
   const url = `${MINIMAX_API_URL}/v1/t2a_v2?GroupId=${encodeURIComponent(groupId)}`;
 
@@ -90,5 +91,5 @@ export async function minimaxCallTextToSpeech(
   if (!audioHex) {
     throw new Error("Minimax response missing audio data");
   }
-  return hexToArrayBuffer(audioHex);
+  return { data: hexToArrayBuffer(audioHex), format: "mp3" };
 }

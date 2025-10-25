@@ -3,6 +3,16 @@ import {
   TTSPluginSettings,
 } from "../player/TTSPluginSettings";
 
+// --- Audio data primitives ---
+export type MediaFormat = "mp3" | "wav" | "ogg" | "webm";
+
+export interface AudioData {
+  /** Raw audio bytes */
+  data: ArrayBuffer;
+  /** Container/codec format of the audio bytes */
+  format: MediaFormat;
+}
+
 export interface AudioTextContext {
   textBefore?: string;
   textAfter?: string;
@@ -10,13 +20,16 @@ export interface AudioTextContext {
 
 // Interface for batch text-to-speech requests
 export interface TTSModel {
-  /** Calls text to speech, returning an mp3 buffer of the audio (TODO! support other formats) */
+  /**
+   * Calls text to speech, returning audio data with its media format.
+   * For now, providers should return format "mp3" to match the current player assumptions.
+   */
   call(
     text: string,
     options: TTSModelOptions,
     settings: TTSPluginSettings,
     context?: AudioTextContext,
-  ): Promise<ArrayBuffer>;
+  ): Promise<AudioData>;
 
   /** Returns an error message if the connection is not valid, otherwise undefined */
   validateConnection(settings: TTSPluginSettings): Promise<string | undefined>;

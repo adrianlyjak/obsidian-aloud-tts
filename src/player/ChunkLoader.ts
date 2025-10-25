@@ -5,6 +5,7 @@ import {
   TTSErrorInfo,
   TTSModelOptions,
 } from "../models/tts-model";
+import { AudioData } from "../models/tts-model";
 
 /** manages loading and caching of tracks */
 export class ChunkLoader {
@@ -81,7 +82,7 @@ export class ChunkLoader {
     text: string,
     options: TTSModelOptions,
     context: AudioTextContext = {},
-  ): Promise<ArrayBuffer> {
+  ): Promise<AudioData> {
     const existing = this.localCache.find(
       (x) => x.text === text && mobx.comparer.structural(x.options, options), // Use structural comparison
     );
@@ -163,7 +164,7 @@ export class ChunkLoader {
     attempt: number = 0,
     maxAttempts: number = 3,
     context: AudioTextContext = {},
-  ): Promise<ArrayBuffer> {
+  ): Promise<AudioData> {
     try {
       return await this.loadTrack(track, options, context);
     } catch (ex) {
@@ -193,26 +194,22 @@ export class ChunkLoader {
     text: string,
     options: TTSModelOptions,
     context: AudioTextContext = {},
-  ): Promise<ArrayBuffer> {
-    // copy the settings to make sure audio isn't stored under under the wrong key
-    // if the settings are changed while request is in flight
-    const stored: ArrayBuffer | null = await this.system.storage.getAudio(
+  ): Promise<AudioData> {
+    // First, check cache for common format (mp3) to avoid redundant provider calls
+    const cached = await this.system.storage.getAudio(text, options, "mp3");
+    if (cached) {
+      return cached;
+    }
+
+    // Call provider and save audio as-is (format-aware cache key)
+    const audio = await this.system.ttsModel.call(
       text,
       options,
+      this.system.settings,
+      context,
     );
-    if (stored) {
-      return stored;
-    } else {
-      // likely some race conditions here, if the options have changed since the request was enqueued
-      const buff = await this.system.ttsModel.call(
-        text,
-        options,
-        this.system.settings,
-        context,
-      );
-      await this.system.storage.saveAudio(text, options, buff);
-      return buff;
-    }
+    await this.system.storage.saveAudio(text, options, audio);
+    return audio;
   }
 }
 
@@ -292,7 +289,7 @@ interface CachedAudio {
   /** the options used to generate this audio */
   readonly options: TTSModelOptions;
   /** the final result of the request across retries */
-  readonly result: Promise<ArrayBuffer>;
+  readonly result: Promise<AudioData>;
   /** the time the request was made. Milliseconds since Unix Epoch. May be updated to prevent deletion */
   requestedTime: number;
 }

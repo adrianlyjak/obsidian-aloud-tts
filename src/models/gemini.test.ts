@@ -273,7 +273,8 @@ describe("Gemini Model", () => {
       );
 
       expect(mockGenerateContent).toHaveBeenCalled();
-      expect(result).toBeInstanceOf(ArrayBuffer);
+      expect(result.data).toBeInstanceOf(ArrayBuffer);
+      expect(result.format).toBe("mp3");
     });
 
     it("should construct prompt with instructions and context", async () => {
