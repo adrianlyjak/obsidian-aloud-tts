@@ -6,6 +6,7 @@ import { AudioTextChunk } from "./AudioTextChunk";
 import { ChunkLoader } from "./ChunkLoader";
 import { CancellablePromise } from "./CancellablePromise";
 import { AudioTextContext } from "src/models/tts-model";
+import { AudioData } from "src/models/tts-model";
 
 /**
  * Effectively the inner loop for the audio text.
@@ -435,7 +436,7 @@ const loadCheck = async (
   maxBufferAhead: number,
   isCancelled: () => boolean,
   audioContextChunks: number,
-): Promise<[AudioTextChunk, ArrayBuffer] | undefined> => {
+): Promise<[AudioTextChunk, AudioData] | undefined> => {
   const activeText = system.audioStore.activeText!;
 
   const indexes = indexesToLoad(activeText, maxBufferAhead);
@@ -465,7 +466,7 @@ const loadCheck = async (
   // then wait for the next one to complete
   chunk.setLoading();
 
-  let audio: ArrayBuffer;
+  let audio: AudioData;
   try {
     audio = await chunkLoader.load(text, modelOpts, context);
   } catch (e) {
@@ -505,10 +506,10 @@ const loadCheckLoop = (
         const [chunk, result] = maybe;
         chunk.setLoaded(result);
         // Clone the buffer before appending to prevent detachment during decodeAudioData
-        const bufferForAppend = result.slice(0);
+        const bufferForAppend = result.data.slice(0);
         return system.audioSink
           .appendMedia(bufferForAppend)
-          .then(() => system.audioSink.getAudioBuffer(result))
+          .then(() => system.audioSink.getAudioBuffer(result.data))
           .then((buff) => {
             const chunk = activeText.audio.chunks[position];
             if (chunk.audio) {

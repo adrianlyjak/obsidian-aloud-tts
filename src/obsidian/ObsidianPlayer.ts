@@ -2,6 +2,7 @@ import { App, normalizePath } from "obsidian";
 import { AudioCache, hashAudioInputs } from "../player/AudioCache";
 import { TTSModelOptions } from "../models/tts-model";
 import { TTSPluginSettingsStore } from "../player/TTSPluginSettings";
+import { AudioData, MediaFormat } from "../models/tts-model";
 import { IndexedDBAudioStorage } from "../web/IndexedDBAudioStorage";
 import * as mobx from "mobx";
 
@@ -27,13 +28,14 @@ export function configurableAudioCache(
     async getAudio(
       text: string,
       settings: TTSModelOptions,
-    ): Promise<ArrayBuffer | null> {
-      return active.getAudio(text, settings);
+      format: MediaFormat,
+    ): Promise<AudioData | null> {
+      return active.getAudio(text, settings, format);
     },
     async saveAudio(
       text: string,
       settings: TTSModelOptions,
-      audio: ArrayBuffer,
+      audio: AudioData,
     ): Promise<void> {
       return active.saveAudio(text, settings, audio);
     },
@@ -53,35 +55,37 @@ export function configurableAudioCache(
 export function obsidianFileVault(app: App): AudioCache {
   const vault = app.vault;
   const cachedir = ".tts";
+  // Default format reserved for future use when upgrading existing entries
 
   return {
     async getAudio(
       text: string,
       settings: TTSModelOptions,
-    ): Promise<ArrayBuffer | null> {
-      const str = hashAudioInputs(text, settings);
-      const filepath = normalizePath(`/${cachedir}/${str}.mp3`);
+      format: MediaFormat,
+    ): Promise<AudioData | null> {
+      const str = hashAudioInputs(text, settings, format);
+      const filepath = normalizePath(`/${cachedir}/${str}.${format}`);
       const exists = await vault.adapter.exists(filepath);
       if (!exists) {
         return null;
       } else {
         const data = await vault.adapter.readBinary(filepath);
-        return data;
+        return { data, format };
       }
     },
     async saveAudio(
       text: string,
       settings: TTSModelOptions,
-      audio: ArrayBuffer,
+      audio: AudioData,
     ): Promise<void> {
-      const str = hashAudioInputs(text, settings);
-      const filepath = normalizePath(`/${cachedir}/${str}.mp3`);
+      const str = hashAudioInputs(text, settings, audio.format);
+      const filepath = normalizePath(`/${cachedir}/${str}.${audio.format}`);
 
       const exists = await vault.adapter.exists(normalizePath(`/${cachedir}`));
       if (!exists) {
         await vault.adapter.mkdir(normalizePath(`/${cachedir}`));
       }
-      await vault.adapter.writeBinary(filepath, audio);
+      await vault.adapter.writeBinary(filepath, audio.data);
     },
     async expire(ageInMillis = 1000 * 60 * 60 * 8): Promise<void> {
       const exists = await vault.adapter.exists(normalizePath(`/${cachedir}`));

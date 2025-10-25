@@ -1,4 +1,5 @@
 import { TTSPluginSettings } from "../player/TTSPluginSettings";
+import { AudioData } from "./tts-model";
 import {
   AudioTextContext,
   ErrorMessage,
@@ -54,7 +55,7 @@ export async function openAICallTextToSpeech(
   options: TTSModelOptions,
   settings: TTSPluginSettings,
   context: AudioTextContext = {},
-): Promise<ArrayBuffer> {
+): Promise<AudioData> {
   const canInstruct = supportsInstructions(options.model);
   let instructions = options.instructions;
   if (canInstruct && context.textBefore) {
@@ -84,7 +85,7 @@ export async function openAICallTextToSpeech(
   );
   await validate200OpenAI(headers);
   const bf = await headers.arrayBuffer();
-  return bf;
+  return { data: bf, format: "mp3" };
 }
 
 export async function listOpenAIModels(
