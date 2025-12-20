@@ -22,7 +22,7 @@ export default function cleanMarkup(md: string) {
     .replace(/\[\^.+?\](: .*?$)?/g, "")
     .replace(/\s{0,2}\[.*?\]: .*?$/g, "")
     // Remove images
-    .replace(/!\[(.*?)\][[(].*?[\])]/g, "$1")
+    .replace(/!\[(.*?)\][[(].*?[\])]/g, "")
     // Remove inline links
     .replace(/\[([^\]]*?)\][[(].*?[\])]/g, "$1")
     // remove obsidian links
