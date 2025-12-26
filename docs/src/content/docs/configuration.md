@@ -74,7 +74,7 @@ For users who self-host a TTS service or use a third-party provider with an Open
 
 -   **API Key**: Your API key from `https://www.minimax.ai/`.
 -   **GroupId**: Your MiniMax GroupId. This is required and is appended to requests as a `?GroupId=` query parameter.
--   **Model**: One of: `speech-2.5-hd-preview`, `speech-2.5-turbo-preview`, `speech-02-hd`, `speech-02-turbo`, `speech-01-hd`, `speech-01-turbo`.
+-   **Model**: One of: `speech-2.6-hd`, `speech-2.6-turbo`, `speech-02-hd`, `speech-02-turbo`, `speech-01-hd`, `speech-01-turbo`.
 -   **Voice**: A supported voice id
 
 Notes:

@@ -2,13 +2,89 @@ import { TTSPluginSettings } from "../player/TTSPluginSettings";
 import {
   AudioTextContext,
   REQUIRE_API_KEY,
+  TTSErrorInfo,
   TTSModel,
   TTSModelOptions,
-  validate200,
 } from "./tts-model";
 import { hexToArrayBuffer } from "../util/misc";
 
 export const MINIMAX_API_URL = "https://api.minimax.io";
+
+/** Shape of a successful Minimax TTS response */
+export interface MinimaxTTSResponse {
+  data: {
+    audio: string;
+    status?: number;
+  };
+  base_resp: {
+    status_code: number;
+    status_msg?: string;
+  };
+}
+
+/**
+ * Parse a Minimax API response, throwing a TTSErrorInfo on any error.
+ * Minimax can return errors with HTTP 200, so we check base_resp.status_code.
+ */
+export function parseMinimaxResponse(
+  responseText: string,
+  httpStatus: number,
+): MinimaxTTSResponse {
+  let json: unknown;
+  try {
+    json = JSON.parse(responseText);
+  } catch {
+    // Failed to parse JSON - use text as error detail
+    const detail = responseText.trim().slice(0, 200) || `HTTP ${httpStatus}`;
+    if (httpStatus >= 300) {
+      throw new TTSErrorInfo(
+        detail,
+        {
+          error: {
+            message: detail,
+            type: "minimax_error",
+            code: String(httpStatus),
+            param: null,
+          },
+        },
+        httpStatus,
+      );
+    }
+    throw new Error(`Minimax response was not valid JSON: ${detail}`);
+  }
+
+  // Check for API errors in base_resp (Minimax returns these even with HTTP 200)
+  const baseResp = (
+    json as { base_resp?: { status_code?: number; status_msg?: string } }
+  )?.base_resp;
+  if (baseResp && baseResp.status_code !== 0) {
+    const errorMessage = {
+      error: {
+        message: baseResp.status_msg || "Request failed",
+        type: "minimax_error",
+        code: String(baseResp.status_code ?? "unknown"),
+        param: null,
+      },
+    };
+    throw new TTSErrorInfo(
+      baseResp.status_msg || "Request failed",
+      errorMessage,
+      httpStatus >= 300 ? httpStatus : baseResp.status_code,
+    );
+  }
+
+  // Handle HTTP errors without base_resp error info
+  if (httpStatus >= 300) {
+    throw new TTSErrorInfo(`HTTP ${httpStatus} error`, undefined, httpStatus);
+  }
+
+  // Validate the response shape
+  const minimaxData = json as MinimaxTTSResponse;
+  if (!minimaxData.data?.audio) {
+    throw new Error("Minimax response missing audio data");
+  }
+  return minimaxData;
+}
 
 export const minimaxTextToSpeech: TTSModel = {
   call: minimaxCallTextToSpeech,
@@ -66,29 +142,7 @@ export async function minimaxCallTextToSpeech(
     }),
   });
 
-  await validate200(response, (body) => {
-    try {
-      const b = body as any;
-      if (b?.base_resp && b.base_resp.status_code !== 0) {
-        return {
-          error: {
-            message: b.base_resp.status_msg || "Request failed",
-            type: "minimax_error",
-            code: String(b.base_resp.status_code ?? "unknown"),
-            param: null,
-          },
-        };
-      }
-    } catch (_e) {
-      // ignore parse errors; fall back to generic
-    }
-    return undefined;
-  });
-
-  const json = await response.json();
-  const audioHex: string | undefined = json?.data?.audio;
-  if (!audioHex) {
-    throw new Error("Minimax response missing audio data");
-  }
-  return hexToArrayBuffer(audioHex);
+  const responseText = await response.text();
+  const parsed = parseMinimaxResponse(responseText, response.status);
+  return hexToArrayBuffer(parsed.data.audio);
 }
