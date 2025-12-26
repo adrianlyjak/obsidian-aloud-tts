@@ -1,3 +1,4 @@
+import { base64ToArrayBuffer } from "../util/misc";
 import { TTSPluginSettings } from "../player/TTSPluginSettings";
 import {
   AudioTextContext,
@@ -77,12 +78,7 @@ export async function inworldCallTextToSpeech(
   }
 
   // Convert base64 to ArrayBuffer
-  const binaryString = window.atob(json.audioContent);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes.buffer;
+  return base64ToArrayBuffer(json.audioContent);
 }
 
 export interface InworldVoice {
