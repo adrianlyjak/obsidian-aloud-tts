@@ -57,10 +57,12 @@ jobs:
             gh release create "$tag" \
               --title="$tag" \
               --prerelease \
+              --generate-notes \
               main.js manifest.json styles.css
           else
             # Full release version
             gh release create "$tag" \
               --title="$tag" \
+              --generate-notes \
               main.js manifest.json styles.css
           fi
