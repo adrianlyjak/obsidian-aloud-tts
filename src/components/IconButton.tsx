@@ -48,6 +48,7 @@ export function IconButton({
   const ref = React.useRef<HTMLButtonElement | null>(null);
   const IconComponent = iconMap[icon] || Icons.Circle;
   const tooltipService = useTooltip();
+  const ariaLabel = tooltip ?? icon;
 
   React.useEffect(() => {
     if (ref.current && tooltip) {
@@ -57,6 +58,7 @@ export function IconButton({
 
   return (
     <button
+      type="button"
       className={(className ? [className] : [])
         .concat(["clickable-icon tts-toolbar-button"])
         .concat(highlight ? ["tts-toolbar-button-active"] : [])
@@ -64,6 +66,7 @@ export function IconButton({
       ref={ref}
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
+      aria-label={ariaLabel}
       {...(disabled ? { "aria-disabled": "true" } : {})}
     >
       <IconComponent size={16} className={disabled ? "opacity-50" : ""} />
