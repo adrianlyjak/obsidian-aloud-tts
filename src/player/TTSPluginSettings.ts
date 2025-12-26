@@ -22,7 +22,17 @@ export type TTSPluginSettings = {
   ElevenLabsModelConfig &
   AzureModelConfig &
   MinimaxModelConfig &
+  InworldModelConfig &
   PollyModelConfig);
+
+export interface InworldModelConfig {
+  /** the API key to use */
+  inworld_apiKey: string;
+  /** the model to use */
+  inworld_modelId: string;
+  /** the voice ID to use */
+  inworld_voiceId: string;
+}
 
 export interface GeminiModelConfig {
   /** the API key to use */
@@ -146,6 +156,7 @@ export const modelProviders = [
   "gemini",
   "hume",
   "minimax",
+  "inworld",
   "polly",
 ] as const;
 export type ModelProvider = (typeof modelProviders)[number];
@@ -195,6 +206,11 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   minimax_groupId: "",
   minimax_ttsModel: "speech-2.5-turbo-preview",
   minimax_ttsVoice: "English_expressive_narrator",
+
+  // inworld
+  inworld_apiKey: "",
+  inworld_modelId: "inworld-tts-1",
+  inworld_voiceId: "Ronald",
 
   // polly
   polly_accessKeyId: "",

@@ -21,6 +21,7 @@ import { HumeSettings } from "./settings/providers/provider-hume";
 import { OpenAISettings } from "./settings/providers/provider-openai";
 import { OpenAICompatibleSettings } from "./settings/providers/provider-openai-like";
 import { MinimaxSettings } from "./settings/providers/provider-minimax";
+import { InworldSettings } from "./settings/providers/provider-inworld";
 import { PollySettings } from "./settings/providers/provider-polly";
 
 export const TTSSettingsTabComponent: React.FC<{
@@ -72,6 +73,9 @@ export const TTSSettingsTabComponent: React.FC<{
       )}
       {store.settings.modelProvider === "minimax" && (
         <MinimaxSettings store={store} />
+      )}
+      {store.settings.modelProvider === "inworld" && (
+        <InworldSettings store={store} />
       )}
       {store.settings.modelProvider === "polly" && (
         <PollySettings store={store} />
@@ -164,6 +168,7 @@ const labels: Record<ModelProvider, string> = {
   gemini: "Google Gemini",
   hume: "Hume",
   minimax: "MiniMax",
+  inworld: "Inworld",
   polly: "AWS Polly",
 };
 
