@@ -1,5 +1,5 @@
 import { TTSPluginSettings } from "../player/TTSPluginSettings";
-import { AudioData, MediaFormat } from "./tts-model";
+import { AudioData } from "./tts-model";
 import {
   AudioTextContext,
   ErrorMessage,
@@ -83,9 +83,8 @@ export async function azureCallTextToSpeech(
 
   await validate200Azure(response);
   const buf = await response.arrayBuffer();
-  // Azure format is set in X-Microsoft-OutputFormat header via options.model, e.g. mp3 or pcm.
-  const fmt: MediaFormat = options.model?.includes("mp3") ? "mp3" : "wav";
-  return { data: buf, format: fmt };
+  // Always return mp3 format for cache consistency. Dynamic format selection not yet supported.
+  return { data: buf, format: "mp3" };
 }
 
 export async function listAzureVoices(

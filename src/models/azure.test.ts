@@ -177,7 +177,7 @@ describe("Azure TTS Model", () => {
       expect(ssmlBody).toContain("</speak>");
 
       expect(result.data).toBe(mockAudioBuffer);
-      expect(["mp3", "wav"]).toContain(result.format);
+      expect(result.format).toBe("mp3");
     });
 
     it("should properly escape XML characters", async () => {
