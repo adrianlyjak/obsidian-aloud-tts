@@ -56,6 +56,7 @@ describe("OpenAI Model API", () => {
           voice: "alloy",
           input: "Hello world",
           speed: 1.0,
+          response_format: "mp3",
         }),
       });
 

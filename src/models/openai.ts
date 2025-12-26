@@ -79,6 +79,7 @@ export async function openAICallTextToSpeech(
         ...(instructions ? { instructions } : {}),
         input: text,
         speed: 1.0,
+        response_format: "mp3",
       }),
     },
   );
