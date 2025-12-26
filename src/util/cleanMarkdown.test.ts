@@ -18,7 +18,7 @@ describe("cleanMarkdown", () => {
       "We had fun on our vacation\n\n![fun vacation](https://example.com/path.png)\n\nthere were dolphins";
     const cleaned = cleanMarkup(md);
     expect(cleaned).toEqual(
-      "We had fun on our vacation\n\n\n\nthere were dolphins",
+      "We had fun on our vacation\n\nthere were dolphins",
     );
   });
 
@@ -26,7 +26,7 @@ describe("cleanMarkdown", () => {
     const md =
       "Start ![_page_2_Figure_1.jpeg](Basic%20Airway__page_2_Figure_1.jpeg) End";
     const cleaned = cleanMarkup(md);
-    expect(cleaned).toEqual("Start  End");
+    expect(cleaned).toEqual("Start End");
   });
 
   it("should remove heading tags", () => {
@@ -143,7 +143,7 @@ This is the real content.`;
   it("should remove obsidian image links", () => {
     const md = "Here is an image ![image name](path/to/image.png) in text";
     const cleaned = cleanMarkup(md);
-    expect(cleaned).toEqual("Here is an image  in text");
+    expect(cleaned).toEqual("Here is an image in text");
   });
 
   it("should remove obsidian wiki links", () => {

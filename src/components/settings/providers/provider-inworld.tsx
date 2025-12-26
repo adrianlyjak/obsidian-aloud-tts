@@ -86,7 +86,7 @@ const InworldVoiceComponent: React.FC<{
   }, [apiKey, store.settings]); // Depend on settings object for latest config
 
   const voiceOptions = voices.map((voice) => ({
-    label: `${voice.displayName} (${voice.tags?.join(", ") || voice.voiceId})`,
+    label: `${voice.displayName}`,
     value: voice.voiceId,
   }));
 
