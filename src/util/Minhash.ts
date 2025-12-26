@@ -45,7 +45,7 @@ export class Minhash {
     for (let i = 0; i < this.hashvalues.length; i++) {
       const a = this.permA[i];
       const b = this.permB[i];
-      const hash = (a * hashStrings([str])[0] + b) % PRIME;
+      const hash = (a * Number(hashStrings([str], 32)[0]) + b) % PRIME;
       this.hashvalues[i] = Math.min(this.hashvalues[i], hash);
     }
   }
@@ -164,23 +164,32 @@ export class LshIndex {
 }
 
 /**
- * Hashes every string to a 32-bit integer.
- * This is a simple hash function to convert strings into numerical values.
+ * Hashes every string to an integer.
+ * @param str - Array of strings to hash
+ * @param bits - Bit precision: 32 or 64 (default)
  */
-export function hashStrings(str: string[]): number[] {
-  const hash = [];
+export function hashStrings(str: string[], bits: 32 | 64 = 64): bigint[] {
+  const hash: bigint[] = [];
+  const FIVE = BigInt(5);
+  const MASK_32 = BigInt("0xffffffff");
+  const MASK_64 = BigInt("0xffffffffffffffff");
   for (let i = 0; i < str.length; i++) {
-    hash[i] = 0;
+    hash[i] = BigInt(0);
     for (let j = 0; j < str[i].length; j++) {
-      const char = str[i].charCodeAt(j);
-      hash[i] = (hash[i] << 5) - hash[i] + char;
-      hash[i] |= 0; // Converts to a 32-bit integer
+      const char = BigInt(str[i].charCodeAt(j));
+      hash[i] = (hash[i] << FIVE) - hash[i] + char;
     }
-    hash[i] += MAX_HASH;
+    if (bits === 32) {
+      // Mask to 32 bits and add offset
+      hash[i] = (hash[i] & MASK_32) + BigInt(MAX_HASH);
+    } else {
+      // Mask to 64 bits (unsigned)
+      hash[i] = hash[i] & MASK_64;
+    }
   }
   return hash;
 }
 
-export function hashString(str: string): number {
-  return hashStrings([str])[0];
+export function hashString(str: string, bits: 32 | 64 = 64): bigint {
+  return hashStrings([str], bits)[0];
 }

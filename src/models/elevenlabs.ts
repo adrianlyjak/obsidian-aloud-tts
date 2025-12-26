@@ -1,4 +1,5 @@
 import { TTSPluginSettings } from "../player/TTSPluginSettings";
+import { AudioData } from "./tts-model";
 import {
   AudioTextContext,
   ErrorMessage,
@@ -52,7 +53,7 @@ export async function elevenLabsCallTextToSpeech(
   options: TTSModelOptions,
   settings: TTSPluginSettings,
   context: AudioTextContext = {},
-): Promise<ArrayBuffer> {
+): Promise<AudioData> {
   if (!options.voice) {
     throw new TTSErrorInfo("Voice is required for ElevenLabs TTS", {
       error: {
@@ -112,7 +113,8 @@ export async function elevenLabsCallTextToSpeech(
   );
 
   await validate200ElevenLabs(response);
-  return await response.arrayBuffer();
+  const buf = await response.arrayBuffer();
+  return { data: buf, format: "mp3" };
 }
 
 export type ElevenLabsVoice = {

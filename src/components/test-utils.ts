@@ -9,7 +9,7 @@ import { createAudioSystem } from "../player/AudioSystem";
 import { ChunkLoader } from "../player/ChunkLoader";
 import { memoryStorage } from "../player/AudioCache";
 import { AudioSink, TrackStatus } from "../player/AudioSink";
-import { TTSModel, TTSModelOptions } from "../models/tts-model";
+import { TTSModel, TTSModelOptions, AudioData } from "../models/tts-model";
 import * as mobx from "mobx";
 
 // Common test constants
@@ -122,8 +122,10 @@ export class FakeAudioSink implements AudioSink {
 
 export function createTestModel(): TTSModel {
   return {
-    call: async (txt: string, _: TTSModelOptions) =>
-      new ArrayBuffer(txt.length),
+    call: async (txt: string, _: TTSModelOptions): Promise<AudioData> => ({
+      data: new ArrayBuffer(txt.length),
+      format: "mp3",
+    }),
     validateConnection: async () => undefined,
     convertToOptions: () => ({ model: "fake" }),
   };

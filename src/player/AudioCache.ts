@@ -1,16 +1,17 @@
 import { hashString } from "../util/Minhash";
-import { TTSModelOptions } from "../models/tts-model";
+import { AudioData, MediaFormat, TTSModelOptions } from "../models/tts-model";
 import { voiceHash } from "./TTSPluginSettings";
 
 export interface AudioCache {
   getAudio(
     text: string,
     settings: TTSModelOptions,
-  ): Promise<ArrayBuffer | null>;
+    format: MediaFormat,
+  ): Promise<AudioData | null>;
   saveAudio(
     text: string,
     settings: TTSModelOptions,
-    audio: ArrayBuffer,
+    audio: AudioData,
   ): Promise<void>;
   expire(ageInMillis: number): Promise<void>;
 
@@ -21,26 +22,30 @@ export interface AudioCache {
 export function hashAudioInputs(
   text: string,
   settings: TTSModelOptions,
+  format: MediaFormat,
 ): string {
-  return hashString(voiceHash(settings) + text).toString();
+  return hashString(`${voiceHash(settings)}|${format}|${text}`, 64).toString(
+    16,
+  );
 }
 
 export function memoryStorage(): AudioCache {
-  const audios: Record<string, ArrayBuffer> = {};
+  const audios: Record<string, AudioData> = {};
 
   return {
     async getAudio(
       text: string,
       settings: TTSModelOptions,
-    ): Promise<ArrayBuffer | null> {
-      return audios[hashAudioInputs(text, settings)] || null;
+      format: MediaFormat,
+    ): Promise<AudioData | null> {
+      return audios[hashAudioInputs(text, settings, format)] || null;
     },
     async saveAudio(
       text: string,
       settings: TTSModelOptions,
-      audio: ArrayBuffer,
+      audio: AudioData,
     ): Promise<void> {
-      audios[hashAudioInputs(text, settings)] = audio;
+      audios[hashAudioInputs(text, settings, audio.format)] = audio;
     },
     async expire(ageInMillis: number): Promise<void> {
       // meh
@@ -48,7 +53,7 @@ export function memoryStorage(): AudioCache {
 
     async getStorageSize(): Promise<number> {
       return Object.values(audios)
-        .map((x) => x.byteLength)
+        .map((x) => x.data.byteLength)
         .reduce((a, b) => a + b, 0);
     },
   };

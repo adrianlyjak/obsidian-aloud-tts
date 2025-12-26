@@ -80,7 +80,7 @@ describe("Inworld TTS", () => {
       DEFAULT_SETTINGS,
     );
 
-    expect(buffer.byteLength).toBe(4); // "RIFF" is 4 bytes
+    expect(buffer.data.byteLength).toBe(4); // "RIFF" is 4 bytes
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining("/tts/v1/voice"),
       expect.objectContaining({

@@ -1,4 +1,5 @@
 import { TTSPluginSettings } from "../player/TTSPluginSettings";
+import { AudioData } from "./tts-model";
 import {
   AudioTextContext,
   ErrorMessage,
@@ -58,7 +59,7 @@ export async function azureCallTextToSpeech(
   options: TTSModelOptions,
   settings: TTSPluginSettings,
   context: AudioTextContext = {},
-): Promise<ArrayBuffer> {
+): Promise<AudioData> {
   if (!options.voice) {
     throw new Error("Voice is required for Azure TTS");
   }
@@ -74,14 +75,17 @@ export async function azureCallTextToSpeech(
     headers: {
       "Ocp-Apim-Subscription-Key": options.apiKey || "",
       "Content-Type": "application/ssml+xml",
-      "X-Microsoft-OutputFormat": options.model || "riff-24khz-16bit-mono-pcm",
+      "X-Microsoft-OutputFormat":
+        options.model || "audio-24khz-96kbitrate-mono-mp3",
       "User-Agent": "obsidian-aloud-tts",
     },
     body: ssmlBody,
   });
 
   await validate200Azure(response);
-  return await response.arrayBuffer();
+  const buf = await response.arrayBuffer();
+  // Always return mp3 format for cache consistency. Dynamic format selection not yet supported.
+  return { data: buf, format: "mp3" };
 }
 
 export async function listAzureVoices(
@@ -144,9 +148,6 @@ export const AZURE_OUTPUT_FORMATS = [
   { label: "MP3 44.1kHz 128kbps", value: "audio-16khz-128kbitrate-mono-mp3" },
   { label: "MP3 24kHz 96kbps", value: "audio-24khz-96kbitrate-mono-mp3" },
   { label: "MP3 48kHz 192kbps", value: "audio-48khz-192kbitrate-mono-mp3" },
-  { label: "WAV 16kHz 16-bit", value: "riff-16khz-16bit-mono-pcm" },
-  { label: "WAV 24kHz 16-bit", value: "riff-24khz-16bit-mono-pcm" },
-  { label: "WAV 48kHz 16-bit", value: "riff-48khz-16bit-mono-pcm" },
 ] as const;
 
 async function validate200Azure(response: Response) {

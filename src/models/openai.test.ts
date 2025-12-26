@@ -60,7 +60,8 @@ describe("OpenAI Model API", () => {
         }),
       });
 
-      expect(result).toBe(mockAudioBuffer);
+      expect(result.data).toBe(mockAudioBuffer);
+      expect(result.format).toBe("mp3");
     });
 
     it("should use custom API URL when provided", async () => {

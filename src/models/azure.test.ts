@@ -176,7 +176,8 @@ describe("Azure TTS Model", () => {
       expect(ssmlBody).toContain("</voice>");
       expect(ssmlBody).toContain("</speak>");
 
-      expect(result).toBe(mockAudioBuffer);
+      expect(result.data).toBe(mockAudioBuffer);
+      expect(result.format).toBe("mp3");
     });
 
     it("should properly escape XML characters", async () => {
@@ -261,7 +262,7 @@ describe("Azure TTS Model", () => {
         expect.any(String),
         expect.objectContaining({
           headers: expect.objectContaining({
-            "X-Microsoft-OutputFormat": "riff-24khz-16bit-mono-pcm",
+            "X-Microsoft-OutputFormat": "audio-24khz-96kbitrate-mono-mp3",
           }),
         }),
       );

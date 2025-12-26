@@ -12,7 +12,7 @@ import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { IsPlaying } from "../components/ObsidianIsPlaying";
 import { AudioStore } from "../player/AudioStore";
-import { hashStrings } from "../util/Minhash";
+import { hashString } from "../util/Minhash";
 import { TTSPluginSettingsStore } from "../player/TTSPluginSettings";
 import { TTSEditorBridge } from "../codemirror/TTSCodeMirrorCore";
 
@@ -89,7 +89,7 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
         new Notice("No text to export");
         return;
       }
-      const hash = hashStrings([text])[0].toString(16);
+      const hash = hashString(text, 32).toString(16);
       const prefix = text
         .replace(/\s/g, "-")
         .replace(/[^a-zA-Z0-9_-]/g, "")

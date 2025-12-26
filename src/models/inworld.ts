@@ -9,6 +9,7 @@ import {
   TTSModelOptions,
   validate200,
 } from "./tts-model";
+import { AudioData } from "./tts-model";
 
 const INWORLD_API_URL = "https://api.inworld.ai";
 
@@ -52,7 +53,7 @@ export async function inworldCallTextToSpeech(
   options: TTSModelOptions,
   settings: TTSPluginSettings,
   context: AudioTextContext = {},
-): Promise<ArrayBuffer> {
+): Promise<AudioData> {
   const response = await fetch(`${INWORLD_API_URL}/tts/v1/voice`, {
     method: "POST",
     headers: {
@@ -78,7 +79,10 @@ export async function inworldCallTextToSpeech(
   }
 
   // Convert base64 to ArrayBuffer
-  return base64ToArrayBuffer(json.audioContent);
+  return {
+    data: base64ToArrayBuffer(json.audioContent),
+    format: "mp3",
+  };
 }
 
 export interface InworldVoice {
