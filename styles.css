@@ -140,6 +140,10 @@
   flex: 1 1 auto;
 }
 
+.tts-settings-error-container {
+  display: flex;
+}
+
 .tts-settings-error-container details {
   padding: 0.25rem 0.5rem;
   border-radius: var(--radius-s);

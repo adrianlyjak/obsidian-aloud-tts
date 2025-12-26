@@ -2,10 +2,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   minimaxTextToSpeech,
   minimaxCallTextToSpeech,
+  parseMinimaxResponse,
   MINIMAX_API_URL,
 } from "./minimax";
 import { DEFAULT_SETTINGS } from "../player/TTSPluginSettings";
-import { TTSModelOptions } from "./tts-model";
+import { TTSModelOptions, TTSErrorInfo } from "./tts-model";
 
 // Mock the global fetch
 global.fetch = vi.fn();
@@ -25,7 +26,7 @@ describe("MiniMax Model", () => {
         ...DEFAULT_SETTINGS,
         minimax_apiKey: "test-api-key",
         minimax_groupId: "g-123",
-        minimax_ttsModel: "speech-2.5-turbo-preview",
+        minimax_ttsModel: "speech-2.6-turbo",
         minimax_ttsVoice: "English_expressive_narrator",
       };
 
@@ -33,10 +34,8 @@ describe("MiniMax Model", () => {
 
       expect(options).toEqual({
         apiKey: "test-api-key",
-        model: "speech-2.5-turbo-preview",
+        model: "speech-2.6-turbo",
         voice: "English_expressive_narrator",
-        instructions: undefined,
-        apiUri: undefined,
       });
     });
   });
@@ -73,10 +72,110 @@ describe("MiniMax Model", () => {
     });
   });
 
+  describe("parseMinimaxResponse", () => {
+    it("should parse a successful response", () => {
+      const responseText = JSON.stringify({
+        data: { audio: "68656c6c6f", status: 2 },
+        base_resp: { status_code: 0, status_msg: "" },
+      });
+
+      const result = parseMinimaxResponse(responseText, 200);
+
+      expect(result.data.audio).toBe("68656c6c6f");
+      expect(result.base_resp.status_code).toBe(0);
+    });
+
+    it("should throw on API error with HTTP 200 (e.g., insufficient balance)", () => {
+      const responseText = JSON.stringify({
+        base_resp: { status_code: 1008, status_msg: "insufficient balance" },
+      });
+
+      expect(() => parseMinimaxResponse(responseText, 200)).toThrow(
+        TTSErrorInfo,
+      );
+      expect(() => parseMinimaxResponse(responseText, 200)).toThrow(
+        "insufficient balance",
+      );
+    });
+
+    it("should throw generic message when base_resp has non-zero status but no message", () => {
+      const responseText = JSON.stringify({
+        base_resp: { status_code: 9999 },
+      });
+
+      expect(() => parseMinimaxResponse(responseText, 200)).toThrow(
+        "Request failed",
+      );
+    });
+
+    it("should throw on HTTP error with JSON error body", () => {
+      const responseText = JSON.stringify({
+        base_resp: { status_code: 401, status_msg: "Unauthorized" },
+      });
+
+      expect(() => parseMinimaxResponse(responseText, 401)).toThrow(
+        "Unauthorized",
+      );
+    });
+
+    it("should throw on HTTP error without base_resp error info", () => {
+      const responseText = JSON.stringify({});
+
+      expect(() => parseMinimaxResponse(responseText, 500)).toThrow(
+        "HTTP 500 error",
+      );
+    });
+
+    it("should use text body when JSON parsing fails on HTTP error", () => {
+      const responseText = "Bad Gateway: upstream server unavailable";
+
+      expect(() => parseMinimaxResponse(responseText, 502)).toThrow(
+        "Bad Gateway: upstream server unavailable",
+      );
+    });
+
+    it("should truncate long text error messages to 200 chars", () => {
+      const longText = "x".repeat(300);
+
+      try {
+        parseMinimaxResponse(longText, 500);
+        expect.fail("should have thrown");
+      } catch (e) {
+        // The detail is truncated to 200 chars
+        expect((e as Error).message).toContain("x".repeat(200));
+        expect((e as Error).message).not.toContain("x".repeat(201));
+      }
+    });
+
+    it("should fall back to HTTP status when text is empty", () => {
+      expect(() => parseMinimaxResponse("", 503)).toThrow("HTTP 503");
+      expect(() => parseMinimaxResponse("   ", 503)).toThrow("HTTP 503");
+    });
+
+    it("should throw non-TTSErrorInfo for invalid JSON on HTTP 200", () => {
+      const responseText = "not valid json";
+
+      expect(() => parseMinimaxResponse(responseText, 200)).toThrow(
+        "Minimax response was not valid JSON: not valid json",
+      );
+    });
+
+    it("should throw when response is missing audio data", () => {
+      const responseText = JSON.stringify({
+        data: {},
+        base_resp: { status_code: 0 },
+      });
+
+      expect(() => parseMinimaxResponse(responseText, 200)).toThrow(
+        "Minimax response missing audio data",
+      );
+    });
+  });
+
   describe("minimaxCallTextToSpeech", () => {
     const mockOptions: TTSModelOptions = {
       apiKey: "sk-abc",
-      model: "speech-2.5-turbo-preview",
+      model: "speech-2.6-turbo",
       voice: "English_expressive_narrator",
     };
 
@@ -86,13 +185,12 @@ describe("MiniMax Model", () => {
       const mockResponse = {
         ok: true,
         status: 200,
-        json: vi.fn().mockResolvedValue({
-          data: {
-            audio: audioHex,
-            status: 2,
-          },
-          base_resp: { status_code: 0, status_msg: "" },
-        }),
+        text: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            data: { audio: audioHex, status: 2 },
+            base_resp: { status_code: 0, status_msg: "" },
+          }),
+        ),
       };
 
       vi.mocked(fetch).mockResolvedValue(mockResponse as any);
@@ -117,27 +215,6 @@ describe("MiniMax Model", () => {
 
       const bytes = new Uint8Array(buf);
       expect(Array.from(bytes)).toEqual([104, 101, 108, 108, 111]);
-    });
-
-    it("should surface HTTP errors", async () => {
-      const mockErrorResponse = {
-        ok: false,
-        status: 401,
-        json: vi.fn().mockResolvedValue({
-          base_resp: { status_code: 401, status_msg: "Unauthorized" },
-        }),
-      };
-
-      vi.mocked(fetch).mockResolvedValue(mockErrorResponse as any);
-
-      await expect(
-        minimaxCallTextToSpeech(
-          "Test",
-          mockOptions,
-          { ...DEFAULT_SETTINGS, minimax_groupId: "g-xyz" },
-          {},
-        ),
-      ).rejects.toThrow("Request failed 'HTTP 401 error'");
     });
   });
 });

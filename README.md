@@ -15,7 +15,7 @@ Just add your API key from a supported provider. Choose from available voices.
 *   **Hume AI:** (Hume voices with customization)
 *   **ElevenLabs:** (Model selection, voice selection, stability/similarity options)
 *   **Azure Speech Services:** (Region, voice and output format selection)
-*   **MiniMax:** (speech-2.5-hd-preview, speech-2.5-turbo-preview, speech-02-hd, speech-02-turbo, speech-01-hd, speech-01-turbo)
+*   **MiniMax:** (speech-2.6-hd, speech-2.6-turbo, speech-02-hd, speech-02-turbo, speech-01-hd, speech-01-turbo)
 *   **AWS Polly:** (Region, voice, neural/standard engine, output format)
 
 You can also configure a custom API endpoint if you have an OpenAI compatible API server that has an `/v1/audio/speech` endpoint. For example [openedai-speech](https://github.com/matatonic/openedai-speech).

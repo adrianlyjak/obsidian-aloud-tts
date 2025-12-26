@@ -14,7 +14,7 @@ export const MinimaxSettings = observer(
           provider="minimax"
           fieldName="minimax_apiKey"
           displayName="MiniMax API key"
-          helpUrl="https://www.minimax.ai/"
+          helpUrl="https://platform.minimax.io/user-center/basic-information/interface-key"
           showValidation={true}
         />
         <TextInputSetting
@@ -23,7 +23,7 @@ export const MinimaxSettings = observer(
           store={store}
           provider="minimax"
           fieldName="minimax_groupId"
-          placeholder="e.g. g-xxxxxxxx"
+          placeholder="e.g. 1234567890"
         />
         <MinimaxModelComponent store={store} />
         <MinimaxVoiceComponent store={store} />
@@ -33,8 +33,8 @@ export const MinimaxSettings = observer(
 );
 
 const MINIMAX_MODELS = [
-  { label: "speech-2.5-hd-preview", value: "speech-2.5-hd-preview" },
-  { label: "speech-2.5-turbo-preview", value: "speech-2.5-turbo-preview" },
+  { label: "speech-2.6-hd", value: "speech-2.6-hd" },
+  { label: "speech-2.6-turbo", value: "speech-2.6-turbo" },
   { label: "speech-02-hd", value: "speech-02-hd" },
   { label: "speech-02-turbo", value: "speech-02-turbo" },
   { label: "speech-01-hd", value: "speech-01-hd" },
