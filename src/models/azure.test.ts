@@ -262,7 +262,7 @@ describe("Azure TTS Model", () => {
         expect.any(String),
         expect.objectContaining({
           headers: expect.objectContaining({
-            "X-Microsoft-OutputFormat": "riff-24khz-16bit-mono-pcm",
+            "X-Microsoft-OutputFormat": "audio-24khz-96kbitrate-mono-mp3",
           }),
         }),
       );
