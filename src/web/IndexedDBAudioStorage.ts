@@ -40,7 +40,7 @@ export class IndexedDBAudioStorage implements AudioCache {
   }
 
   constructor() {
-    this.dbRequest = openDB<AudioCacheDB>("tts-aloud-db", 3, {
+    this.dbRequest = openDB<AudioCacheDB>("tts-aloud-db", 2, {
       upgrade(db) {
         if (!db.objectStoreNames.contains("audio")) {
           db.createObjectStore("audio", {
@@ -53,8 +53,6 @@ export class IndexedDBAudioStorage implements AudioCache {
           });
           audio.createIndex("lastread", "lastread");
         }
-        // v3 adds format fields; data migration best-effort
-        // Existing entries will simply lack the format; we treat them as mp3 by default when reading
       },
     }).then((db) => {
       this._db = db;
