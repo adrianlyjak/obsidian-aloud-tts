@@ -24,7 +24,9 @@ export function hashAudioInputs(
   settings: TTSModelOptions,
   format: MediaFormat,
 ): string {
-  return hashString(`${voiceHash(settings)}|${format}|${text}`).toString();
+  return hashString(`${voiceHash(settings)}|${format}|${text}`, 64).toString(
+    16,
+  );
 }
 
 export function memoryStorage(): AudioCache {
