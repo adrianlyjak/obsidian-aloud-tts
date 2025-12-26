@@ -75,7 +75,8 @@ export async function azureCallTextToSpeech(
     headers: {
       "Ocp-Apim-Subscription-Key": options.apiKey || "",
       "Content-Type": "application/ssml+xml",
-      "X-Microsoft-OutputFormat": options.model || "audio-24khz-96kbitrate-mono-mp3",
+      "X-Microsoft-OutputFormat":
+        options.model || "audio-24khz-96kbitrate-mono-mp3",
       "User-Agent": "obsidian-aloud-tts",
     },
     body: ssmlBody,
