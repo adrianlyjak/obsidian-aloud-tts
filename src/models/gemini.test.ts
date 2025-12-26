@@ -274,7 +274,12 @@ describe("Gemini Model", () => {
 
       expect(mockGenerateContent).toHaveBeenCalled();
       expect(result.data).toBeInstanceOf(ArrayBuffer);
-      expect(result.format).toBe("mp3");
+      expect(result.format).toBe("pcm");
+      expect(result.pcmMetadata).toEqual({
+        sampleRate: 24000,
+        channels: 1,
+        bitDepth: 16,
+      });
     });
 
     it("should construct prompt with instructions and context", async () => {

@@ -1,5 +1,4 @@
 import { TTSPluginSettings } from "../player/TTSPluginSettings";
-import { transcodeToMp3 } from "../util/audioProcessing";
 import { AudioData, MediaFormat } from "./tts-model";
 import {
   AudioTextContext,
@@ -92,7 +91,7 @@ export async function openAICallTextToSpeech(
 
 /**
  * OpenAI-compatible TTS call with support for various response formats.
- * If the requested format is wav or pcm, the audio is transcoded to mp3.
+ * Returns audio in its native format - conversion to mp3 happens in the shared audio layer.
  */
 export async function openAICompatCallTextToSpeech(
   text: string,
@@ -100,7 +99,7 @@ export async function openAICompatCallTextToSpeech(
   settings: TTSPluginSettings,
   context: AudioTextContext = {},
 ): Promise<AudioData> {
-  const responseFormat = options.responseFormat || "mp3";
+  const responseFormat = (options.responseFormat || "mp3") as MediaFormat;
 
   const response = await fetch(
     (options.apiUri || OPENAI_API_URL) + "/v1/audio/speech",
@@ -122,34 +121,21 @@ export async function openAICompatCallTextToSpeech(
   await validate200OpenAI(response);
   const audioBuffer = await response.arrayBuffer();
 
-  // If the format is mp3, return directly
-  if (responseFormat === "mp3") {
-    return { data: audioBuffer, format: "mp3" };
-  }
-
-  // Transcode wav or pcm to mp3
-  if (responseFormat === "wav") {
-    const mp3Data = await transcodeToMp3(audioBuffer, {
-      inputFormat: "wav",
-    });
-    return { data: mp3Data, format: "mp3" };
-  }
-
+  // Return audio in its native format with metadata for PCM
   if (responseFormat === "pcm") {
-    // PCM from OpenAI-compatible APIs is typically 24kHz, 16-bit, mono
-    const mp3Data = await transcodeToMp3(audioBuffer, {
-      inputFormat: "pcm",
-      pcmOptions: {
+    return {
+      data: audioBuffer,
+      format: "pcm",
+      // OpenAI-compatible APIs typically return 24kHz, 16-bit, mono PCM
+      pcmMetadata: {
         sampleRate: 24000,
         channels: 1,
         bitDepth: 16,
       },
-    });
-    return { data: mp3Data, format: "mp3" };
+    };
   }
 
-  // For any other format, return as-is with mp3 format (fallback)
-  return { data: audioBuffer, format: responseFormat as MediaFormat };
+  return { data: audioBuffer, format: responseFormat };
 }
 
 export async function listOpenAIModels(

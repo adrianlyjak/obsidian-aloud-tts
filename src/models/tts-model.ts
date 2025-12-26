@@ -4,13 +4,21 @@ import {
 } from "../player/TTSPluginSettings";
 
 // --- Audio data primitives ---
-export type MediaFormat = "mp3" | "wav";
+export type MediaFormat = "mp3" | "wav" | "pcm";
 
 export interface AudioData {
   /** Raw audio bytes */
   data: ArrayBuffer;
   /** Container/codec format of the audio bytes */
   format: MediaFormat;
+  /** PCM metadata - required when format is "pcm" */
+  pcmMetadata?: PcmMetadata;
+}
+
+export interface PcmMetadata {
+  sampleRate: number;
+  channels: number;
+  bitDepth: 16;
 }
 
 export interface AudioTextContext {

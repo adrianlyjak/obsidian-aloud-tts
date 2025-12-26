@@ -1,5 +1,5 @@
 import * as lamejs from "@breezystack/lamejs";
-import { MediaFormat } from "../models/tts-model";
+import { AudioData, MediaFormat } from "../models/tts-model";
 
 export interface PcmToMp3Options {
   sampleRate: number;
@@ -9,48 +9,45 @@ export interface PcmToMp3Options {
 }
 
 /**
- * Supported input formats for transcoding to MP3
+ * Convert AudioData to a playable format (mp3).
+ * This is the main entry point for audio format conversion.
+ *
+ * - mp3: returned as-is
+ * - wav: parsed and transcoded to mp3
+ * - pcm: transcoded to mp3 (requires pcmMetadata in AudioData)
  */
-export type TranscodableFormat = "pcm" | "wav";
-
-export interface TranscodeToMp3Options {
-  /** The format of the input audio data */
-  inputFormat: TranscodableFormat;
-  /** PCM options - required for raw PCM, ignored for WAV (extracted from header) */
-  pcmOptions?: PcmToMp3Options;
-  /** Target MP3 bitrate in kbps (default: 128) */
-  kbps?: number;
-}
-
-/**
- * Transcode audio data from various formats to MP3.
- * This is the main entry point for audio transcoding.
- */
-export async function transcodeToMp3(
-  audioData: ArrayBuffer,
-  options: TranscodeToMp3Options,
-): Promise<ArrayBuffer> {
-  switch (options.inputFormat) {
-    case "pcm":
-      if (!options.pcmOptions) {
-        throw new Error("pcmOptions are required for raw PCM input");
-      }
-      return pcmBufferToMp3Buffer(audioData, {
-        ...options.pcmOptions,
-        kbps: options.kbps ?? options.pcmOptions.kbps,
-      });
-    case "wav":
-      return wavBufferToMp3Buffer(audioData, options.kbps);
-    default:
-      throw new Error(`Unsupported input format: ${options.inputFormat}`);
+export async function convertToPlayableFormat(
+  audio: AudioData,
+): Promise<AudioData> {
+  if (audio.format === "mp3") {
+    return audio;
   }
+
+  if (audio.format === "wav") {
+    const mp3Data = await wavBufferToMp3Buffer(audio.data);
+    return { data: mp3Data, format: "mp3" };
+  }
+
+  if (audio.format === "pcm") {
+    if (!audio.pcmMetadata) {
+      throw new Error("pcmMetadata is required for PCM audio conversion");
+    }
+    const mp3Data = await pcmBufferToMp3Buffer(audio.data, {
+      sampleRate: audio.pcmMetadata.sampleRate,
+      channels: audio.pcmMetadata.channels,
+      bitDepth: audio.pcmMetadata.bitDepth,
+    });
+    return { data: mp3Data, format: "mp3" };
+  }
+
+  throw new Error(`Unsupported audio format: ${audio.format}`);
 }
 
 /**
- * Check if a format needs transcoding to MP3
+ * Check if a format needs conversion for playback
  */
-export function needsTranscoding(format: MediaFormat | "pcm"): boolean {
-  return format === "pcm" || format === "wav";
+export function needsConversion(format: MediaFormat): boolean {
+  return format !== "mp3";
 }
 
 /**
