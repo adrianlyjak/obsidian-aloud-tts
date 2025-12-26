@@ -196,28 +196,23 @@ export class ChunkLoader {
     options: TTSModelOptions,
     context: AudioTextContext = {},
   ): Promise<AudioData> {
-    // First, check cache for mp3 format
-    const cachedMp3 = await this.system.storage.getAudio(text, options, "mp3");
-    if (cachedMp3) {
-      return cachedMp3;
+    // Check cache for mp3 (the playable format we store)
+    const cached = await this.system.storage.getAudio(text, options, "mp3");
+    if (cached) {
+      return cached;
     }
 
-    // Call provider and save audio in its native format
+    // Call provider and convert to playable format
     const audio = await this.system.ttsModel.call(
       text,
       options,
       this.system.settings,
       context,
     );
-    await this.system.storage.saveAudio(text, options, audio);
-
-    // Convert to playable format (mp3) if needed
     const playable = await convertToPlayableFormat(audio);
 
-    // Cache the converted mp3 if it was converted
-    if (playable !== audio) {
-      await this.system.storage.saveAudio(text, options, playable);
-    }
+    // Cache the mp3
+    await this.system.storage.saveAudio(text, options, playable);
 
     return playable;
   }
