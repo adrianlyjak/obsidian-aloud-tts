@@ -52,7 +52,7 @@ jobs:
           fi
 
           # Check if this is a pre-release version
-          if echo "$tag" | grep -qE '-(rc|alpha|beta)'; then
+          if echo "$tag" | grep -qE -- '-(rc|alpha|beta)'; then
             # Pre-release version
             gh release create "$tag" \
               --title="$tag" \
