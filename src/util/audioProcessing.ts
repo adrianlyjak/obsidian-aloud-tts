@@ -1,10 +1,175 @@
 import * as lamejs from "@breezystack/lamejs";
+import { MediaFormat } from "../models/tts-model";
 
 export interface PcmToMp3Options {
   sampleRate: number;
   channels: number;
   bitDepth: 16 | 8; // lamejs primarily works with 16-bit
   kbps?: number;
+}
+
+/**
+ * Supported input formats for transcoding to MP3
+ */
+export type TranscodableFormat = "pcm" | "wav";
+
+export interface TranscodeToMp3Options {
+  /** The format of the input audio data */
+  inputFormat: TranscodableFormat;
+  /** PCM options - required for raw PCM, ignored for WAV (extracted from header) */
+  pcmOptions?: PcmToMp3Options;
+  /** Target MP3 bitrate in kbps (default: 128) */
+  kbps?: number;
+}
+
+/**
+ * Transcode audio data from various formats to MP3.
+ * This is the main entry point for audio transcoding.
+ */
+export async function transcodeToMp3(
+  audioData: ArrayBuffer,
+  options: TranscodeToMp3Options,
+): Promise<ArrayBuffer> {
+  switch (options.inputFormat) {
+    case "pcm":
+      if (!options.pcmOptions) {
+        throw new Error("pcmOptions are required for raw PCM input");
+      }
+      return pcmBufferToMp3Buffer(audioData, {
+        ...options.pcmOptions,
+        kbps: options.kbps ?? options.pcmOptions.kbps,
+      });
+    case "wav":
+      return wavBufferToMp3Buffer(audioData, options.kbps);
+    default:
+      throw new Error(`Unsupported input format: ${options.inputFormat}`);
+  }
+}
+
+/**
+ * Check if a format needs transcoding to MP3
+ */
+export function needsTranscoding(format: MediaFormat | "pcm"): boolean {
+  return format === "pcm" || format === "wav";
+}
+
+/**
+ * Parse WAV header and extract PCM data with metadata
+ */
+export interface WavInfo {
+  sampleRate: number;
+  channels: number;
+  bitDepth: number;
+  pcmData: ArrayBuffer;
+}
+
+export function parseWavHeader(wavBuffer: ArrayBuffer): WavInfo {
+  const view = new DataView(wavBuffer);
+
+  // Check RIFF header
+  const riff = String.fromCharCode(
+    view.getUint8(0),
+    view.getUint8(1),
+    view.getUint8(2),
+    view.getUint8(3),
+  );
+  if (riff !== "RIFF") {
+    throw new Error("Invalid WAV file: missing RIFF header");
+  }
+
+  // Check WAVE format
+  const wave = String.fromCharCode(
+    view.getUint8(8),
+    view.getUint8(9),
+    view.getUint8(10),
+    view.getUint8(11),
+  );
+  if (wave !== "WAVE") {
+    throw new Error("Invalid WAV file: missing WAVE format");
+  }
+
+  // Find fmt chunk
+  let offset = 12;
+  let channels = 0;
+  let sampleRate = 0;
+  let bitDepth = 0;
+  let dataOffset = 0;
+  let dataSize = 0;
+
+  while (offset < wavBuffer.byteLength - 8) {
+    const chunkId = String.fromCharCode(
+      view.getUint8(offset),
+      view.getUint8(offset + 1),
+      view.getUint8(offset + 2),
+      view.getUint8(offset + 3),
+    );
+    const chunkSize = view.getUint32(offset + 4, true);
+
+    if (chunkId === "fmt ") {
+      // Audio format (1 = PCM)
+      const audioFormat = view.getUint16(offset + 8, true);
+      if (audioFormat !== 1) {
+        throw new Error(
+          `Unsupported WAV audio format: ${audioFormat}. Only PCM (1) is supported.`,
+        );
+      }
+      channels = view.getUint16(offset + 10, true);
+      sampleRate = view.getUint32(offset + 12, true);
+      // Skip byteRate (offset + 16) and blockAlign (offset + 20)
+      bitDepth = view.getUint16(offset + 22, true);
+    } else if (chunkId === "data") {
+      dataOffset = offset + 8;
+      dataSize = chunkSize;
+      break;
+    }
+
+    offset += 8 + chunkSize;
+    // WAV chunks are word-aligned (2 bytes)
+    if (chunkSize % 2 !== 0) {
+      offset += 1;
+    }
+  }
+
+  if (dataOffset === 0 || dataSize === 0) {
+    throw new Error("Invalid WAV file: missing data chunk");
+  }
+
+  if (channels === 0 || sampleRate === 0 || bitDepth === 0) {
+    throw new Error("Invalid WAV file: missing or invalid fmt chunk");
+  }
+
+  // Extract PCM data
+  const pcmData = wavBuffer.slice(dataOffset, dataOffset + dataSize);
+
+  return {
+    sampleRate,
+    channels,
+    bitDepth,
+    pcmData,
+  };
+}
+
+/**
+ * Convert WAV audio buffer to MP3
+ */
+export async function wavBufferToMp3Buffer(
+  wavBuffer: ArrayBuffer,
+  kbps?: number,
+): Promise<ArrayBuffer> {
+  const wavInfo = parseWavHeader(wavBuffer);
+
+  if (wavInfo.bitDepth !== 16) {
+    throw new Error(
+      `Unsupported WAV bit depth: ${wavInfo.bitDepth}. Only 16-bit is supported.`,
+    );
+  }
+
+  return pcmBufferToMp3Buffer(wavInfo.pcmData, {
+    sampleRate: wavInfo.sampleRate,
+    channels: wavInfo.channels,
+    bitDepth: 16,
+    kbps,
+  });
 }
 
 export async function pcmBufferToMp3Buffer(

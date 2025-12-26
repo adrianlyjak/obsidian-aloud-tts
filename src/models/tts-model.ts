@@ -4,7 +4,7 @@ import {
 } from "../player/TTSPluginSettings";
 
 // --- Audio data primitives ---
-export type MediaFormat = "mp3" | "wav" | "ogg" | "webm";
+export type MediaFormat = "mp3" | "wav";
 
 export interface AudioData {
   /** Raw audio bytes */
@@ -56,6 +56,8 @@ export interface TTSModelOptions {
   apiUri?: string;
   /** The API key to use. Not required for all models. */
   apiKey?: string;
+  /** The response format to request from the API. Only applicable to some models */
+  responseFormat?: string;
 }
 
 export class TTSErrorInfo extends Error {

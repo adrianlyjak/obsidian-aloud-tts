@@ -20,7 +20,7 @@ describe("OpenAI-Like Model", () => {
         apiUri: "https://custom-api.example.com",
         model: "tts-1-hd",
         voice: "nova",
-        instructions: undefined,
+        responseFormat: "mp3",
       });
     });
 
@@ -40,7 +40,7 @@ describe("OpenAI-Like Model", () => {
         apiUri: "",
         model: "",
         voice: "",
-        instructions: undefined,
+        responseFormat: "mp3",
       });
     });
   });
