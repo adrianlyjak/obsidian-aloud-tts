@@ -1,5 +1,4 @@
 import { Content, GenerateContentResponse, GoogleGenAI } from "@google/genai";
-import { pcmBufferToMp3Buffer } from "../util/audioProcessing";
 import { base64ToArrayBuffer } from "../util/misc";
 import {
   AudioTextContext,
@@ -166,12 +165,16 @@ export async function geminiCallTextToSpeech(
     throw new Error("Gemini response missing generations");
   }
 
-  const data = await pcmBufferToMp3Buffer(base64ToArrayBuffer(generation), {
-    sampleRate: 24000,
-    channels: 1,
-    bitDepth: 16,
-  });
-  return { data, format: "mp3" };
+  // Return native PCM format - conversion happens in the shared audio layer
+  return {
+    data: base64ToArrayBuffer(generation),
+    format: "pcm",
+    pcmMetadata: {
+      sampleRate: 24000,
+      channels: 1,
+      bitDepth: 16,
+    },
+  };
 }
 
 function formatMessages(

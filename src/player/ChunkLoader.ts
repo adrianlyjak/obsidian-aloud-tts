@@ -6,6 +6,7 @@ import {
   TTSModelOptions,
 } from "../models/tts-model";
 import { AudioData } from "../models/tts-model";
+import { convertToPlayableFormat } from "../util/audioProcessing";
 
 /** manages loading and caching of tracks */
 export class ChunkLoader {
@@ -195,21 +196,25 @@ export class ChunkLoader {
     options: TTSModelOptions,
     context: AudioTextContext = {},
   ): Promise<AudioData> {
-    // First, check cache for common format (mp3) to avoid redundant provider calls
+    // Check cache for mp3 (the playable format we store)
     const cached = await this.system.storage.getAudio(text, options, "mp3");
     if (cached) {
       return cached;
     }
 
-    // Call provider and save audio as-is (format-aware cache key)
+    // Call provider and convert to playable format
     const audio = await this.system.ttsModel.call(
       text,
       options,
       this.system.settings,
       context,
     );
-    await this.system.storage.saveAudio(text, options, audio);
-    return audio;
+    const playable = await convertToPlayableFormat(audio);
+
+    // Cache the mp3
+    await this.system.storage.saveAudio(text, options, playable);
+
+    return playable;
   }
 }
 

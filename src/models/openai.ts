@@ -1,5 +1,5 @@
 import { TTSPluginSettings } from "../player/TTSPluginSettings";
-import { AudioData } from "./tts-model";
+import { AudioData, MediaFormat } from "./tts-model";
 import {
   AudioTextContext,
   ErrorMessage,
@@ -87,6 +87,55 @@ export async function openAICallTextToSpeech(
   await validate200OpenAI(headers);
   const bf = await headers.arrayBuffer();
   return { data: bf, format: "mp3" };
+}
+
+/**
+ * OpenAI-compatible TTS call with support for various response formats.
+ * Returns audio in its native format - conversion to mp3 happens in the shared audio layer.
+ */
+export async function openAICompatCallTextToSpeech(
+  text: string,
+  options: TTSModelOptions,
+  settings: TTSPluginSettings,
+  context: AudioTextContext = {},
+): Promise<AudioData> {
+  const responseFormat = (options.responseFormat || "mp3") as MediaFormat;
+
+  const response = await fetch(
+    (options.apiUri || OPENAI_API_URL) + "/v1/audio/speech",
+    {
+      headers: {
+        Authorization: "Bearer " + options.apiKey,
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+      body: JSON.stringify({
+        model: options.model,
+        voice: options.voice ? options.voice : "",
+        input: text,
+        speed: 1.0,
+        response_format: responseFormat,
+      }),
+    },
+  );
+  await validate200OpenAI(response);
+  const audioBuffer = await response.arrayBuffer();
+
+  // Return audio in its native format with metadata for PCM
+  if (responseFormat === "pcm") {
+    return {
+      data: audioBuffer,
+      format: "pcm",
+      // OpenAI-compatible APIs typically return 24kHz, 16-bit, mono PCM
+      pcmMetadata: {
+        sampleRate: 24000,
+        channels: 1,
+        bitDepth: 16,
+      },
+    };
+  }
+
+  return { data: audioBuffer, format: responseFormat };
 }
 
 export async function listOpenAIModels(
