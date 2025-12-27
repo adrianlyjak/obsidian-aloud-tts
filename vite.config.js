@@ -5,6 +5,11 @@ import path from "path";
 export default defineConfig({
   plugins: [nodePolyfills()],
   root: "./", // Serve from project root so we can access styles.css
+  server: {
+    host: "127.0.0.1",
+    port: 5173,
+    strictPort: true,
+  },
   build: {
     outDir: "dist/web",
     rollupOptions: {
