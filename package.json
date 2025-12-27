@@ -15,6 +15,8 @@
     "format": "prettier --write src",
     "web:dev": "vite",
     "web:build": "vite build",
+    "e2e:install": "playwright install --with-deps chromium",
+    "e2e": "playwright test",
     "prepare": "husky"
   },
   "keywords": [
@@ -28,6 +30,7 @@
     "url": "https://github.com/adrianlyjak/obsidian-aloud-tts"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",

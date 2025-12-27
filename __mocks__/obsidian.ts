@@ -1,10 +1,12 @@
-import { vi } from "vitest";
+// Simple no-op function that can be used as a mock
+const noop = (): void => {};
 
-export const setIcon = vi.fn();
-export const setTooltip = vi.fn();
-export const requestUrl = vi.fn();
-export const debounce = vi.fn((fn: Function) => fn);
-export const isMobile = vi.fn(() => false);
+export const setIcon = noop;
+export const setTooltip = noop;
+export const requestUrl = noop;
+export const debounce = <T extends (...args: unknown[]) => unknown>(fn: T): T =>
+  fn;
+export const isMobile = (): boolean => false;
 
 // Mock Notice class
 export class Notice {
@@ -71,8 +73,8 @@ export class PluginSettingTab {
   app: any;
   plugin: any;
   containerEl: any = {
-    empty: vi.fn(),
-    createEl: vi.fn(() => ({ setText: vi.fn() })),
+    empty: noop,
+    createEl: () => ({ setText: noop }),
   };
 
   constructor(app: any, plugin: any) {

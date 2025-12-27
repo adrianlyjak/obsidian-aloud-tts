@@ -95,6 +95,7 @@ export const ApiKeyComponent: React.FC<ApiKeyComponentProps> = observer(
           <input
             type={showPassword ? "text" : "password"}
             placeholder="API Key"
+            aria-label={displayName}
             value={store.settings[fieldName] as string}
             onChange={onChange}
             className={
