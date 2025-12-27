@@ -3,7 +3,12 @@ import React from "react";
 import { OPENAI_API_URL } from "../../../models/openai";
 import { TTSPluginSettingsStore } from "../../../player/TTSPluginSettings";
 import { ApiKeyComponent } from "../api-key-component";
-import { TextInputSetting } from "../setting-components";
+import { OptionSelectSetting, TextInputSetting } from "../setting-components";
+
+const AUDIO_FORMAT_OPTIONS = [
+  { label: "MP3", value: "mp3" },
+  { label: "WAV", value: "wav" },
+] as const;
 
 export const OpenAICompatibleSettings = observer(
   ({ store }: { store: TTSPluginSettingsStore }) => {
@@ -30,6 +35,14 @@ export const OpenAICompatibleSettings = observer(
           store={store}
           provider="openaicompat"
           fieldName="openaicompat_ttsVoice"
+        />
+        <OptionSelectSetting
+          name="Audio Format"
+          description="The audio format to request from the API"
+          store={store}
+          provider="openaicompat"
+          fieldName="openaicompat_responseFormat"
+          options={AUDIO_FORMAT_OPTIONS}
         />
       </>
     );
