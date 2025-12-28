@@ -9,15 +9,16 @@ if (!openAiApiKey) {
 
 export default defineConfig({
   testDir: "./e2e",
+  outputDir: "./test-results",
   timeout: 2 * 60 * 1000,
   expect: { timeout: 30 * 1000 },
   retries: process.env.CI ? 1 : 0,
-  reporter: "list",
+  reporter: [["list"], ["html", { outputFolder: "playwright-report" }]],
   use: {
     baseURL: "http://127.0.0.1:5173/src/web/",
-    trace: "retain-on-failure",
-    screenshot: "only-on-failure",
-    video: "retain-on-failure",
+    trace: "on",
+    screenshot: "on",
+    video: "on",
   },
   webServer: {
     command: "pnpm web:dev",

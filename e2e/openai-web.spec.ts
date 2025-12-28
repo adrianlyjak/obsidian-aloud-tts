@@ -169,24 +169,32 @@ test("OpenAI Compatible provider with WAV format sends correct request and plays
     page.locator("dialog.web-tts-settings-modal[open]"),
   ).toBeVisible();
 
-  // Switch to OpenAI Compatible provider
+  // Switch to OpenAI Compatible provider - the dropdown is next to the "Model Provider" h1
   const modelProviderDropdown = page
-    .locator(".setting-item-control")
-    .filter({ has: page.locator("select.dropdown") })
-    .first()
-    .locator("select.dropdown");
-  await modelProviderDropdown.selectOption("openaicompat");
+    .locator("select.dropdown")
+    .first();
+  await expect(modelProviderDropdown).toBeVisible();
+  await modelProviderDropdown.selectOption({ label: "OpenAI Compatible (Advanced)" });
+
+  // Wait for the OpenAI Compatible settings to appear
+  await expect(page.getByText("API URL")).toBeVisible();
 
   // Configure OpenAI Compatible settings to point to the actual OpenAI API
-  await page.getByLabel("API key").fill(openAiApiKey);
-  await page
-    .locator('input[placeholder="https://api.openai.com"]')
-    .fill("https://api.openai.com");
-  // Fill in model - find the input after "Model" label
+  // The API key field label is just "API key" for openaicompat
+  const apiKeyInput = page
+    .locator(".setting-item")
+    .filter({ hasText: "API key" })
+    .locator("input");
+  await apiKeyInput.fill(openAiApiKey);
+
+  // Fill in API URL
+  const apiUrlInput = page.locator('input[placeholder="https://api.openai.com"]');
+  await apiUrlInput.fill("https://api.openai.com");
+
+  // Fill in model
   const modelInput = page
     .locator(".setting-item")
-    .filter({ hasText: "Model" })
-    .filter({ hasNotText: "Provider" })
+    .filter({ hasText: /^Model/ })
     .locator("input");
   await modelInput.fill("tts-1");
 
@@ -202,6 +210,7 @@ test("OpenAI Compatible provider with WAV format sends correct request and plays
     .locator(".setting-item")
     .filter({ hasText: "Audio Format" })
     .locator("select");
+  await expect(audioFormatSelect).toBeVisible();
   await audioFormatSelect.selectOption("wav");
 
   // Close settings
