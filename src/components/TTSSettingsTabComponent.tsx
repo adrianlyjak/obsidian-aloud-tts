@@ -2,7 +2,6 @@ import { observer } from "mobx-react-lite";
 import * as React from "react";
 import { AudioStore } from "../player/AudioStore";
 import {
-  MARKETING_NAME,
   ModelProvider,
   PlayerViewMode,
   TTSPluginSettingsStore,
@@ -14,6 +13,7 @@ import { IconButton, Spinner } from "./IconButton";
 import { Play, Pause } from "lucide-react";
 import { TTSErrorInfoDetails, TTSErrorInfoView } from "./PlayerView";
 import { OptionSelect } from "./settings/option-select";
+import { SettingSection } from "./settings/setting-components";
 import { AzureSettings } from "./settings/providers/provider-azure";
 import { ElevenLabsSettings } from "./settings/providers/provider-elevenlabs";
 import { GeminiSettings } from "./settings/providers/provider-gemini";
@@ -31,63 +31,61 @@ export const TTSSettingsTabComponent: React.FC<{
   const [isActive, setActive] = React.useState(false);
   return (
     <>
-      <h1>{MARKETING_NAME}</h1>
       <ErrorInfoView player={player} />
-      <TestVoiceComponent
-        store={store}
-        player={player}
-        isActive={isActive}
-        setActive={setActive}
-      />
-      <div
-        style={{
-          display: "flex",
-          width: "100%",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
+      <SettingSection>
+        <TestVoiceComponent
+          store={store}
+          player={player}
+          isActive={isActive}
+          setActive={setActive}
+        />
+      </SettingSection>
+
+      <SettingSection
+        title="Model Provider"
+        control={<ModelSwitcher store={store} />}
       >
-        <h1 style={{ display: "inline-block" }}>Model Provider</h1>
-        <div style={{ display: "inline-block" }}>
-          <ModelSwitcher store={store} />
-        </div>
-      </div>
+        {store.settings.modelProvider === "gemini" && (
+          <GeminiSettings store={store} />
+        )}
+        {store.settings.modelProvider === "hume" && (
+          <HumeSettings store={store} />
+        )}
+        {store.settings.modelProvider === "openai" && (
+          <OpenAISettings store={store} />
+        )}
+        {store.settings.modelProvider === "openaicompat" && (
+          <OpenAICompatibleSettings store={store} />
+        )}
+        {store.settings.modelProvider === "elevenlabs" && (
+          <ElevenLabsSettings store={store} />
+        )}
+        {store.settings.modelProvider === "azure" && (
+          <AzureSettings store={store} />
+        )}
+        {store.settings.modelProvider === "minimax" && (
+          <MinimaxSettings store={store} />
+        )}
+        {store.settings.modelProvider === "inworld" && (
+          <InworldSettings store={store} />
+        )}
+        {store.settings.modelProvider === "polly" && (
+          <PollySettings store={store} />
+        )}
+      </SettingSection>
 
-      {store.settings.modelProvider === "gemini" && (
-        <GeminiSettings store={store} />
-      )}
-      {store.settings.modelProvider === "hume" && (
-        <HumeSettings store={store} />
-      )}
-      {store.settings.modelProvider === "openai" && (
-        <OpenAISettings store={store} />
-      )}
-      {store.settings.modelProvider === "openaicompat" && (
-        <OpenAICompatibleSettings store={store} />
-      )}
-      {store.settings.modelProvider === "elevenlabs" && (
-        <ElevenLabsSettings store={store} />
-      )}
-      {store.settings.modelProvider === "azure" && (
-        <AzureSettings store={store} />
-      )}
-      {store.settings.modelProvider === "minimax" && (
-        <MinimaxSettings store={store} />
-      )}
-      {store.settings.modelProvider === "inworld" && (
-        <InworldSettings store={store} />
-      )}
-      {store.settings.modelProvider === "polly" && (
-        <PollySettings store={store} />
-      )}
+      <SettingSection title="User Interface">
+        <PlayerDisplayMode store={store} />
+      </SettingSection>
 
-      <h1>User Interface</h1>
-      <PlayerDisplayMode store={store} />
-      <h1>Storage</h1>
-      <CacheDuration store={store} player={player} />
-      <AudioFolderComponent store={store} />
-      <h1>Audio</h1>
-      <AudioOptions store={store} />
+      <SettingSection title="Storage">
+        <CacheDuration store={store} player={player} />
+        <AudioFolderComponent store={store} />
+      </SettingSection>
+
+      <SettingSection title="Audio">
+        <AudioOptions store={store} />
+      </SettingSection>
     </>
   );
 });
@@ -469,17 +467,17 @@ const TestVoiceComponent: React.FC<{
               <span style={{ marginRight: "0.5em" }}>
                 {isPlaying ? <Pause size={16} /> : <Play size={16} />}
               </span>
-            )}{" "}
-            Test Voice
+            )}
+            {isPlaying ? "Stop" : "Play"}
           </button>
         </div>
       </div>
       <div>
         <textarea
+          className="tts-settings-textarea tts-test-voice-textarea"
           rows={3}
           value={testText}
           onChange={onTextChange}
-          style={{ width: "100%", marginBottom: "0.5em" }}
           placeholder="Enter text to test..."
         />
       </div>

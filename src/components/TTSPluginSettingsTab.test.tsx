@@ -48,10 +48,8 @@ describe("TTSPluginSettingsTab", () => {
       />,
     );
 
-    // Should render main elements
-    expect(screen.getByText("Aloud")).toBeDefined();
     expect(screen.getByText("Model Provider")).toBeDefined();
-    expect(screen.getByRole("button", { name: /test voice/i })).toBeDefined();
+    expect(screen.getByRole("button", { name: /play/i })).toBeDefined();
 
     // Switch through all providers to maximize coverage
     const select = screen.getByDisplayValue("OpenAI");

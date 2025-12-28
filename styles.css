@@ -191,9 +191,13 @@
   margin-top: 4px;
 }
 
-.tts-instructions-textarea {
+.tts-settings-textarea {
   width: 100%;
   margin-top: 12px;
+}
+
+.tts-test-voice-textarea {
+  min-height: 100px;
 }
 
 .tts-settings-block {

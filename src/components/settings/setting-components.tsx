@@ -6,6 +6,32 @@ import {
 } from "../../player/TTSPluginSettings";
 import { OptionSelect } from "./option-select";
 
+// Setting section component for grouping related settings with a heading
+export interface SettingSectionProps {
+  title?: string;
+  /** Optional control element to place in the heading row (e.g., a dropdown) */
+  control?: React.ReactNode;
+  children: React.ReactNode;
+}
+
+export const SettingSection: React.FC<SettingSectionProps> = ({
+  title,
+  control,
+  children,
+}) => {
+  return (
+    <div className="setting-group">
+      <div className="setting-item setting-item-heading">
+        <div className="setting-item-info">
+          {title && <div className="setting-item-name">{title}</div>}
+        </div>
+        {control && <div className="setting-item-control">{control}</div>}
+      </div>
+      <div className="setting-items">{children}</div>
+    </div>
+  );
+};
+
 // Common props for all setting components
 interface BaseSettingProps {
   name: string;
@@ -181,7 +207,7 @@ export const TextareaSetting: React.FC<TextareaSettingProps> = observer(
           onChange={onChange}
           placeholder={placeholder}
           rows={rows}
-          className="tts-instructions-textarea"
+          className="tts-settings-textarea"
         />
       </div>
     );
