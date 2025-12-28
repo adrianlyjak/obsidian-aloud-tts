@@ -23,7 +23,8 @@ export type TTSPluginSettings = {
   AzureModelConfig &
   MinimaxModelConfig &
   InworldModelConfig &
-  PollyModelConfig);
+  PollyModelConfig &
+  KokoroModelConfig);
 
 export interface InworldModelConfig {
   /** the API key to use */
@@ -133,6 +134,16 @@ export interface PollyModelConfig {
   polly_engine: "standard" | "neural";
 }
 
+/** Model download status for local models like Kokoro */
+export type ModelDownloadStatus = "not_downloaded" | "downloading" | "ready";
+
+export interface KokoroModelConfig {
+  /** Whether the model has been downloaded and is ready to use */
+  kokoro_modelStatus: ModelDownloadStatus;
+  /** The voice to use for Kokoro TTS */
+  kokoro_voice: string;
+}
+
 export const playViewModes = [
   "always",
   "always-mobile",
@@ -165,6 +176,7 @@ export const modelProviders = [
   "minimax",
   "inworld",
   "polly",
+  "kokoro",
 ] as const;
 export type ModelProvider = (typeof modelProviders)[number];
 
@@ -227,6 +239,10 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   polly_region: "us-east-1",
   polly_voiceId: "Joanna",
   polly_engine: "neural",
+
+  // kokoro
+  kokoro_modelStatus: "not_downloaded",
+  kokoro_voice: "af_heart",
 
   version: 2,
   audioFolder: "aloud",

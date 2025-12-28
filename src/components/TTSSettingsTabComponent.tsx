@@ -23,6 +23,7 @@ import { OpenAICompatibleSettings } from "./settings/providers/provider-openai-l
 import { MinimaxSettings } from "./settings/providers/provider-minimax";
 import { InworldSettings } from "./settings/providers/provider-inworld";
 import { PollySettings } from "./settings/providers/provider-polly";
+import { KokoroSettings } from "./settings/providers/provider-kokoro";
 
 export const TTSSettingsTabComponent: React.FC<{
   store: TTSPluginSettingsStore;
@@ -79,6 +80,9 @@ export const TTSSettingsTabComponent: React.FC<{
       )}
       {store.settings.modelProvider === "polly" && (
         <PollySettings store={store} />
+      )}
+      {store.settings.modelProvider === "kokoro" && (
+        <KokoroSettings store={store} />
       )}
 
       <h1>User Interface</h1>
@@ -152,6 +156,7 @@ const labels: Record<ModelProvider, string> = {
   minimax: "MiniMax",
   inworld: "Inworld",
   polly: "AWS Polly",
+  kokoro: "Kokoro (Local)",
 };
 
 const ModelSwitcher: React.FC<{

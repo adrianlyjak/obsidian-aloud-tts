@@ -9,6 +9,7 @@ import { azureTextToSpeech } from "./azure";
 import { minimaxTextToSpeech } from "./minimax";
 import { inworldTextToSpeech } from "./inworld";
 import { pollyTextToSpeech } from "./polly";
+import { kokoroTextToSpeech } from "./kokoro";
 
 export const REGISTRY: Record<ModelProvider, TTSModel> = {
   openai: openAITextToSpeech,
@@ -20,6 +21,7 @@ export const REGISTRY: Record<ModelProvider, TTSModel> = {
   minimax: minimaxTextToSpeech,
   inworld: inworldTextToSpeech,
   polly: pollyTextToSpeech,
+  kokoro: kokoroTextToSpeech,
 };
 
 export function hasNamedVoice(provider: ModelProvider): boolean {
