@@ -4,6 +4,7 @@ interface TTSRequest {
   input: string;
   model: string;
   voice: string;
+  response_format?: string;
 }
 
 async function resetWebAppState(page: Page): Promise<void> {
@@ -129,4 +130,129 @@ test("web UI can configure OpenAI and play a 2 sentence sample to completion", a
   await expect(page.locator(".tts-cm-playing-now")).not.toBeVisible();
   await expect(page.locator(".tts-cm-playing-before")).not.toBeVisible();
   await expect(page.locator(".tts-cm-playing-after")).not.toBeVisible();
+});
+
+test("OpenAI Compatible provider with WAV format sends correct request and plays audio", async ({
+  page,
+}) => {
+  const openAiApiKey = process.env.OPENAI_API_KEY;
+  if (!openAiApiKey) {
+    throw new Error("OPENAI_API_KEY is required for this test.");
+  }
+
+  const ttsRequests: TTSRequest[] = [];
+  const ttsResponseStatuses: number[] = [];
+
+  page.on("request", (req) => {
+    if (req.url().includes("/v1/audio/speech")) {
+      const postData = req.postData();
+      if (postData) {
+        try {
+          ttsRequests.push(JSON.parse(postData) as TTSRequest);
+        } catch {
+          // ignore parse errors
+        }
+      }
+    }
+  });
+  page.on("response", (resp) => {
+    if (resp.url().includes("/v1/audio/speech")) {
+      ttsResponseStatuses.push(resp.status());
+    }
+  });
+
+  await resetWebAppState(page);
+
+  // Open settings modal
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(
+    page.locator("dialog.web-tts-settings-modal[open]"),
+  ).toBeVisible();
+
+  // Switch to OpenAI Compatible provider
+  const modelProviderDropdown = page
+    .locator(".setting-item-control")
+    .filter({ has: page.locator("select.dropdown") })
+    .first()
+    .locator("select.dropdown");
+  await modelProviderDropdown.selectOption("openaicompat");
+
+  // Configure OpenAI Compatible settings to point to the actual OpenAI API
+  await page.getByLabel("API key").fill(openAiApiKey);
+  await page
+    .locator('input[placeholder="https://api.openai.com"]')
+    .fill("https://api.openai.com");
+  // Fill in model - find the input after "Model" label
+  const modelInput = page
+    .locator(".setting-item")
+    .filter({ hasText: "Model" })
+    .filter({ hasNotText: "Provider" })
+    .locator("input");
+  await modelInput.fill("tts-1");
+
+  // Fill in voice
+  const voiceInput = page
+    .locator(".setting-item")
+    .filter({ hasText: "Custom OpenAI Voice" })
+    .locator("input");
+  await voiceInput.fill("alloy");
+
+  // Select WAV audio format
+  const audioFormatSelect = page
+    .locator(".setting-item")
+    .filter({ hasText: "Audio Format" })
+    .locator("select");
+  await audioFormatSelect.selectOption("wav");
+
+  // Close settings
+  await page.getByRole("button", { name: "Close Settings" }).click();
+  await expect(page.locator("dialog.web-tts-settings-modal")).not.toBeVisible();
+
+  // Enter sample text
+  const sampleText = "Testing WAV audio format with OpenAI Compatible provider.";
+
+  const editor = page.locator(".cm-content");
+  await editor.click();
+  await page.keyboard.press("ControlOrMeta+A");
+  await page.keyboard.type(sampleText);
+  await expect(editor).toContainText("Testing WAV");
+
+  // Move cursor to start
+  await page.locator(".cm-line").first().click({ position: { x: 0, y: 5 } });
+
+  // Start playback
+  await page
+    .getByRole("button", { name: "Play Selection (or from Cursor)" })
+    .click();
+
+  // Verify player UI appears
+  await expect(page.locator(".tts-toolbar-player")).toBeVisible();
+
+  // Wait for TTS request to complete
+  await expect
+    .poll(() => ttsResponseStatuses.length, { timeout: 30_000 })
+    .toBeGreaterThanOrEqual(1);
+  expect(ttsResponseStatuses[0]).toBe(200);
+
+  // Verify the request was sent with WAV format
+  await expect
+    .poll(() => ttsRequests.length, { timeout: 5_000 })
+    .toBeGreaterThanOrEqual(1);
+  expect(ttsRequests[0].response_format).toBe("wav");
+  expect(ttsRequests[0].model).toBe("tts-1");
+  expect(ttsRequests[0].voice).toBe("alloy");
+
+  // Verify text is highlighted as playing
+  const playingNow = page.locator(".tts-cm-playing-now");
+  await expect(playingNow).toBeVisible({ timeout: 10_000 });
+  await expect(playingNow).toContainText("Testing WAV");
+
+  // Wait for playback to complete
+  await expect(page.locator(".tts-audio-visualizer")).not.toBeVisible({
+    timeout: 60_000,
+  });
+  await expect(page.getByRole("button", { name: "Resume" })).toBeVisible();
+
+  // Verify highlighting is removed after completion
+  await expect(page.locator(".tts-cm-playing-now")).not.toBeVisible();
 });
