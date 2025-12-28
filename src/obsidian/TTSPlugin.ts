@@ -9,7 +9,6 @@ import { AudioSystem, createAudioSystem } from "../player/AudioSystem";
 import { ChunkLoader } from "../player/ChunkLoader";
 import {
   MARKETING_NAME,
-  MARKETING_NAME_LONG,
   TTSPluginSettings,
   TTSPluginSettingsStore,
   pluginSettingsStore,
@@ -21,6 +20,7 @@ import {
   TTSModel,
   TTSModelOptions,
 } from "../models/tts-model";
+import { TTSEditorAction } from "./TTSEditorAction";
 
 // standard lucide.dev icon, but for some reason not working as a ribbon icon without registering it
 // https://lucide.dev/icons/audio-lines
@@ -35,6 +35,7 @@ export default class TTSPlugin extends Plugin {
   system: AudioSystem;
   bridge: ObsidianBridge;
   cache: { destroy: () => void } | undefined;
+  editorAction: TTSEditorAction | undefined;
 
   get player(): AudioStore {
     return this.system.audioStore;
@@ -112,10 +113,15 @@ export default class TTSPlugin extends Plugin {
       },
     });
 
-    // ribbon
-    this.addRibbonIcon("audio-lines", MARKETING_NAME_LONG, () =>
-      this.bridge.playSelection(),
+    // Editor action button - always present, behavior differs by platform
+    this.editorAction = new TTSEditorAction(
+      this,
+      this.player,
+      this.settings,
+      this.bridge,
+      this.audio,
     );
+    this.editorAction.register();
 
     // this pause/resumes the current audio, or initiates a new audio if nothing is playing
     this.addCommand({
@@ -191,11 +197,14 @@ export default class TTSPlugin extends Plugin {
         if (checking) {
           return hasSettings;
         }
-        if (this.player.autoScrollEnabled) {
-          this.player.disableAutoScroll();
-        } else {
+        const newValue = !this.player.autoScrollEnabled;
+        if (newValue) {
           this.player.enableAutoScrollAndScrollToCurrent();
+        } else {
+          this.player.disableAutoScroll();
         }
+        // Persist the setting
+        this.settings.updateSettings({ autoScrollPlayerView: newValue });
       },
     });
 
@@ -210,6 +219,7 @@ export default class TTSPlugin extends Plugin {
   }
 
   onunload() {
+    this.editorAction?.destroy();
     this.player?.destroy(); // player clears the audio
     this.bridge?.destroy();
   }
