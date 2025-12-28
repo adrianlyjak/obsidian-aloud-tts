@@ -116,6 +116,8 @@ export interface MinimaxModelConfig {
   minimax_ttsModel: string;
   /** the voice id to use */
   minimax_ttsVoice: string;
+  /** whether to use the China mainland endpoint (api.minimaxi.com) instead of international (api.minimax.io) */
+  minimax_useChinaEndpoint: boolean;
 }
 
 export interface PollyModelConfig {
@@ -212,6 +214,7 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   minimax_groupId: "",
   minimax_ttsModel: "speech-2.6-turbo",
   minimax_ttsVoice: "English_expressive_narrator",
+  minimax_useChinaEndpoint: false,
 
   // inworld
   inworld_apiKey: "",

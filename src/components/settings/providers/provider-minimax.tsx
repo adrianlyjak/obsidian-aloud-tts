@@ -2,19 +2,56 @@ import { observer } from "mobx-react-lite";
 import React from "react";
 import { TTSPluginSettingsStore } from "../../../player/TTSPluginSettings";
 import { ApiKeyComponent } from "../api-key-component";
-import { OptionSelectSetting, TextInputSetting } from "../setting-components";
+import {
+  CheckboxSetting,
+  OptionSelectSetting,
+  TextInputSetting,
+} from "../setting-components";
 import { MINIMAX_VOICES } from "./provider-minimax-voices";
 
 export const MinimaxSettings = observer(
   ({ store }: { store: TTSPluginSettingsStore }) => {
+    const useChinaEndpoint = store.settings.minimax_useChinaEndpoint;
+    const helpUrl = useChinaEndpoint
+      ? "https://platform.minimaxi.com/user-center/basic-information/interface-key"
+      : "https://platform.minimax.io/user-center/basic-information/interface-key";
+
     return (
       <>
+        <CheckboxSetting
+          name="Use China Mainland Endpoint"
+          description={
+            <>
+              Enable this if you have an API key from the China mainland
+              platform (
+              <a
+                href="https://platform.minimaxi.com"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                platform.minimaxi.com
+              </a>
+              ). Leave disabled for the international platform (
+              <a
+                href="https://platform.minimax.io"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                platform.minimax.io
+              </a>
+              ). API keys from one platform are not compatible with the other.
+            </>
+          }
+          store={store}
+          provider="minimax"
+          fieldName="minimax_useChinaEndpoint"
+        />
         <ApiKeyComponent
           store={store}
           provider="minimax"
           fieldName="minimax_apiKey"
           displayName="MiniMax API key"
-          helpUrl="https://platform.minimax.io/user-center/basic-information/interface-key"
+          helpUrl={helpUrl}
           showValidation={true}
         />
         <TextInputSetting
