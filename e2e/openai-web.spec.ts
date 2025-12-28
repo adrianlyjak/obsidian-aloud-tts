@@ -1,132 +1,108 @@
-import { expect, test, type Page } from "@playwright/test";
-
-interface TTSRequest {
-  input: string;
-  model: string;
-  voice: string;
-}
-
-async function resetWebAppState(page: Page): Promise<void> {
-  await page.goto("./");
-  await page.evaluate(() => {
-    localStorage.clear();
-    indexedDB.deleteDatabase("tts-aloud-db");
-  });
-  await page.reload();
-}
+import { expect, test } from "@playwright/test";
+import {
+  TestContext,
+  getOpenAIApiKey,
+  configureOpenAI,
+  configureOpenAICompat,
+} from "./helpers";
 
 test("web UI can configure OpenAI and play a 2 sentence sample to completion", async ({
   page,
 }) => {
-  const openAiApiKey = process.env.OPENAI_API_KEY;
-  if (!openAiApiKey) {
-    throw new Error("OPENAI_API_KEY is required for this test.");
-  }
+  const apiKey = getOpenAIApiKey();
+  const ctx = new TestContext(page);
 
-  const ttsRequests: TTSRequest[] = [];
-  const ttsResponseStatuses: number[] = [];
+  await ctx.reset();
 
-  page.on("request", (req) => {
-    if (req.url().includes("/v1/audio/speech")) {
-      const postData = req.postData();
-      if (postData) {
-        try {
-          ttsRequests.push(JSON.parse(postData) as TTSRequest);
-        } catch {
-          // ignore parse errors
-        }
-      }
-    }
-  });
-  page.on("response", (resp) => {
-    if (resp.url().includes("/v1/audio/speech")) {
-      ttsResponseStatuses.push(resp.status());
-    }
-  });
-
-  await resetWebAppState(page);
-
-  // Configure OpenAI API key
-  await page.getByRole("button", { name: "Settings" }).click();
-  await expect(
-    page.locator("dialog.web-tts-settings-modal[open]"),
-  ).toBeVisible();
-
-  await page.getByLabel("OpenAI API key").fill(openAiApiKey);
-  await page.getByRole("button", { name: "Close Settings" }).click();
-  await expect(page.locator("dialog.web-tts-settings-modal")).not.toBeVisible();
+  // Configure OpenAI
+  await ctx.settings.open();
+  await configureOpenAI(ctx.settings, { apiKey });
+  await ctx.settings.close();
 
   // Enter sample text with two distinct sentences
   const sentence1 = "Playwright can drive real browsers reliably.";
   const sentence2 = "This is the second sentence for chunking.";
-  const sampleText = `${sentence1} ${sentence2}`;
-
-  // Clear existing text and type new content
-  const editor = page.locator(".cm-content");
-  await editor.click();
-  await page.keyboard.press("ControlOrMeta+A");
-  await page.keyboard.type(sampleText); // Typing replaces selection
-  // Verify text was entered correctly (and old text is gone)
-  await expect(editor).toContainText(sentence1);
-  await expect(editor).toContainText(sentence2);
-  await expect(editor).not.toContainText("Welcome");
-  // Move cursor to start of document - click at the very start of the first line
-  await page.locator(".cm-line").first().click({ position: { x: 0, y: 5 } });
+  await ctx.editor.setText(`${sentence1} ${sentence2}`);
+  await ctx.editor.expectToContain(sentence1);
+  await ctx.editor.expectToContain(sentence2);
+  await ctx.editor.expectNotToContain("Welcome");
+  await ctx.editor.moveCursorToStart();
 
   // Start playback
-  await page
-    .getByRole("button", { name: "Play Selection (or from Cursor)" })
-    .click();
+  await ctx.player.play();
+  await ctx.player.expectToolbarVisible();
 
-  // Verify player UI appears
-  await expect(page.locator(".tts-toolbar-player")).toBeVisible();
-
-  // Wait for first TTS request to complete
-  await expect
-    .poll(() => ttsResponseStatuses.length, { timeout: 30_000 })
-    .toBeGreaterThanOrEqual(1);
-  expect(ttsResponseStatuses[0]).toBe(200);
-
-  // Verify first sentence is highlighted as "playing now"
-  const playingNow = page.locator(".tts-cm-playing-now");
-  await expect(playingNow).toBeVisible({ timeout: 10_000 });
-  await expect(playingNow).toContainText("Playwright");
-  await expect(playingNow).toContainText("reliably");
+  // Wait for first TTS request and verify highlighting
+  await ctx.waitForTTSRequests(1);
+  await ctx.player.expectPlayingNowToContain("Playwright");
+  await expect(ctx.player.playingNow).toContainText("reliably");
 
   // Wait for second TTS request
-  await expect
-    .poll(() => ttsResponseStatuses.length, { timeout: 30_000 })
-    .toBeGreaterThanOrEqual(2);
-  expect(ttsResponseStatuses[1]).toBe(200);
+  await ctx.waitForTTSRequests(2);
 
   // Verify the TTS requests contain the expected text chunks
   await expect
-    .poll(() => ttsRequests.length, { timeout: 5_000 })
+    .poll(() => ctx.requests.length, { timeout: 5_000 })
     .toBeGreaterThanOrEqual(2);
-
-  const requestTexts = ttsRequests.map((r) => r.input);
-  expect(requestTexts[0]).toContain("Playwright");
-  expect(requestTexts[1]).toContain("second sentence");
+  expect(ctx.requests[0].input).toContain("Playwright");
+  expect(ctx.requests[1].input).toContain("second sentence");
 
   // Wait for highlight to move to second sentence
-  await expect(playingNow).toContainText("second sentence", { timeout: 30_000 });
-
-  // At this point, first sentence should be marked as "played before"
-  const playedBefore = page.locator(".tts-cm-playing-before");
-  await expect(playedBefore).toContainText("Playwright");
-
-  // Wait for playback to complete:
-  // - Audio visualizer disappears
-  // - Pause button becomes Resume button
-  await expect(page.locator(".tts-audio-visualizer")).not.toBeVisible({
-    timeout: 60_000,
+  await expect(ctx.player.playingNow).toContainText("second sentence", {
+    timeout: 30_000,
   });
-  await expect(
-    page.getByRole("button", { name: "Resume" }),
-  ).toBeVisible();
 
-  // Verify all highlighting is removed after completion
-  await expect(page.locator(".tts-cm-playing-now")).not.toBeVisible();
-  await expect(page.locator(".tts-cm-playing-before")).not.toBeVisible();
-  await expect(page.locator(".tts-cm-playing-after")).not.toBeVisible();
+  // First sentence should now be marked as "played before"
+  await expect(ctx.player.playedBefore).toContainText("Playwright");
+
+  // Wait for playback to complete
+  await ctx.player.waitForPlaybackComplete();
+  await ctx.player.expectNoHighlighting();
+});
+
+test("OpenAI Compatible provider with WAV format sends correct request and plays audio", async ({
+  page,
+}) => {
+  const apiKey = getOpenAIApiKey();
+  const ctx = new TestContext(page);
+
+  await ctx.reset();
+
+  // Configure OpenAI Compatible with WAV format
+  await ctx.settings.open();
+  await configureOpenAICompat(ctx.settings, {
+    apiKey,
+    model: "tts-1",
+    voice: "alloy",
+    audioFormat: "wav",
+  });
+  await ctx.settings.close();
+
+  // Enter sample text
+  const sampleText = "Testing WAV audio format with OpenAI Compatible provider.";
+  await ctx.editor.setText(sampleText);
+  await ctx.editor.expectToContain("Testing WAV");
+  await ctx.editor.moveCursorToStart();
+
+  // Start playback
+  await ctx.player.play();
+  await ctx.player.expectToolbarVisible();
+
+  // Wait for TTS request to complete
+  await ctx.waitForTTSRequests(1);
+
+  // Verify the request was sent with WAV format
+  await expect
+    .poll(() => ctx.requests.length, { timeout: 5_000 })
+    .toBeGreaterThanOrEqual(1);
+  expect(ctx.requests[0].response_format).toBe("wav");
+  expect(ctx.requests[0].model).toBe("tts-1");
+  expect(ctx.requests[0].voice).toBe("alloy");
+
+  // Verify text is highlighted as playing
+  await ctx.player.expectPlayingNowToContain("Testing WAV");
+
+  // Wait for playback to complete
+  await ctx.player.waitForPlaybackComplete();
+  await ctx.player.expectNoHighlighting();
 });
