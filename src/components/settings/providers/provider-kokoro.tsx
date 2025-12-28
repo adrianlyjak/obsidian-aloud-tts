@@ -76,14 +76,7 @@ const KokoroModelDownload: React.FC<{
       const message =
         err instanceof Error ? err.message : "Failed to download model";
 
-      // Check for WebGPU support
-      if (message.includes("WebGPU") || message.includes("webgpu")) {
-        setError(
-          "WebGPU is not supported in your browser. Please use a modern browser with WebGPU support (Chrome 113+, Edge 113+).",
-        );
-      } else {
-        setError(message);
-      }
+      setError(message);
 
       await store.updateModelSpecificSettings("kokoro", {
         kokoro_modelStatus: "not_downloaded",
@@ -100,15 +93,11 @@ const KokoroModelDownload: React.FC<{
         <div className="setting-item-info">
           <div className="setting-item-name">Kokoro TTS Model</div>
           <div className="setting-item-description">
-            Kokoro is a local TTS model that runs entirely in your browser using
-            WebGPU. No API key required!
+            Kokoro is a local TTS model that runs entirely on your device. No
+            API key required!
             <br />
             <br />
-            <strong>Requirements:</strong> WebGPU-enabled browser (Chrome 113+,
-            Edge 113+)
-            <br />
-            <strong>Download size:</strong> ~350 MB (cached after first
-            download)
+            <strong>Download size:</strong> ~90 MB (cached after first download)
           </div>
         </div>
         <div className="setting-item-control">

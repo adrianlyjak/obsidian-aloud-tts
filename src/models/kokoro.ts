@@ -47,8 +47,8 @@ async function loadKokoroModel(
   const KokoroTTSClass = kokoroModule.KokoroTTS;
 
   const tts = await KokoroTTSClass.from_pretrained(KOKORO_MODEL_ID, {
-    dtype: "fp32", // Use fp32 for WebGPU - quantized models have issues
-    device: "webgpu",
+    dtype: "q8", // 8-bit quantization for smaller download and good performance
+    device: "wasm", // WASM works in Electron/Obsidian (WebGPU not available)
     progress_callback: onProgress,
   });
 
