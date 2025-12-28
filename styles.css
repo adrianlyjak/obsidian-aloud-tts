@@ -61,17 +61,35 @@
 
 .tts-audio-visualizer {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  width: 100%;
-  max-width: 2rem;
+  gap: 2px;
   height: 80%;
 }
 
 .tts-audio-visualizer-bar {
   background-color: var(--icon-color);
-  border-radius: 10px;
-  width: 6%;
+  border-radius: 1px;
+  width: 2px;
+  min-height: 2px;
+  transition: height 0.04s linear;
+}
+
+/* Mini visualizer for editor action button (5 bars) */
+.tts-editor-action-visualizer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 18px;
+  height: 18px;
+  gap: 1px;
+}
+
+.tts-editor-action-visualizer .tts-audio-visualizer-bar {
+  background-color: var(--icon-color);
+  border-radius: 2px;
+  width: 2px;
+  min-height: 2px;
   transition: height 0.04s linear;
 }
 
@@ -199,4 +217,124 @@ details[open] .tts-error-details {
   100% {
     opacity: 1;
   }
+}
+
+/* TTS Control Menu */
+
+.tts-menu-row {
+  display: flex;
+  align-items: center;
+  padding: var(--size-4-2) var(--size-4-3);
+  gap: var(--size-2-3);
+}
+
+/* Playback button group - fill width evenly */
+.tts-menu-playback-group {
+  padding: var(--size-2-2);
+}
+
+.tts-menu-playback {
+  justify-content: stretch;
+  padding: var(--size-2-2);
+  gap: var(--size-2-2);
+}
+
+.tts-menu-playback .tts-menu-icon-btn {
+  flex: 1;
+  height: 52px;
+  border-radius: var(--radius-s);
+}
+
+.tts-menu-playback .tts-menu-icon-btn-primary {
+  /* Primary button same size as others in this layout */
+  width: auto;
+  height: 52px;
+  border-radius: var(--radius-s);
+}
+
+.tts-menu-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-m);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-normal);
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.tts-menu-icon-btn:hover:not(.is-disabled) {
+  background: var(--background-modifier-hover);
+}
+
+.tts-menu-icon-btn:active:not(.is-disabled) {
+  transform: scale(0.96);
+  background: var(--background-modifier-active-hover);
+}
+
+.tts-menu-icon-btn.is-disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.tts-menu-icon-btn-primary {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.tts-menu-icon-btn-primary:hover:not(.is-disabled) {
+  background: var(--interactive-accent-hover);
+}
+
+/* Speed slider - uses menu-item for consistent styling */
+.tts-menu-speed {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-3);
+}
+
+.tts-menu-speed .menu-item-icon {
+  color: var(--text-muted);
+}
+
+.tts-menu-slider {
+  flex: 1;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--background-modifier-border);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.tts-menu-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--interactive-accent);
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.tts-menu-slider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--interactive-accent);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.tts-menu-speed-value {
+  min-width: 3em;
+  text-align: right;
+  font-size: var(--font-ui-medium);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }

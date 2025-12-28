@@ -83,24 +83,6 @@ export const TTSSettingsTabComponent: React.FC<{
 
       <h1>User Interface</h1>
       <PlayerDisplayMode store={store} />
-      <div className="setting-item">
-        <div className="setting-item-info">
-          <div className="setting-item-name">Autoscroll Player View</div>
-          <div className="setting-item-description">
-            Automatically scroll the player view to keep the active text
-            visible.
-          </div>
-        </div>
-        <div className="setting-item-control">
-          <input
-            type="checkbox"
-            checked={store.settings.autoScrollPlayerView}
-            onChange={(e) =>
-              store.updateSettings({ autoScrollPlayerView: e.target.checked })
-            }
-          />
-        </div>
-      </div>
       <h1>Storage</h1>
       <CacheDuration store={store} player={player} />
       <AudioFolderComponent store={store} />
@@ -200,7 +182,7 @@ function describeMode(mode: PlayerViewMode): string {
     case "always":
       return "Always show";
     case "always-mobile":
-      return "Always show on mobile";
+      return "Always show on tablet";
     case "playing":
       return "Only while playing";
     case "never":
@@ -215,7 +197,9 @@ const PlayerDisplayMode: React.FC<{
       <div className="setting-item-info">
         <div className="setting-item-name">Show player toolbar</div>
         <div className="setting-item-description">
-          Show the player toolbar under these conditions
+          Show the player toolbar under these conditions.
+          <br />
+          <i>Note: mobile has a dedicated drawer menu</i>
         </div>
       </div>
       <div className="setting-item-control">

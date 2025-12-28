@@ -1,11 +1,22 @@
 import FFT from "fft.js";
 import * as React from "react";
 
-export const AudioVisualizer: React.FC<{
+const BAR_COUNT = 6;
+
+export interface AudioVisualizerProps {
   audioElement: HTMLAudioElement;
   audioBuffer: AudioBuffer;
   offsetDurationSeconds: number;
-}> = ({ audioElement, audioBuffer, offsetDurationSeconds }) => {
+  /** CSS class name for the container */
+  className?: string;
+}
+
+export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
+  audioElement,
+  audioBuffer,
+  offsetDurationSeconds,
+  className = "tts-audio-visualizer",
+}) => {
   const ref = React.useRef<HTMLElement | null>(null);
   const fft = React.useMemo(() => new FFT(512), [audioBuffer]);
   React.useEffect(() => {
@@ -23,9 +34,7 @@ export const AudioVisualizer: React.FC<{
     }
   }, [ref.current, audioElement, audioBuffer, offsetDurationSeconds, fft]);
 
-  return (
-    <div className="tts-audio-visualizer" ref={(x) => (ref.current = x)}></div>
-  );
+  return <div className={className} ref={(x) => (ref.current = x)}></div>;
 };
 
 function getFrequencyBins(
@@ -34,7 +43,7 @@ function getFrequencyBins(
   audioElement: HTMLAudioElement,
   magnitudes: Float32Array,
   offsetDurationSeconds: number,
-) {
+): Float32Array {
   const position =
     (audioElement.currentTime - offsetDurationSeconds) * audioBuffer.sampleRate;
   const mono = audioBuffer
@@ -42,9 +51,11 @@ function getFrequencyBins(
     .subarray(position, position + fft.size);
   const spectrum = fft.createComplexArray();
   fft.realTransform(spectrum, mono);
-  for (let i = 0; i < fft.size; i++) {
-    const real = mono[i * 2];
-    const imag = mono[i * 2 + 1];
+  // spectrum is interleaved [real, imag, real, imag, ...]
+  const halfSize = fft.size / 2;
+  for (let i = 0; i < halfSize; i++) {
+    const real = spectrum[i * 2];
+    const imag = spectrum[i * 2 + 1];
     magnitudes[i] = Math.sqrt(real * real + imag * imag);
   }
   return magnitudes;
@@ -62,14 +73,27 @@ export function attachVisualizationToDom(
   const bufferLength = fft.size / 2;
   const dataArray = new Float32Array(bufferLength);
 
-  const nSegments = 8;
-  const historySize = 2; // Number of frames to average over
-  const barHistory = Array.from({ length: nSegments }, () =>
-    Array(historySize).fill(0),
+  // Use logarithmic frequency bands for more natural audio perception
+  // Voice frequencies are roughly 85-255 Hz fundamental, with harmonics up to ~8kHz
+  const sampleRate = audioBuffer.sampleRate;
+  const minFreq = 100; // Hz - low end of voice
+  const maxFreq = 6000; // Hz - upper harmonics
+  const minBin = Math.max(1, Math.floor((minFreq * fft.size) / sampleRate));
+  const maxBin = Math.min(
+    Math.floor((maxFreq * fft.size) / sampleRate),
+    bufferLength - 1,
   );
-  let historyIndex = 0;
 
-  const bars = Array(nSegments)
+  // Create logarithmically spaced frequency band boundaries
+  const bandBoundaries: number[] = [];
+  for (let i = 0; i <= BAR_COUNT; i++) {
+    const t = i / BAR_COUNT;
+    // Logarithmic interpolation between minBin and maxBin
+    const bin = Math.floor(minBin * Math.pow(maxBin / minBin, t));
+    bandBoundaries.push(bin);
+  }
+
+  const bars = Array(BAR_COUNT)
     .fill(null)
     .map(() => document.createElement("div"));
   bars.forEach((bar) => {
@@ -80,7 +104,11 @@ export function attachVisualizationToDom(
 
   let frameId: undefined | ReturnType<typeof requestAnimationFrame>;
 
-  function draw() {
+  // Track running max PER BAND for balanced normalization across frequencies
+  const bandRunningMax = new Float32Array(BAR_COUNT).fill(1);
+  const decayFactor = 0.99; // Decay rate for running max
+
+  function draw(): void {
     frameId = requestAnimationFrame(draw);
 
     getFrequencyBins(
@@ -91,35 +119,46 @@ export function attachVisualizationToDom(
       offsetDurationSeconds,
     );
 
-    const min = Math.floor(bufferLength / 32);
-    const max = Math.floor(bufferLength / 6) + min;
-    const segmentSize = (max - min) / nSegments;
+    // Calculate band values
+    const bandValues: number[] = [];
 
+    for (let i = 0; i < BAR_COUNT; i++) {
+      const startBin = bandBoundaries[i];
+      const endBin = bandBoundaries[i + 1];
+
+      // Use peak value in band for more dynamic response
+      let peak = 0;
+      for (let bin = startBin; bin <= endBin; bin++) {
+        if (dataArray[bin] > peak) peak = dataArray[bin];
+      }
+      bandValues.push(peak);
+
+      // Update per-band running max
+      bandRunningMax[i] = Math.max(
+        bandRunningMax[i] * decayFactor,
+        peak,
+        0.001,
+      );
+    }
+
+    // Apply heights with per-band normalization
     bars.forEach((bar, i) => {
-      const index = Math.floor(min + i * segmentSize);
-      const index2 = Math.floor(min + i * segmentSize + segmentSize / 2);
-      const increase = 4;
-      const heights = dataArray.slice(index, index2 + 1);
-      const avgHeight = heights.reduce((sum, h) => sum + h, 0) / heights.length;
-      let barHeight = avgHeight * increase;
-      // Apply a curve to increase barHeight such that lower values change more and higher values change less
-      const curveFactor = 0.5; // Adjust this factor to control the curve intensity
-      barHeight = Math.pow(barHeight, curveFactor);
-      const factor = Math.sin(((i + 1) / (nSegments + 2)) * Math.PI);
-      barHeight = barHeight * factor;
-      barHeight *= 100;
+      // Normalize to this band's running max - this balances all bands
+      let normalized = bandValues[i] / bandRunningMax[i];
 
-      // Update history
-      barHistory[i][historyIndex] = barHeight;
+      // Apply curve to enhance contrast
+      normalized = Math.pow(normalized, 0.7);
 
-      // Compute average
-      const averageHeight =
-        barHistory[i].reduce((sum, h) => sum + h, 0) / historySize;
-      bar.style.height = `${averageHeight}%`;
+      // Apply envelope shape - taper outer bars for a more rounded appearance
+      // For 6 bars: creates shape like [0.5, 0.8, 1.0, 1.0, 0.8, 0.5]
+      const envelope = Math.sin(((i + 1) / (BAR_COUNT + 1)) * Math.PI);
+      normalized *= 0.4 + 0.6 * envelope; // Blend: 40% flat + 60% shaped
+
+      // Clamp to 0-1 range
+      const barHeight = Math.max(0, Math.min(1, normalized));
+
+      bar.style.height = `${barHeight * 100}%`;
     });
-
-    // Update history index
-    historyIndex = (historyIndex + 1) % historySize;
   }
 
   function resumeAndDraw() {

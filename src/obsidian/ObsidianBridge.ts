@@ -264,8 +264,6 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     const selection = editor.getRange(from, to);
     if (selection) {
       try {
-        // Apply autoscroll setting when starting playback
-        player.applyAutoScrollSetting();
         player
           .startPlayer({
             text: selection,

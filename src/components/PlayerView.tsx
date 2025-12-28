@@ -7,12 +7,22 @@ import {
 } from "../player/TTSPluginSettings";
 import { AudioSink } from "../player/AudioSink";
 import { AudioStore } from "../player/AudioStore";
+import { createTTSActions } from "../player/TTSActions";
 import { AudioVisualizer } from "./AudioVisualizer";
 import { IconButton, Spinner } from "./IconButton";
 import { EditorView } from "@codemirror/view";
 import { TTSErrorInfo } from "../models/tts-model";
 import { useTooltip } from "../util/TooltipContext";
 import { AlertCircle } from "lucide-react";
+
+/**
+ * Check if the current device is a mobile phone (not tablet).
+ * The PlayerView panel is hidden on mobile phones because it doesn't
+ * work with Obsidian 1.11's new mobile layout. The editor action menu replaces it.
+ */
+function isMobilePhone(obsidian: TTSEditorBridge): boolean {
+  return obsidian.isMobile() && window.innerWidth < 600;
+}
 
 export const PlayerView = observer(
   ({
@@ -28,6 +38,16 @@ export const PlayerView = observer(
     sink: AudioSink;
     obsidian: TTSEditorBridge;
   }): React.ReactNode => {
+    // Hide PlayerView panel on mobile phones (broken in Obsidian 1.11)
+    // The editor action menu replaces it
+    if (isMobilePhone(obsidian)) {
+      return null;
+    }
+
+    const actions = React.useMemo(
+      () => createTTSActions(player, settings, obsidian),
+      [player, settings, obsidian],
+    );
     const hasText = !!player.activeText;
     const isActiveEditor =
       editor === obsidian.activeEditor || obsidian.detachedAudio;
@@ -58,20 +78,14 @@ export const PlayerView = observer(
           <IconButton
             icon="play"
             tooltip="Play selection"
-            onClick={() => {
-              // Re-enable autoscroll when user starts playing, only if enabled in settings
-              if (settings.settings.autoScrollPlayerView) {
-                player.setAutoScrollEnabled(true);
-              }
-              obsidian.playSelection();
-            }}
+            onClick={() => actions.playSelection()}
           />
         </div>
         <div className="tts-toolbar-player-button-group">
           <IconButton
             icon="skip-back"
             tooltip="Previous"
-            onClick={() => player.activeText?.goToPrevious()}
+            onClick={() => actions.previous()}
             disabled={!player.activeText}
           />
 
@@ -80,25 +94,21 @@ export const PlayerView = observer(
               key="pause"
               icon="pause"
               tooltip="Pause"
-              onClick={() => player.activeText?.pause()}
+              onClick={() => actions.playPause()}
             />
           ) : (
             <IconButton
               key="play"
               icon="step-forward"
               tooltip="Resume"
-              onClick={() => {
-                // Apply autoscroll setting when resuming
-                player.applyAutoScrollSetting();
-                player.activeText?.play();
-              }}
+              onClick={() => actions.playPause()}
               disabled={!player.activeText}
             />
           )}
           <IconButton
             icon="skip-forward"
             tooltip="Next"
-            onClick={() => player.activeText?.goToNext()}
+            onClick={() => actions.next()}
             disabled={!player.activeText}
           />
           <IconButton
@@ -108,13 +118,7 @@ export const PlayerView = observer(
                 ? "Autoscroll enabled (click to disable)"
                 : "Autoscroll disabled (click to enable and scroll to current position)"
             }
-            onClick={() => {
-              if (player.autoScrollEnabled) {
-                player.disableAutoScroll();
-              } else {
-                player.enableAutoScrollAndScrollToCurrent();
-              }
-            }}
+            onClick={() => actions.toggleAutoscroll()}
             highlight={player.autoScrollEnabled}
           />
           <EditPlaybackSpeedButton settings={settings} />
@@ -132,7 +136,7 @@ export const PlayerView = observer(
             <IconButton
               tooltip="Cancel playback"
               icon="x"
-              onClick={() => player.closePlayer()}
+              onClick={() => actions.stop()}
             />
           )}
         </div>
