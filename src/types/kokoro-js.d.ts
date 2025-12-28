@@ -41,3 +41,18 @@ declare module "kokoro-js" {
     flush(): void;
   }
 }
+
+// Type declarations for @huggingface/transformers env
+declare module "@huggingface/transformers" {
+  export const env: {
+    backends: {
+      onnx: {
+        wasm: {
+          proxy: boolean;
+        };
+      };
+    };
+    useBrowserCache?: boolean;
+    allowLocalModels?: boolean;
+  };
+}

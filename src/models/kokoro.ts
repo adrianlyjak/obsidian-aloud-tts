@@ -46,9 +46,20 @@ async function loadKokoroModel(
   const kokoroModule = await import("kokoro-js");
   const KokoroTTSClass = kokoroModule.KokoroTTS;
 
+  // Configure transformers.js to use web/wasm backend in Electron
+  try {
+    const transformers = await import("@huggingface/transformers");
+    // Force WASM backend since we're in Electron (not true Node.js)
+    if (transformers.env) {
+      transformers.env.backends.onnx.wasm.proxy = false;
+    }
+  } catch {
+    // Ignore if transformers env isn't accessible
+  }
+
   const tts = await KokoroTTSClass.from_pretrained(KOKORO_MODEL_ID, {
     dtype: "q8", // 8-bit quantization for smaller download and good performance
-    device: "cpu", // CPU backend for Electron/Node environment
+    device: null, // Let it auto-detect the appropriate backend
     progress_callback: onProgress,
   });
 
