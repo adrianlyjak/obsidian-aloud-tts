@@ -48,7 +48,7 @@ async function loadKokoroModel(
 
   const tts = await KokoroTTSClass.from_pretrained(KOKORO_MODEL_ID, {
     dtype: "q8", // 8-bit quantization for smaller download and good performance
-    device: "wasm", // WASM works in Electron/Obsidian (WebGPU not available)
+    device: "cpu", // CPU backend for Electron/Node environment
     progress_callback: onProgress,
   });
 
