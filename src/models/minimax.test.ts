@@ -3,7 +3,9 @@ import {
   minimaxTextToSpeech,
   minimaxCallTextToSpeech,
   parseMinimaxResponse,
+  getMinimaxApiUrl,
   MINIMAX_API_URL,
+  MINIMAX_CHINA_API_URL,
 } from "./minimax";
 import { DEFAULT_SETTINGS } from "../player/TTSPluginSettings";
 import { TTSModelOptions, TTSErrorInfo } from "./tts-model";
@@ -18,6 +20,18 @@ describe("MiniMax Model", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  describe("getMinimaxApiUrl", () => {
+    it("should return international endpoint by default", () => {
+      const settings = { ...DEFAULT_SETTINGS, minimax_useChinaEndpoint: false };
+      expect(getMinimaxApiUrl(settings)).toBe(MINIMAX_API_URL);
+    });
+
+    it("should return China endpoint when enabled", () => {
+      const settings = { ...DEFAULT_SETTINGS, minimax_useChinaEndpoint: true };
+      expect(getMinimaxApiUrl(settings)).toBe(MINIMAX_CHINA_API_URL);
+    });
   });
 
   describe("convertToOptions", () => {
@@ -179,7 +193,7 @@ describe("MiniMax Model", () => {
       voice: "English_expressive_narrator",
     };
 
-    it("should call t2a_v2 and decode hex audio", async () => {
+    it("should call t2a_v2 on international endpoint and decode hex audio", async () => {
       // hex for "Hello" -> 68 65 6c 6c 6f
       const audioHex = "68656c6c6f";
       const mockResponse = {
@@ -198,7 +212,11 @@ describe("MiniMax Model", () => {
       const buf = await minimaxCallTextToSpeech(
         "Hello",
         mockOptions,
-        { ...DEFAULT_SETTINGS, minimax_groupId: "g-xyz" },
+        {
+          ...DEFAULT_SETTINGS,
+          minimax_groupId: "g-xyz",
+          minimax_useChinaEndpoint: false,
+        },
         {},
       );
 
@@ -216,6 +234,40 @@ describe("MiniMax Model", () => {
       const bytes = new Uint8Array(buf.data);
       expect(Array.from(bytes)).toEqual([104, 101, 108, 108, 111]);
       expect(buf.format).toBe("mp3");
+    });
+
+    it("should call t2a_v2 on China endpoint when enabled", async () => {
+      const audioHex = "68656c6c6f";
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        text: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            data: { audio: audioHex, status: 2 },
+            base_resp: { status_code: 0, status_msg: "" },
+          }),
+        ),
+      };
+
+      vi.mocked(fetch).mockResolvedValue(mockResponse as any);
+
+      await minimaxCallTextToSpeech(
+        "Hello",
+        mockOptions,
+        {
+          ...DEFAULT_SETTINGS,
+          minimax_groupId: "g-xyz",
+          minimax_useChinaEndpoint: true,
+        },
+        {},
+      );
+
+      expect(fetch).toHaveBeenCalledWith(
+        `${MINIMAX_CHINA_API_URL}/v1/t2a_v2?GroupId=g-xyz`,
+        expect.objectContaining({
+          method: "POST",
+        }),
+      );
     });
   });
 });

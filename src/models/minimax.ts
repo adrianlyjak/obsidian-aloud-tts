@@ -9,7 +9,17 @@ import {
 import { hexToArrayBuffer } from "../util/misc";
 import { AudioData } from "./tts-model";
 
+/** International endpoint (platform.minimax.io) */
 export const MINIMAX_API_URL = "https://api.minimax.io";
+/** China mainland endpoint (platform.minimaxi.com) */
+export const MINIMAX_CHINA_API_URL = "https://api.minimaxi.com";
+
+/** Get the appropriate Minimax API URL based on settings */
+export function getMinimaxApiUrl(settings: TTSPluginSettings): string {
+  return settings.minimax_useChinaEndpoint
+    ? MINIMAX_CHINA_API_URL
+    : MINIMAX_API_URL;
+}
 
 /** Shape of a successful Minimax TTS response */
 export interface MinimaxTTSResponse {
@@ -115,7 +125,8 @@ export async function minimaxCallTextToSpeech(
   _context: AudioTextContext = {},
 ): Promise<AudioData> {
   const groupId = settings.minimax_groupId;
-  const url = `${MINIMAX_API_URL}/v1/t2a_v2?GroupId=${encodeURIComponent(groupId)}`;
+  const apiUrl = getMinimaxApiUrl(settings);
+  const url = `${apiUrl}/v1/t2a_v2?GroupId=${encodeURIComponent(groupId)}`;
 
   const response = await fetch(url, {
     method: "POST",

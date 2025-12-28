@@ -72,15 +72,18 @@ For users who self-host a TTS service or use a third-party provider with an Open
 
 ### MiniMax
 
--   **API Key**: Your API key from `https://www.minimax.ai/`.
+-   **Use China Mainland Endpoint**: Toggle this if you have an API key from the China mainland platform ([platform.minimaxi.com](https://platform.minimaxi.com)). Leave disabled for the international platform ([platform.minimax.io](https://platform.minimax.io)). API keys from one platform are not compatible with the other.
+-   **API Key**: Your API key from MiniMax.
 -   **GroupId**: Your MiniMax GroupId. This is required and is appended to requests as a `?GroupId=` query parameter.
 -   **Model**: One of: `speech-2.6-hd`, `speech-2.6-turbo`, `speech-02-hd`, `speech-02-turbo`, `speech-01-hd`, `speech-01-turbo`.
 -   **Voice**: A supported voice id
 
 Notes:
+-   MiniMax operates two separate platforms with incompatible API keys:
+    -   **International** (default): [platform.minimax.io](https://platform.minimax.io) — higher minimum recharge (~$25)
+    -   **China Mainland**: [platform.minimaxi.com](https://platform.minimaxi.com) — lower entry cost
 -   MiniMax integration currently uses non-streaming synthesis and returns `mp3` decoded from `hex`.
 -   Advanced options like `language_boost`, `timbre_weights`, or streaming are not yet exposed in settings.
--   **Output Format**: Select the desired audio format (e.g., MP3/WAV variants).
 
 ### AWS Polly
 
