@@ -107,7 +107,7 @@ const HumeVoiceComponent: React.FC<{
     return (
       <TextInputSetting
         name="Hume Voice ID"
-        description="Enter your Hume Voice ID (API key required to load voice list)"
+        description="Enter your Hume Voice ID (API key required to load voice list)."
         store={store}
         provider="hume"
         fieldName="hume_ttsVoice"
@@ -149,7 +149,7 @@ const HumeVoiceComponent: React.FC<{
         )}
         <TextInputSetting
           name="Hume Voice ID"
-          description="No voices found. Enter your Hume Voice ID manually"
+          description="No voices found. Enter your Hume Voice ID manually."
           store={store}
           provider="hume"
           fieldName="hume_ttsVoice"
@@ -163,7 +163,7 @@ const HumeVoiceComponent: React.FC<{
   return (
     <OptionSelectSetting
       name="Voice"
-      description={`Available ${provider === "HUME_AI" ? "Hume" : "custom"} voices`}
+      description={`Available ${provider === "HUME_AI" ? "Hume" : "custom"} voices.`}
       store={store}
       provider="hume"
       fieldName="hume_ttsVoice"
@@ -178,7 +178,7 @@ const HumeTTSInstructionsComponent: React.FC<{
   return (
     <TextareaSetting
       name="Voice Instructions"
-      description="Optional instructions to customize the tone and style of the voice"
+      description="Optional instructions to customize the tone and style of the voice."
       store={store}
       provider="hume"
       fieldName="hume_ttsInstructions"

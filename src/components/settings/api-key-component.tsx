@@ -66,7 +66,7 @@ export const ApiKeyComponent: React.FC<ApiKeyComponentProps> = observer(
           .
         </>
       ) : (
-        `Your ${displayName}`
+        `Your ${displayName}.`
       ));
 
     return (

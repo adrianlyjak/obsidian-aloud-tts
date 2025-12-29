@@ -83,7 +83,7 @@ const MinimaxModelComponent: React.FC<{ store: TTSPluginSettingsStore }> =
     return (
       <OptionSelectSetting
         name="Model"
-        description="The MiniMax TTS model to use"
+        description="The MiniMax TTS model to use."
         store={store}
         provider="minimax"
         fieldName="minimax_ttsModel"
@@ -97,7 +97,7 @@ const MinimaxVoiceComponent: React.FC<{ store: TTSPluginSettingsStore }> =
     return (
       <OptionSelectSetting
         name="Voice"
-        description="The MiniMax voice to use"
+        description="The MiniMax voice to use."
         store={store}
         provider="minimax"
         fieldName="minimax_ttsVoice"

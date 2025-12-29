@@ -11,7 +11,7 @@ The Aloud TTS plugin offers a variety of settings to customize your text-to-spee
 
 These settings control the core behavior of the plugin.
 
--   **TTS Provider**: Choose the text-to-speech service you want to use. Each provider offers different voices and pricing. Supported providers include OpenAI, Google Gemini, ElevenLabs, many other TTS providers, and any OpenAI-compatible API.
+-   **TTS Provider**: Choose the text-to-speech service you want to use. Each provider offers different voices and pricing. Supported providers include OpenAI, Google Gemini, ElevenLabs, Inworld, many other TTS providers, and any OpenAI-compatible API.
 -   **Playback Speed**: Adjust the default playback speed. The default is `1.0x`. This can also be adjusted from the player UI.
 -   **Audio Folder**: The directory in your vault where exported audio files are saved. The default is `aloud/`.
 
@@ -44,6 +44,14 @@ Each TTS provider has its own specific settings. You only need to configure the 
 
 -   **API Key**: Your API key from [Hume AI](https://beta.hume.ai/playground?modal=api-keys).
 -   **Voice**: The Hume AI voice to use.
+
+### Inworld
+
+-   **API Key**: Your Inworld API key (Basic Auth base64 format) from [Inworld](https://studio.inworld.ai/).
+-   **Model**: The Inworld TTS model to use:
+    -   `Standard` (inworld-tts-1)
+    -   `Max Quality` (inworld-tts-1-max)
+-   **Voice**: The Inworld voice to use. The voice list is loaded from the API after entering a valid API key.
 
 ### OpenAI-Compatible API
 

@@ -47,7 +47,7 @@ const GeminiModelComponent: React.FC<{
   return (
     <OptionSelectSetting
       name="Model"
-      description="The Gemini TTS model to use"
+      description="The Gemini TTS model to use."
       store={store}
       provider="gemini"
       fieldName="gemini_ttsModel"
@@ -160,7 +160,7 @@ const GeminiVoiceComponent: React.FC<{
   return (
     <OptionSelectSetting
       name="Voice"
-      description="The voice option to use"
+      description="The voice option to use."
       store={store}
       provider="gemini"
       fieldName="gemini_ttsVoice"
@@ -175,7 +175,7 @@ const GeminiTTSInstructionsComponent: React.FC<{
   return (
     <TextareaSetting
       name="Voice Instructions"
-      description="Optional instructions to customize the tone and style of the voice"
+      description="Optional instructions to customize the tone and style of the voice."
       store={store}
       provider="gemini"
       fieldName="gemini_ttsInstructions"

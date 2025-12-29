@@ -263,8 +263,40 @@ Testing guidelines
 
 ### Keep end-user docs up to date
 
-After adding a provider or changing required fields, update the docs so users can configure it:
-- Edit `docs/src/content/docs/configuration.md` to add/update a section for your provider with its required fields (API key, model/voice names, any special options like region/output format/context).
-- If screenshots change, update images under `docs/public/` and the README settings screenshot if needed.
+After adding a provider, update the documentation site so users know how to configure it.
+
+#### 1) Update `docs/src/content/docs/configuration.md`
+
+This is the main configuration reference. Make three updates:
+
+**a) Add to the General Settings provider list** (line ~14):
+```md
+-   **TTS Provider**: ... Supported providers include OpenAI, Google Gemini, ElevenLabs, Foo, ...
+```
+
+**b) Add a new Provider Settings section** in alphabetical order among existing providers:
+```md
+### Foo
+
+-   **API Key**: Your Foo API key from [Foo Dashboard](https://foo.com/dashboard).
+-   **Model**: The Foo model to use:
+    -   `Standard` (foo-tts-1)
+    -   `Premium` (foo-tts-1-hd)
+-   **Voice**: The Foo voice to use. The voice list is loaded from the API after entering a valid API key.
+```
+
+Include:
+- **API Key** with a link to where users obtain it
+- **Model** options if applicable (list available models with display names and IDs)
+- **Voice** selection details (static list vs. dynamically loaded)
+- Any provider-specific options (region, output format, context mode, etc.)
+- A "Notes" section if there are important caveats (e.g., separate platforms, authentication quirks)
+
+#### 2) Update `docs/src/content/docs/getting-started.md`
+
+Add your provider to the example list in Step 2:
+```md
+2.  **Choose a TTS Provider**: Select a provider from the dropdown menu, such as OpenAI, Google Gemini, Hume AI, or Foo.
+```
 
 

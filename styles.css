@@ -270,6 +270,12 @@ details[open] .tts-error-details {
   transition: background-color 0.15s ease, transform 0.1s ease;
 }
 
+.tts-menu-icon-btn .svg-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .tts-menu-icon-btn:hover:not(.is-disabled) {
   background: var(--background-modifier-hover);
 }
@@ -306,12 +312,27 @@ details[open] .tts-error-details {
 
 .tts-menu-slider {
   flex: 1;
-  height: 4px;
+  height: 22px; /* Match thumb height for proper centering */
   -webkit-appearance: none;
   appearance: none;
-  background: var(--background-modifier-border);
-  border-radius: 2px;
+  background: transparent;
   cursor: pointer;
+  margin: 0;
+}
+
+/* iOS/Safari track styling (otherwise the bar can be nearly invisible) */
+.tts-menu-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  background: var(--background-modifier-border-hover);
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--background-modifier-border);
+}
+
+.tts-menu-slider::-moz-range-track {
+  height: 6px;
+  background: var(--background-modifier-border-hover);
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--background-modifier-border);
 }
 
 .tts-menu-slider::-webkit-slider-thumb {
@@ -322,6 +343,7 @@ details[open] .tts-error-details {
   border-radius: 50%;
   background: var(--interactive-accent);
   cursor: pointer;
+  border: 2px solid var(--background-primary);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
@@ -331,7 +353,7 @@ details[open] .tts-error-details {
   border-radius: 50%;
   background: var(--interactive-accent);
   cursor: pointer;
-  border: none;
+  border: 2px solid var(--background-primary);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 

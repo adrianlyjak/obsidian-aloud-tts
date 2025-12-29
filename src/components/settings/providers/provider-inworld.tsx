@@ -34,7 +34,7 @@ const InworldModelComponent: React.FC<{
   return (
     <OptionSelectSetting
       name="Model"
-      description="The Inworld TTS model to use"
+      description="The Inworld TTS model to use."
       store={store}
       provider="inworld"
       fieldName="inworld_modelId"
@@ -109,7 +109,7 @@ const InworldVoiceComponent: React.FC<{
   return (
     <OptionSelectSetting
       name="Voice"
-      description="The Inworld voice to use"
+      description="The Inworld voice to use."
       store={store}
       provider="inworld"
       fieldName="inworld_voiceId"
