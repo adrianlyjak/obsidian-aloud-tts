@@ -204,6 +204,60 @@ dialog::backdrop {
    ================================================================= */
 
 /* Emulate Obsidian's setting component styles that shared components depend on */
+
+/* Setting groups - container for related settings with a heading */
+.setting-group {
+  margin-bottom: 24px;
+}
+
+.setting-group:last-child {
+  margin-bottom: 0;
+}
+
+/* Setting item heading - section headers that look like h1 in Obsidian */
+.setting-item.setting-item-heading {
+  border-bottom: 1px solid var(--border-secondary);
+  padding: 12px 0;
+  margin-bottom: 0;
+}
+
+.setting-item.setting-item-heading .setting-item-info {
+  margin-right: 16px;
+}
+
+.setting-item.setting-item-heading .setting-item-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0;
+}
+
+/* Setting items container - wraps the actual settings under a heading */
+.setting-items {
+  padding-left: 0;
+}
+
+/* Test voice textarea */
+.tts-test-voice-textarea {
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-primary);
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.tts-test-voice-textarea:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(0, 122, 204, 0.12);
+}
+
+/* Regular setting items */
 .setting-item {
   display: flex;
   align-items: flex-start;
@@ -212,7 +266,7 @@ dialog::backdrop {
   border-bottom: 1px solid var(--border-primary);
 }
 
-.setting-item:last-child {
+.setting-items > .setting-item:last-child {
   border-bottom: none;
 }
 
