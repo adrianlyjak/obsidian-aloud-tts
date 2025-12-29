@@ -51,7 +51,7 @@ const AzureRegionComponent: React.FC<{
   return (
     <OptionSelectSetting
       name="Region"
-      description="The Azure region for your Speech Services resource"
+      description="The Azure region for your Speech Services resource."
       store={store}
       provider="azure"
       fieldName="azure_region"
@@ -150,7 +150,7 @@ const AzureVoiceComponent: React.FC<{
   return (
     <OptionSelectSetting
       name="Voice"
-      description="The Azure voice to use for speech synthesis"
+      description="The Azure voice to use for speech synthesis."
       store={store}
       provider="azure"
       fieldName="azure_voice"
@@ -165,7 +165,7 @@ const AzureOutputFormatComponent: React.FC<{
   return (
     <OptionSelectSetting
       name="Output Format"
-      description="The audio format for the generated speech"
+      description="The audio format for the generated speech."
       store={store}
       provider="azure"
       fieldName="azure_outputFormat"

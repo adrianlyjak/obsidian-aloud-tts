@@ -11,3 +11,6 @@ Detailed documentation index:
 - [audio-player.md](architecture-docs/audio-player.md) explains in detail the state machine and flow of the audio player.
 - [adding-a-provider.md](architecture-docs/adding-a-provider.md) explains how to add a new TTS provider to the audio system.
 
+## Styling Guidance
+
+Use "Title Case" for headings. Within the settings section, use full sentence descriptions with periods.

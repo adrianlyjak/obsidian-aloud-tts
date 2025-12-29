@@ -73,7 +73,7 @@ const PollyRegionComponent: React.FC<{ store: TTSPluginSettingsStore }> =
     return (
       <OptionSelectSetting
         name="Region"
-        description="The AWS region for Polly"
+        description="The AWS region for Polly."
         store={store}
         provider="polly"
         fieldName="polly_region"
@@ -183,7 +183,7 @@ const PollyVoiceComponent: React.FC<{ store: TTSPluginSettingsStore }> =
     return (
       <OptionSelectSetting
         name="Voice"
-        description="The Polly voice to use"
+        description="The Polly voice to use."
         store={store}
         provider="polly"
         fieldName="polly_voiceId"
@@ -197,7 +197,7 @@ const PollyEngineComponent: React.FC<{ store: TTSPluginSettingsStore }> =
     return (
       <OptionSelectSetting
         name="Engine"
-        description="Polly engine for synthesis"
+        description="Polly engine for synthesis."
         store={store}
         provider="polly"
         fieldName="polly_engine"

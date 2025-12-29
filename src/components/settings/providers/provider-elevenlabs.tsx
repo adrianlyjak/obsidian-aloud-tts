@@ -88,7 +88,7 @@ const ElevenLabsModelComponent: React.FC<{
   return (
     <OptionSelectSetting
       name="Model"
-      description="The ElevenLabs TTS model to use"
+      description="The ElevenLabs TTS model to use."
       store={store}
       provider="elevenlabs"
       fieldName="elevenlabs_model"
@@ -204,7 +204,7 @@ const ElevenLabsVoiceComponent: React.FC<{
         <div className="setting-item-info">
           <div className="setting-item-name">Voice Category</div>
           <div className="setting-item-description">
-            Switch between Custom Voices or Default Voices
+            Switch between custom voices or default voices.
           </div>
         </div>
         <div className="setting-item-control">
@@ -220,7 +220,7 @@ const ElevenLabsVoiceComponent: React.FC<{
       </div>
       <OptionSelectSetting
         name="Voice"
-        description="The ElevenLabs voice to use"
+        description="The ElevenLabs voice to use."
         store={store}
         provider="elevenlabs"
         fieldName="elevenlabs_voice"

@@ -24,21 +24,21 @@ export const OpenAICompatibleSettings = observer(
         <OpenAICompatibleAPIBaseURLComponent store={store} />
         <TextInputSetting
           name="Model"
-          description="The model parameter"
+          description="The model parameter."
           store={store}
           provider="openaicompat"
           fieldName="openaicompat_ttsModel"
         />
         <TextInputSetting
           name="Custom OpenAI Voice"
-          description="The voice parameter"
+          description="The voice parameter."
           store={store}
           provider="openaicompat"
           fieldName="openaicompat_ttsVoice"
         />
         <OptionSelectSetting
           name="Audio Format"
-          description="The audio format to request from the API"
+          description="The audio format to request from the API."
           store={store}
           provider="openaicompat"
           fieldName="openaicompat_responseFormat"
@@ -67,7 +67,7 @@ const OpenAICompatibleAPIBaseURLComponent: React.FC<{
   return (
     <TextInputSetting
       name="API URL"
-      description="Base url for openai compatible API"
+      description="Base URL for OpenAI compatible API."
       store={store}
       fieldName="openaicompat_apiBase"
       placeholder={OPENAI_API_URL}

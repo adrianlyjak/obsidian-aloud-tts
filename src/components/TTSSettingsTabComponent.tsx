@@ -96,9 +96,9 @@ const AudioOptions: React.FC<{
   return (
     <div className="setting-item">
       <div className="setting-item-info">
-        <div className="setting-item-name">Text chunking</div>
+        <div className="setting-item-name">Text Chunking</div>
         <div className="setting-item-description">
-          Split text into sentences or paragraphs for playback
+          Split text into sentences or paragraphs for playback.
         </div>
       </div>
       <div className="setting-item-control">
@@ -193,11 +193,13 @@ const PlayerDisplayMode: React.FC<{
   return (
     <div className="setting-item">
       <div className="setting-item-info">
-        <div className="setting-item-name">Show player toolbar</div>
+        <div className="setting-item-name">Show Player Toolbar</div>
         <div className="setting-item-description">
           Show the player toolbar under these conditions.
           <br />
-          <i>Note: mobile has a dedicated drawer menu</i>
+          <i>
+            Note: Does not apply to mobile, which has a dedicated drawer menu.
+          </i>
         </div>
       </div>
       <div className="setting-item-control">
@@ -279,12 +281,13 @@ const CacheDuration: React.FC<{
     <>
       <div className="setting-item">
         <div className="setting-item-info">
-          <div className="setting-item-name">Cache type</div>
+          <div className="setting-item-name">Cache Type</div>
           <div className="setting-item-description">
-            Local device based cache (recommended), or a vault based cache that
-            is shared across devices.
+            Local device based cache (recommended), or a vault based cache in a
+            folder that is shared across devices.
             <br />
-            Device local cache is recommended to avoid sync overhead
+            Device local cache is recommended to avoid sync overhead. Vault
+            based cache is stored in a <code>.tts</code> folder in your vault.
           </div>
         </div>
         <div className="setting-item-control">
@@ -300,10 +303,10 @@ const CacheDuration: React.FC<{
       </div>
       <div className="setting-item">
         <div className="setting-item-info">
-          <div className="setting-item-name">Cache duration</div>
+          <div className="setting-item-name">Cache Duration</div>
           <div className="setting-item-description">
-            Cache duration in hours. Audio snippets will be purged and
-            re-requested after this duration
+            Cache duration in hours before deleting cached audio files to save
+            space.
           </div>
         </div>
         <div className="setting-item-control">
@@ -314,7 +317,12 @@ const CacheDuration: React.FC<{
             )}
             onChange={onChange}
           />
-          <span className="setting-item-description">hours</span>
+          <span
+            style={{ minWidth: "40px" }}
+            className="setting-item-description"
+          >
+            hours
+          </span>
         </div>
       </div>
       {/* And a line that shows the current cache usage  as well as a button to clear it */}
@@ -395,7 +403,7 @@ const AudioFolderComponent: React.FC<{
       <div className="setting-item-info">
         <div className="setting-item-name">Audio Folder</div>
         <div className="setting-item-description">
-          The folder to store audio files
+          The folder where exported audio files will be saved.
         </div>
       </div>
       <div className="setting-item-control">

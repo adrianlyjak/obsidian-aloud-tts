@@ -31,7 +31,7 @@ const OpenAIModelComponent: React.FC<{
   return (
     <OptionSelectSetting
       name="Model"
-      description="The OpenAI TTS model to use"
+      description="The OpenAI TTS model to use."
       store={store}
       provider="openai"
       fieldName="openai_ttsModel"
@@ -126,7 +126,7 @@ const OpenAIVoiceComponent: React.FC<{
   return (
     <OptionSelectSetting
       name="Voice"
-      description="The voice option to use"
+      description="The voice option to use."
       store={store}
       provider="openai"
       fieldName="openai_ttsVoice"
@@ -148,7 +148,7 @@ const OpenAITTSInstructionsComponent: React.FC<{
   return (
     <TextareaSetting
       name="Voice Instructions"
-      description="Optional instructions to customize the tone and style of the voice (only supported by some models)"
+      description="Optional instructions to customize the tone and style of the voice."
       store={store}
       provider="openai"
       fieldName="openai_ttsInstructions"

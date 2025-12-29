@@ -23,7 +23,7 @@ After installing the plugin, you need to configure a TTS provider to enable text
 
     <!-- `[INSERT SCREENSHOT: settings_panel_location.png]` -->
 
-2.  **Choose a TTS Provider**: Select a provider from the dropdown menu, such as OpenAI, Google Gemini, or Hume AI.
+2.  **Choose a TTS Provider**: Select a provider from the dropdown menu, such as OpenAI, Google Gemini, Hume AI, or Inworld.
 
     <!-- `[INSERT SCREENSHOT: provider_selection.png]` -->
 
