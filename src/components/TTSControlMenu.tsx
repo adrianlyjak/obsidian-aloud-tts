@@ -90,12 +90,12 @@ export const TTSControlMenuContent = observer(
 
           <div className="menu-separator" />
 
-          {/* Settings group: play from cursor, speed, auto scroll */}
+          {/* Settings group: restart from cursor */}
           <div className="menu-group">
-            {/* Play from cursor */}
             <div
               className="menu-item tappable"
               onClick={() => {
+                actions.stop();
                 actions.playSelection();
                 onClose();
               }}
@@ -103,9 +103,14 @@ export const TTSControlMenuContent = observer(
               <div className="menu-item-icon">
                 <ObsidianIcon icon="play" />
               </div>
-              <div className="menu-item-title">Play from cursor</div>
+              <div className="menu-item-title">Restart playing from cursor</div>
             </div>
+          </div>
 
+          <div className="menu-separator" />
+
+          {/* Settings group: speed, auto scroll */}
+          <div className="menu-group">
             {/* Speed slider */}
             <div className="menu-item tts-menu-speed">
               <div className="menu-item-icon">

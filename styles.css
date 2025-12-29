@@ -306,12 +306,28 @@ details[open] .tts-error-details {
 
 .tts-menu-slider {
   flex: 1;
-  height: 4px;
+  height: 6px;
   -webkit-appearance: none;
   appearance: none;
-  background: var(--background-modifier-border);
-  border-radius: 2px;
+  background: var(--background-modifier-border-hover);
+  border-radius: 999px;
   cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--background-modifier-border);
+}
+
+/* iOS/Safari track styling (otherwise the bar can be nearly invisible) */
+.tts-menu-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  background: var(--background-modifier-border-hover);
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--background-modifier-border);
+}
+
+.tts-menu-slider::-moz-range-track {
+  height: 6px;
+  background: var(--background-modifier-border-hover);
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--background-modifier-border);
 }
 
 .tts-menu-slider::-webkit-slider-thumb {
@@ -322,7 +338,9 @@ details[open] .tts-error-details {
   border-radius: 50%;
   background: var(--interactive-accent);
   cursor: pointer;
+  border: 2px solid var(--background-primary);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  margin-top: calc((6px - 22px) / 2);
 }
 
 .tts-menu-slider::-moz-range-thumb {
