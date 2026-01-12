@@ -31,6 +31,10 @@ export default defineConfig({
 					label: 'Configuration',
 					link: '/configuration/',
 				},
+				{
+					label: 'Customization',
+					autogenerate: { directory: 'customization' },
+				},
 			],
 		}),
 	],
