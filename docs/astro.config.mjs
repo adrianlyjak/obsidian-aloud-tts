@@ -13,6 +13,24 @@ export default defineConfig({
 			logo: {
 				src: './public/favicon.svg',
 			},
+			head: [
+				{
+					tag: 'script',
+					attrs: {
+						src: 'https://www.googletagmanager.com/gtag/js?id=G-9Q0LL14N1E',
+						async: true,
+					},
+				},
+				{
+					tag: 'script',
+					content: `
+						window.dataLayer = window.dataLayer || [];
+						function gtag(){dataLayer.push(arguments);}
+						gtag('js', new Date());
+						gtag('config', 'G-9Q0LL14N1E');
+					`,
+				},
+			],
 			customCss: [
 				// Custom CSS for purple theme
 				'./src/styles/custom.css',
