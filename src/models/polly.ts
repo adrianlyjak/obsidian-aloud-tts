@@ -8,6 +8,13 @@ import {
   TTSModel,
   TTSModelOptions,
 } from "./tts-model";
+import {
+  AWSCredentials,
+  getCredentialsWithRefresh,
+  isDesktopApp,
+  readProfileCredentials,
+  runRefreshCommand,
+} from "./aws-profile";
 
 export const POLLY_ENGINES = [
   { label: "Neural", value: "neural" },
@@ -55,22 +62,56 @@ export type PollyVoice = {
 export const pollyTextToSpeech: TTSModel = {
   call: pollyCallTextToSpeech,
   validateConnection: async (settings) => {
-    if (!settings.polly_accessKeyId || !settings.polly_secretAccessKey) {
-      return REQUIRE_API_KEY;
-    }
     if (!settings.polly_region.trim()) {
       return "Please specify an AWS region";
     }
+
+    // Get credentials based on auth mode
+    const credsResult = await getPollyCredentials(settings);
+    if (!credsResult.credentials) {
+      if (settings.polly_authMode === "profile") {
+        if (!isDesktopApp()) {
+          return "AWS profile authentication is only available on desktop";
+        }
+        return `Could not read credentials from AWS profile "${settings.polly_profile}". Make sure the profile exists in ~/.aws/credentials`;
+      }
+      return REQUIRE_API_KEY;
+    }
+
     try {
-      await listPollyVoices(
-        settings.polly_accessKeyId,
-        settings.polly_secretAccessKey,
+      await listPollyVoicesWithCreds(
+        credsResult.credentials,
         settings.polly_region,
       );
       return undefined;
     } catch (error) {
       if (error instanceof TTSErrorInfo) {
         if (error.httpErrorCode === 403 || error.httpErrorCode === 401) {
+          // Try refreshing credentials if using profile mode
+          if (
+            settings.polly_authMode === "profile" &&
+            settings.polly_refreshCommand
+          ) {
+            const refreshResult = await runRefreshCommand(
+              settings.polly_refreshCommand,
+            );
+            if (refreshResult.success) {
+              const newCreds = await readProfileCredentials(
+                settings.polly_profile,
+              );
+              if (newCreds) {
+                try {
+                  await listPollyVoicesWithCreds(
+                    newCreds,
+                    settings.polly_region,
+                  );
+                  return undefined;
+                } catch {
+                  // Still failed after refresh
+                }
+              }
+            }
+          }
           return "Invalid AWS credentials or insufficient permissions";
         } else if (error.httpErrorCode !== undefined) {
           return `HTTP error code ${error.httpErrorCode}: ${error.ttsJsonMessage() || error.message}`;
@@ -91,6 +132,31 @@ export const pollyTextToSpeech: TTSModel = {
   },
 };
 
+/**
+ * Get AWS credentials based on the current auth mode
+ */
+async function getPollyCredentials(
+  settings: TTSPluginSettings,
+): Promise<{ credentials: AWSCredentials | null; fromProfile: boolean }> {
+  if (settings.polly_authMode === "profile") {
+    const credentials = await readProfileCredentials(settings.polly_profile);
+    return { credentials, fromProfile: true };
+  }
+
+  // Static credentials mode
+  if (settings.polly_accessKeyId && settings.polly_secretAccessKey) {
+    return {
+      credentials: {
+        accessKeyId: settings.polly_accessKeyId,
+        secretAccessKey: settings.polly_secretAccessKey,
+      },
+      fromProfile: false,
+    };
+  }
+
+  return { credentials: null, fromProfile: false };
+}
+
 export async function pollyCallTextToSpeech(
   text: string,
   options: TTSModelOptions,
@@ -108,27 +174,92 @@ export async function pollyCallTextToSpeech(
     });
   }
 
-  const endpoint = `https://polly.${settings.polly_region}.amazonaws.com/v1/speech`;
+  // Get credentials based on auth mode
+  const credsResult = await getPollyCredentials(settings);
+  if (!credsResult.credentials) {
+    throw new TTSErrorInfo("AWS credentials not available", {
+      error: {
+        message:
+          settings.polly_authMode === "profile"
+            ? `Could not read credentials from AWS profile "${settings.polly_profile}"`
+            : "AWS Access Key ID and Secret Access Key are required",
+        type: "invalid_request_error",
+        code: "missing_credentials",
+        param: null,
+      },
+    });
+  }
+
+  // Try to make the request
+  try {
+    return await makePollyRequest(
+      text,
+      settings.polly_region,
+      settings.polly_voiceId,
+      settings.polly_engine,
+      credsResult.credentials,
+    );
+  } catch (error) {
+    // If auth error and using profile mode with refresh command, try refreshing
+    if (
+      error instanceof TTSErrorInfo &&
+      (error.httpErrorCode === 401 || error.httpErrorCode === 403) &&
+      settings.polly_authMode === "profile" &&
+      settings.polly_refreshCommand
+    ) {
+      const refreshResult = await getCredentialsWithRefresh(
+        settings.polly_profile,
+        settings.polly_refreshCommand,
+        true, // force refresh
+      );
+
+      if (refreshResult.credentials && refreshResult.refreshed) {
+        return await makePollyRequest(
+          text,
+          settings.polly_region,
+          settings.polly_voiceId,
+          settings.polly_engine,
+          refreshResult.credentials,
+        );
+      }
+    }
+
+    throw error;
+  }
+}
+
+/**
+ * Make the actual Polly API request
+ */
+async function makePollyRequest(
+  text: string,
+  region: string,
+  voiceId: string,
+  engine: string,
+  credentials: AWSCredentials,
+): Promise<AudioData> {
+  const endpoint = `https://polly.${region}.amazonaws.com/v1/speech`;
 
   const requestBody = JSON.stringify({
     Text: text,
     OutputFormat: "mp3",
-    VoiceId: settings.polly_voiceId,
-    Engine: settings.polly_engine,
+    VoiceId: voiceId,
+    Engine: engine,
   });
 
   const signed = await signAwsRequest({
     method: "POST",
     service: "polly",
-    region: settings.polly_region,
-    host: `polly.${settings.polly_region}.amazonaws.com`,
+    region: region,
+    host: `polly.${region}.amazonaws.com`,
     path: "/v1/speech",
     headers: {
       "content-type": "application/json",
     },
     body: requestBody,
-    accessKeyId: settings.polly_accessKeyId,
-    secretAccessKey: settings.polly_secretAccessKey,
+    accessKeyId: credentials.accessKeyId,
+    secretAccessKey: credentials.secretAccessKey,
+    sessionToken: credentials.sessionToken,
   });
 
   const response = await fetch(endpoint, {
@@ -139,13 +270,14 @@ export async function pollyCallTextToSpeech(
 
   await validate200Polly(response);
   const buf = await response.arrayBuffer();
-  // Output format is controlled by X-Microsoft-OutputFormat-like header (here Polly OutputFormat field) set to mp3
   return { data: buf, format: "mp3" };
 }
 
-export async function listPollyVoices(
-  accessKeyId: string,
-  secretAccessKey: string,
+/**
+ * List Polly voices using credentials object
+ */
+export async function listPollyVoicesWithCreds(
+  credentials: AWSCredentials,
   region: string,
 ): Promise<PollyVoice[]> {
   const endpoint = `https://polly.${region}.amazonaws.com/v1/voices`;
@@ -157,8 +289,9 @@ export async function listPollyVoices(
     host: `polly.${region}.amazonaws.com`,
     path: "/v1/voices",
     headers: {},
-    accessKeyId,
-    secretAccessKey,
+    accessKeyId: credentials.accessKeyId,
+    secretAccessKey: credentials.secretAccessKey,
+    sessionToken: credentials.sessionToken,
   });
 
   const response = await fetch(endpoint, {
@@ -175,6 +308,17 @@ export async function listPollyVoices(
       ? (v.SupportedEngines as string[])
       : [],
   }));
+}
+
+/**
+ * List Polly voices (legacy function for static credentials)
+ */
+export async function listPollyVoices(
+  accessKeyId: string,
+  secretAccessKey: string,
+  region: string,
+): Promise<PollyVoice[]> {
+  return listPollyVoicesWithCreds({ accessKeyId, secretAccessKey }, region);
 }
 
 async function validate200Polly(response: Response) {
@@ -215,6 +359,7 @@ type SignRequest = {
   body?: string;
   accessKeyId: string;
   secretAccessKey: string;
+  sessionToken?: string;
 };
 
 async function signAwsRequest(req: SignRequest): Promise<{
@@ -238,6 +383,11 @@ async function signAwsRequest(req: SignRequest): Promise<{
     "x-amz-content-sha256": payloadHash,
     ...lowerCaseHeaders,
   };
+
+  // Add session token if present (for temporary credentials from profiles)
+  if (req.sessionToken) {
+    headers["x-amz-security-token"] = req.sessionToken;
+  }
   const signedHeaders = Object.keys(headers)
     .map((h) => h.toLowerCase())
     .sort()
