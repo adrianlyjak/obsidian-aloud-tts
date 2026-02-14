@@ -213,7 +213,9 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
   };
 
   destroy: () => void = () => {
+    this.app.workspace?.off("active-leaf-change", this._setFocusedEditor);
     this.app.workspace?.off("layout-change", this._onLayoutChange);
+    this.app.workspace?.off("file-open", this._onFileOpen);
   };
 
   playDetached(text: string, filename?: string): void {

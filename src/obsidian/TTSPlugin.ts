@@ -1,4 +1,5 @@
 import { TTSCodeMirror } from "../codemirror/TTSCodemirror";
+import { createPlayerSynchronizer } from "../codemirror/TTSCodeMirrorCore";
 
 import { Editor, MarkdownView, Notice, Plugin, addIcon } from "obsidian";
 import { REGISTRY } from "../models/registry";
@@ -36,6 +37,7 @@ export default class TTSPlugin extends Plugin {
   bridge: ObsidianBridge;
   cache: { destroy: () => void } | undefined;
   editorAction: TTSEditorAction | undefined;
+  private _playerSyncDisposer: (() => void) | undefined;
 
   get player(): AudioStore {
     return this.system.audioStore;
@@ -208,6 +210,10 @@ export default class TTSPlugin extends Plugin {
       },
     });
 
+    this._playerSyncDisposer = createPlayerSynchronizer(
+      this.player,
+      this.bridge,
+    );
     this.registerEditorExtension(
       TTSCodeMirror(this.player, this.settings, this.audio, this.bridge),
     );
@@ -220,8 +226,11 @@ export default class TTSPlugin extends Plugin {
 
   onunload() {
     this.editorAction?.destroy();
-    this.player?.destroy(); // player clears the audio
+    this._playerSyncDisposer?.();
+    this.player?.destroy();
+    this.audio?.destroy();
     this.bridge?.destroy();
+    this.cache?.destroy();
   }
 
   async loadSettings() {

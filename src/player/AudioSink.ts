@@ -41,6 +41,9 @@ export interface AudioSink {
   appendMedia(data: ArrayBuffer): Promise<void>;
   /** called by the data source when the audio is complete */
   mediaComplete(): Promise<void>;
+
+  /** release all resources held by the audio sink */
+  destroy(): void;
 }
 
 export class WebAudioSink implements AudioSink {
@@ -50,6 +53,7 @@ export class WebAudioSink implements AudioSink {
   _lastActivePlayPosition = 0;
   _audio: HTMLAudioElement;
   private _sourceBuffer: SourceBuffer;
+  private _objectUrl: string | undefined;
   _isPlaying = false;
 
   get audio(): HTMLAudioElement {
@@ -85,12 +89,14 @@ export class WebAudioSink implements AudioSink {
     audio.controls = true;
 
     // end required for ManagedMediaSource to open
-    audio.src = URL.createObjectURL(audioSource);
+    const objectUrl = URL.createObjectURL(audioSource);
+    audio.src = objectUrl;
     await once("sourceopen", audioSource);
 
     const sourceBuffer = audioSource!.addSourceBuffer("audio/mpeg");
     await onceBuffUpdateEnd(sourceBuffer);
     const sink = new WebAudioSink(audio, sourceBuffer);
+    sink._objectUrl = objectUrl;
     return sink;
   }
 
@@ -284,6 +290,19 @@ export class WebAudioSink implements AudioSink {
   restart() {
     this._audio.currentTime = 0;
     this.play();
+  }
+
+  destroy() {
+    clearTimeout(this._completionChecker);
+    this._audio.removeEventListener("play", this._onplay);
+    this._audio.removeEventListener("pause", this._onpause);
+    this._audio.removeEventListener("seeked", this._onseeked);
+    this._audio.pause();
+    this._audio.removeAttribute("src");
+    if (this._objectUrl) {
+      URL.revokeObjectURL(this._objectUrl);
+      this._objectUrl = undefined;
+    }
   }
 }
 
