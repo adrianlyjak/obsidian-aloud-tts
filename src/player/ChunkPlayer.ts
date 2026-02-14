@@ -520,6 +520,18 @@ const loadCheckLoop = (
                 buff,
                 offsetDuration,
               );
+              // Release decoded AudioBuffers from chunks behind the current
+              // position. Each AudioBuffer holds uncompressed PCM data (5-20x
+              // larger than MP3) — for long documents this is the primary
+              // source of native memory pressure / Oilpan crashes.
+              // Keep 1 chunk behind for smooth transitions.
+              const currentPos = activeText.position;
+              for (let i = 0; i < currentPos - 1; i++) {
+                const oldChunk = activeText.audio.chunks[i];
+                if (oldChunk?.audioBuffer) {
+                  oldChunk.releaseAudioBuffer();
+                }
+              }
             } else {
               chunk.reset(); // something interrupted, so reset
             }

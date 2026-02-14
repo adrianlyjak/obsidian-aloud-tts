@@ -81,6 +81,7 @@ export class AudioTextChunk {
       setLoading: action,
       setLoaded: action,
       setAudioBuffer: action,
+      releaseAudioBuffer: action,
     });
   }
 
@@ -123,6 +124,15 @@ export class AudioTextChunk {
     this.audioBuffer = audioBuffer;
     this.duration = audioBuffer.duration;
     this.offsetDuration = offsetDuration;
+  }
+  /**
+   * Release the decoded AudioBuffer to free native memory, while keeping
+   * duration/offsetDuration for seek calculations. Each decoded AudioBuffer
+   * holds uncompressed PCM (5-20x larger than the MP3 source) and retaining
+   * them for every chunk in a long document causes Oilpan memory pressure.
+   */
+  releaseAudioBuffer() {
+    this.audioBuffer = undefined;
   }
 
   onceLoaded(fully: boolean = false): CancellablePromise<AudioData> {
