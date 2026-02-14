@@ -9,7 +9,7 @@ import {
   TFile,
 } from "obsidian";
 import * as React from "react";
-import { createRoot } from "react-dom/client";
+import { createRoot, Root } from "react-dom/client";
 import { IsPlaying } from "../components/ObsidianIsPlaying";
 import { AudioStore } from "../player/AudioStore";
 import { hashString } from "../util/Minhash";
@@ -42,6 +42,7 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
   focusedEditorView: MarkdownView | null = null;
 
   isDetachedAudio: boolean = false;
+  private _playingIconRoot: Root | null = null;
   get detachedAudio(): boolean {
     return this.isDetachedAudio;
   }
@@ -161,6 +162,12 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
   };
 
   _attachPlayingIconToEditor(editor: MarkdownView | null) {
+    // Unmount previous React root before creating a new one
+    if (this._playingIconRoot) {
+      this._playingIconRoot.unmount();
+      this._playingIconRoot = null;
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const tabElement = (editor?.leaf as any | undefined)?.tabHeaderEl;
 
@@ -170,7 +177,8 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
         inner.querySelector(".tts-tab-playing-icon")?.remove();
         const iconSpan = document.createElement("span");
         iconSpan.className = "tts-tab-playing-icon";
-        createRoot(iconSpan).render(
+        this._playingIconRoot = createRoot(iconSpan);
+        this._playingIconRoot.render(
           React.createElement(IsPlaying, {
             audio: this.audio,
             bridge: this,
@@ -216,6 +224,10 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     this.app.workspace?.off("active-leaf-change", this._setFocusedEditor);
     this.app.workspace?.off("layout-change", this._onLayoutChange);
     this.app.workspace?.off("file-open", this._onFileOpen);
+    if (this._playingIconRoot) {
+      this._playingIconRoot.unmount();
+      this._playingIconRoot = null;
+    }
   };
 
   playDetached(text: string, filename?: string): void {
