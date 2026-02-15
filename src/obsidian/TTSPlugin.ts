@@ -198,11 +198,7 @@ export default class TTSPlugin extends Plugin {
         if (checking) return !!this.player.activeText;
         const before = this.audio.audio.currentTime;
         const target = before - 15;
-        console.log(`[seek-backward-15] before=${before}, target=${target}`);
         if (target < 0) {
-          // Audio timeline starts at 0 (e.g. after a reset).
-          // Navigate backward by chunk position instead.
-          console.log(`[seek-backward-15] target < 0, using goToPrevious`);
           this.player.activeText?.goToPrevious();
         } else {
           this.audio.audio.currentTime = target;

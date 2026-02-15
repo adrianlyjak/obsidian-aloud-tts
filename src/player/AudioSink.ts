@@ -305,9 +305,6 @@ export class WebAudioSink implements AudioSink {
   };
 
   _onseeked = () => {
-    const before = this._audio.currentTime;
-    const bStart = this._sourceBuffer.buffered.length > 0 ? this._sourceBuffer.buffered.start(0) : null;
-    const bEnd = this._sourceBuffer.buffered.length > 0 ? this._sourceBuffer.buffered.end(0) : null;
     if (!this._sourceBuffer.buffered.length) {
       this._audio.currentTime = 0;
     } else if (this.audio.currentTime > this._sourceBuffer.buffered.end(0)) {
@@ -315,8 +312,6 @@ export class WebAudioSink implements AudioSink {
     } else if (this._audio.currentTime < this._sourceBuffer.buffered.start(0)) {
       this._audio.currentTime = this._sourceBuffer.buffered.start(0);
     }
-    const after = this._audio.currentTime;
-    console.log(`[AudioSink._onseeked] before=${before}, after=${after}, clamped=${before !== after}, buffered=[${bStart}, ${bEnd}]`);
     this._updateTrackStatus();
     this.loopCheckCompletion();
   };
