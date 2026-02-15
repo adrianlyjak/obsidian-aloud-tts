@@ -64,9 +64,18 @@ flowchart LR
 - Trigger: Load loop and SourceBuffer state checks.
 - Effects:
   - Drops background preload requests behind the current playback position.
-  - Resets chunk state for chunks fully before `audio.buffered.start(0)`.
+  - Evicts chunk payload state for chunks fully before `audio.buffered.start(0)`.
   - Clears matching in-memory cached entries via `chunkLoader.uncache(text)`.
   - Releases decoded `AudioBuffer` objects for older chunks to reduce native memory pressure.
+  - Preserves per-chunk timeline metadata for the active epoch so seek mapping remains stable after SourceBuffer eviction.
+
+### Full Reset Epoch Rotation (`ChunkPlayer` + `AudioSink`)
+- Files: `src/player/ChunkPlayer.ts`, `src/player/AudioTextChunk.ts`, `src/player/AudioSink.ts`.
+- Trigger: Explicit reset paths (position jump outside loaded range, settings change, text-change reset).
+- Effect:
+  - `ChunkPlayer` rotates to a new playback timeline epoch.
+  - Chunk `reset()` clears timeline metadata (`timelineEpoch`, `timelineStartSeconds`, `timelineEndSeconds`).
+  - `AudioSink.clearMedia()` removes SourceBuffer data and restarts media timeline at zero.
 
 ### SourceBuffer Data Trimming (`AudioSink`)
 - File: `src/player/AudioSink.ts`.

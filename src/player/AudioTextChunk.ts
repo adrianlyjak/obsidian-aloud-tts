@@ -48,8 +48,12 @@ export class AudioTextChunk {
   failureInfo?: TTSErrorInfo;
   /** The audio data from the TTS model, decoded into a buffer from the AudioSink */
   audioBuffer?: AudioBuffer;
-  /** The duration in seconds from the start of the full track to the start of this chunk */
-  offsetDuration?: number;
+  /** The timeline epoch this chunk timing belongs to */
+  timelineEpoch?: number;
+  /** Monotonic timeline start (seconds) within the owning epoch */
+  timelineStartSeconds?: number;
+  /** Monotonic timeline end (seconds) within the owning epoch */
+  timelineEndSeconds?: number;
 
   constructor(opts: { rawText: string; start: number; end: number }) {
     this.rawText = opts.rawText;
@@ -62,14 +66,18 @@ export class AudioTextChunk {
     this.failed = undefined;
     this.failureInfo = undefined;
     this.audioBuffer = undefined;
-    this.offsetDuration = undefined;
+    this.timelineEpoch = undefined;
+    this.timelineStartSeconds = undefined;
+    this.timelineEndSeconds = undefined;
     mobx.makeObservable(this, {
       rawText: observable,
       text: observable,
       start: observable,
       end: observable,
       duration: observable,
-      offsetDuration: observable,
+      timelineEpoch: observable,
+      timelineStartSeconds: observable,
+      timelineEndSeconds: observable,
       audio: observable.ref,
       loading: observable,
       failed: observable,
@@ -82,6 +90,7 @@ export class AudioTextChunk {
       setLoaded: action,
       setAudioBuffer: action,
       evictAudioData: action,
+      invalidateTimeline: action,
       releaseAudioBuffer: action,
     });
   }
@@ -92,8 +101,7 @@ export class AudioTextChunk {
     this.loading = false;
     this.failed = undefined;
     this.failureInfo = undefined;
-    this.offsetDuration = undefined;
-    this.duration = undefined;
+    this.invalidateTimeline();
   }
 
   updateText(rawText: string) {
@@ -121,10 +129,17 @@ export class AudioTextChunk {
     this.audio = audio;
     this.loading = false;
   }
-  setAudioBuffer(audioBuffer: AudioBuffer, offsetDuration: number) {
+  setAudioBuffer(
+    audioBuffer: AudioBuffer,
+    timelineStartSeconds: number,
+    timelineEpoch: number,
+  ) {
+    const duration = audioBuffer.duration;
     this.audioBuffer = audioBuffer;
-    this.duration = audioBuffer.duration;
-    this.offsetDuration = offsetDuration;
+    this.duration = duration;
+    this.timelineEpoch = timelineEpoch;
+    this.timelineStartSeconds = timelineStartSeconds;
+    this.timelineEndSeconds = timelineStartSeconds + duration;
   }
   /**
    * Evict heavy audio payloads while keeping timing metadata.
@@ -138,9 +153,16 @@ export class AudioTextChunk {
     this.failed = undefined;
     this.failureInfo = undefined;
   }
+
+  invalidateTimeline() {
+    this.duration = undefined;
+    this.timelineEpoch = undefined;
+    this.timelineStartSeconds = undefined;
+    this.timelineEndSeconds = undefined;
+  }
   /**
    * Release the decoded AudioBuffer to free native memory, while keeping
-   * duration/offsetDuration for seek calculations. Each decoded AudioBuffer
+   * timeline metadata for seek calculations. Each decoded AudioBuffer
    * holds uncompressed PCM (5-20x larger than the MP3 source) and retaining
    * them for every chunk in a long document causes Oilpan memory pressure.
    */
@@ -151,9 +173,7 @@ export class AudioTextChunk {
   onceLoaded(fully: boolean = false): CancellablePromise<AudioData> {
     const when = mobx.when(
       () =>
-        !this.loading &&
-        !!this.audio &&
-        (fully ? typeof this.duration === "number" : true),
+        !this.loading && !!this.audio && (fully ? this.duration != null : true),
     );
     return CancellablePromise.from(when).thenCancellable(() => this.audio!);
   }

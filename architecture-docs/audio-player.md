@@ -83,6 +83,20 @@ graph TD
 - Maintains a configurable buffer ahead of current position (default: 3 chunks)
 - Preloads chunks with context for smooth TTS transitions
 - Expires old chunks behind current position to manage memory
+- Assigns chunk timeline coordinates once per playback epoch and reuses them for seek mapping
+
+#### Timeline Epoch Model
+
+`ChunkPlayer` owns a monotonic playback timeline per epoch:
+
+1. On each full reset (`_clearAudio`), `ChunkPlayer` rotates to a new epoch and resets the epoch timeline cursor to `0`.
+2. As chunks are appended in that epoch, each chunk gets:
+   - `timelineEpoch`
+   - `timelineStartSeconds`
+   - `timelineEndSeconds`
+3. Seek mapping (`currentTime -> chunk`) uses timeline fields directly, not recomputed sums of prior chunk durations.
+4. SourceBuffer eviction or chunk payload eviction does **not** invalidate timeline fields for the active epoch.
+5. Chunk `reset()` invalidates timeline metadata, preventing stale cross-epoch reuse.
 
 ### ChunkLoader (The Loading Engine)
 
@@ -574,6 +588,6 @@ const MAX_BUFFER_BEHIND_SECS = 60;   // SourceBuffer data retained behind playhe
 
 1. Text edits still trigger full audio reset in `ChunkPlayer` even when only a subset of chunks changes.
 2. SourceBuffer eviction and chunk pruning are intentionally best-effort and may require a full reset on unusual seek transitions.
-3. Offset/duration metadata is now part of seek mapping correctness, so regressions here can manifest as jumpy or incorrect seek positioning.
+3. Timeline epoch metadata is part of seek mapping correctness, so regressions here can manifest as jumpy or incorrect seek positioning.
 
 This architecture provides a robust, scalable solution for text-to-speech playback with intelligent buffering and seamless user experience.

@@ -15,11 +15,17 @@ function createChunk(index: number): AudioTextChunk {
 
 function markChunkLoaded(
   chunk: AudioTextChunk,
-  { offsetDuration, duration }: { offsetDuration: number; duration: number },
+  {
+    timelineStartSeconds,
+    duration,
+    timelineEpoch = 1,
+  }: { timelineStartSeconds: number; duration: number; timelineEpoch?: number },
 ): void {
   chunk.audio = { data: new ArrayBuffer(1), format: "mp3" };
-  chunk.offsetDuration = offsetDuration;
   chunk.duration = duration;
+  chunk.timelineStartSeconds = timelineStartSeconds;
+  chunk.timelineEndSeconds = timelineStartSeconds + duration;
+  chunk.timelineEpoch = timelineEpoch;
 }
 
 function createAudioSink(currentTime: number): AudioSink {
@@ -74,7 +80,10 @@ describe("getPositionAccordingToPlayback", () => {
   it("maps currentTime to the first loaded chunk when earlier chunks were evicted", () => {
     const chunks = Array.from({ length: 12 }, (_, i) => createChunk(i));
     for (let i = 6; i < 12; i++) {
-      markChunkLoaded(chunks[i], { duration: 10, offsetDuration: i * 10 });
+      markChunkLoaded(chunks[i], {
+        duration: 10,
+        timelineStartSeconds: i * 10,
+      });
     }
 
     const active = createActiveAudioText(chunks);
@@ -89,9 +98,9 @@ describe("getPositionAccordingToPlayback", () => {
     const chunks = Array.from({ length: 12 }, (_, i) => createChunk(i));
     // Simulate an eviction window where early chunks no longer have audio data,
     // but later loaded chunks retain absolute offsets.
-    markChunkLoaded(chunks[6], { duration: 10, offsetDuration: 60 });
-    markChunkLoaded(chunks[7], { duration: 10, offsetDuration: 70 });
-    markChunkLoaded(chunks[8], { duration: 10, offsetDuration: 80 });
+    markChunkLoaded(chunks[6], { duration: 10, timelineStartSeconds: 60 });
+    markChunkLoaded(chunks[7], { duration: 10, timelineStartSeconds: 70 });
+    markChunkLoaded(chunks[8], { duration: 10, timelineStartSeconds: 80 });
 
     const active = createActiveAudioText(chunks);
     const sink = createAudioSink(75);
@@ -103,8 +112,8 @@ describe("getPositionAccordingToPlayback", () => {
 
   it("returns AfterLoaded when playback time exceeds loaded offsets", () => {
     const chunks = Array.from({ length: 12 }, (_, i) => createChunk(i));
-    markChunkLoaded(chunks[6], { duration: 10, offsetDuration: 60 });
-    markChunkLoaded(chunks[7], { duration: 10, offsetDuration: 70 });
+    markChunkLoaded(chunks[6], { duration: 10, timelineStartSeconds: 60 });
+    markChunkLoaded(chunks[7], { duration: 10, timelineStartSeconds: 70 });
 
     const active = createActiveAudioText(chunks);
     const sink = createAudioSink(95);
@@ -112,5 +121,31 @@ describe("getPositionAccordingToPlayback", () => {
     const result = getPositionAccordingToPlayback(active, sink);
 
     expect(result).toEqual({ type: "AfterLoaded", position: 8 });
+  });
+
+  it("maps exact chunk-end boundary to the ending chunk", () => {
+    const chunks = Array.from({ length: 12 }, (_, i) => createChunk(i));
+    markChunkLoaded(chunks[6], { duration: 10, timelineStartSeconds: 60 });
+    markChunkLoaded(chunks[7], { duration: 10, timelineStartSeconds: 70 });
+
+    const active = createActiveAudioText(chunks);
+    const sink = createAudioSink(70);
+
+    const result = getPositionAccordingToPlayback(active, sink);
+
+    expect(result).toEqual({ type: "Position", position: 6 });
+  });
+
+  it("returns BeforeLoaded when playback is before the first loaded timeline start", () => {
+    const chunks = Array.from({ length: 12 }, (_, i) => createChunk(i));
+    markChunkLoaded(chunks[6], { duration: 10, timelineStartSeconds: 60 });
+    markChunkLoaded(chunks[7], { duration: 10, timelineStartSeconds: 70 });
+
+    const active = createActiveAudioText(chunks);
+    const sink = createAudioSink(59.99);
+
+    const result = getPositionAccordingToPlayback(active, sink);
+
+    expect(result).toEqual({ type: "BeforeLoaded", position: 5 });
   });
 });
