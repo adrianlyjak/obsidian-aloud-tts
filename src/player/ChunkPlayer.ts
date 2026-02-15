@@ -252,14 +252,26 @@ export class ChunkPlayer {
           await this._clearAudio();
         }
       } else if (transitionType === "seeked") {
+        const seekTarget = this.system.audioSink.consumeLastSeekTarget();
         const position = getPositionAccordingToPlayback(
           this.activeAudioText,
           this.system.audioSink,
         );
 
-        this.activeAudioText.setPosition(position.position);
-        if (position.type !== "Position") {
+        if (position.type !== "Position" && seekTarget != null) {
+          // The seek was clamped (e.g. target was before evicted buffer).
+          // Use the original target to find the right chunk via timeline metadata.
+          const resolved = getChunkPositionForTimelineTime(
+            this.activeAudioText,
+            seekTarget,
+          );
+          this.activeAudioText.setPosition(resolved);
           toReset = { all: true };
+        } else {
+          this.activeAudioText.setPosition(position.position);
+          if (position.type !== "Position") {
+            toReset = { all: true };
+          }
         }
       } else if (transitionType === "play-paused") {
         // just reset the loop to re-watch the state
@@ -524,6 +536,45 @@ type PlaybackPosition =
   | { type: "BeforeLoaded"; position: number }
   | { type: "AfterLoaded"; position: number }
   | { type: "Position"; position: number };
+
+/**
+ * Maps a timeline time (seconds) back to a chunk index using preserved
+ * timeline metadata. Evicted chunks retain timelineStartSeconds/timelineEndSeconds
+ * even after their audio data is dropped, so this works for seeking into
+ * evicted regions. Falls back to chunk 0 if no timeline data is found.
+ */
+function getChunkPositionForTimelineTime(
+  active: ActiveAudioText,
+  timeSeconds: number,
+): number {
+  const chunks = active.audio.chunks;
+  // Search all chunks (including evicted) for one whose timeline range contains the target
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    if (
+      chunk.timelineStartSeconds != null &&
+      chunk.timelineEndSeconds != null
+    ) {
+      if (
+        timeSeconds >= chunk.timelineStartSeconds &&
+        timeSeconds <= chunk.timelineEndSeconds
+      ) {
+        return i;
+      }
+    }
+  }
+  // If target is before the first chunk with timeline data, return that chunk
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    if (chunk.timelineStartSeconds != null) {
+      if (timeSeconds < chunk.timelineStartSeconds) {
+        return i;
+      }
+    }
+  }
+  // Fallback: no timeline data at all, go to beginning
+  return 0;
+}
 
 function getBufferedStart(audio: HTMLAudioElement): number | undefined {
   const buffered = audio.buffered;
