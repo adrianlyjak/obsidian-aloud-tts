@@ -365,7 +365,7 @@ function nextToLoad(
  * Finds the index of the chunk that the audio playback is currently at.
  * @returns
  */
-function getPositionAccordingToPlayback(
+export function getPositionAccordingToPlayback(
   active: ActiveAudioText,
   audioSink: AudioSink,
 ): PlaybackPosition {
@@ -376,11 +376,12 @@ function getPositionAccordingToPlayback(
   }
   const audioPosition = audioSink.audio.currentTime;
 
-  let running = 0;
+  const firstOffset = loaded[0].offsetDuration ?? 0;
   for (let i = 0; i < loaded.length; i++) {
     const chunk = loaded[i];
-    running += chunk.duration!;
-    if (running >= audioPosition) {
+    const chunkStart = chunk.offsetDuration ?? firstOffset;
+    const chunkEnd = chunkStart + chunk.duration!;
+    if (audioPosition <= chunkEnd) {
       return { type: "Position", position: start + i };
     }
   }
@@ -411,6 +412,40 @@ type PlaybackPosition =
   | { type: "BeforeLoaded"; position: number }
   | { type: "AfterLoaded"; position: number }
   | { type: "Position"; position: number };
+
+function getBufferedStart(audio: HTMLAudioElement): number | undefined {
+  const buffered = audio.buffered;
+  if (!buffered || buffered.length === 0) {
+    return undefined;
+  }
+  return buffered.start(0);
+}
+
+function pruneEvictedChunkState(
+  activeText: ActiveAudioText,
+  audioSink: AudioSink,
+  chunkLoader: ChunkLoader,
+): void {
+  const bufferedStart = getBufferedStart(audioSink.audio);
+  if (typeof bufferedStart !== "number") {
+    return;
+  }
+
+  for (const chunk of activeText.audio.chunks) {
+    if (
+      !chunk.audio ||
+      typeof chunk.duration !== "number" ||
+      typeof chunk.offsetDuration !== "number"
+    ) {
+      continue;
+    }
+    const chunkEnd = chunk.offsetDuration + chunk.duration;
+    if (chunkEnd <= bufferedStart) {
+      chunk.reset();
+      chunkLoader.uncache(chunk.text);
+    }
+  }
+}
 
 function getContext(
   chunks: AudioTextChunk[],
@@ -520,6 +555,7 @@ const loadCheckLoop = (
                 buff,
                 offsetDuration,
               );
+              pruneEvictedChunkState(activeText, system.audioSink, chunkLoader);
               // Release decoded AudioBuffers from chunks behind the current
               // position. Each AudioBuffer holds uncompressed PCM data (5-20x
               // larger than MP3) — for long documents this is the primary
