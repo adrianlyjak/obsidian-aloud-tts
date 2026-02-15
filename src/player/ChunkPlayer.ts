@@ -28,6 +28,7 @@ export class ChunkPlayer {
   private isDestroyed = false;
   private playbackTimelineEpoch = 0;
   private playbackTimelineCursorSeconds = 0;
+  private _seekedAtTime: number | undefined;
 
   private cancelDemand: { cancel: () => void } | undefined = undefined;
   private cancelMonitorText: { cancel: () => void } | undefined = undefined;
@@ -252,22 +253,30 @@ export class ChunkPlayer {
           await this._clearAudio();
         }
       } else if (transitionType === "seeked") {
-        const seekTarget = this.system.audioSink.consumeLastSeekTarget();
-        const position = getPositionAccordingToPlayback(
-          this.activeAudioText,
-          this.system.audioSink,
-        );
+        const seekedAtTime = this._seekedAtTime;
+        this._seekedAtTime = undefined;
 
-        if (position.type !== "Position" && seekTarget != null) {
-          // The seek was clamped (e.g. target was before evicted buffer).
-          // Use the original target to find the right chunk via timeline metadata.
+        // Check if the seek target is before the buffered range
+        const buffered = this.system.audioSink.audio.buffered;
+        const bufferedStart =
+          buffered && buffered.length > 0 ? buffered.start(0) : undefined;
+        if (
+          seekedAtTime != null &&
+          bufferedStart != null &&
+          seekedAtTime < bufferedStart
+        ) {
+          // Before-buffer seek: use timeline metadata to find the target chunk
           const resolved = getChunkPositionForTimelineTime(
             this.activeAudioText,
-            seekTarget,
+            seekedAtTime,
           );
           this.activeAudioText.setPosition(resolved);
           toReset = { all: true };
         } else {
+          const position = getPositionAccordingToPlayback(
+            this.activeAudioText,
+            this.system.audioSink,
+          );
           this.activeAudioText.setPosition(position.position);
           if (position.type !== "Position") {
             toReset = { all: true };
@@ -329,10 +338,20 @@ export class ChunkPlayer {
   }
 
   _whenSeeked(): CancellablePromise<"seeked"> {
+    const baseline = this.system.audioSink.audio.currentTime;
     return CancellablePromise.fromEvent(
       this.system.audioSink.audio,
       "seeking",
-    ).thenCancellable(() => "seeked");
+    ).thenCancellable(() => {
+      const newTime = this.system.audioSink.audio.currentTime;
+      if (Math.abs(newTime - baseline) < 0.5) {
+        // Spurious event (e.g. from clearMedia or chunk loading) — re-listen
+        return this._whenSeeked();
+      }
+      // Capture pre-clamp time synchronously before _onseeked clamps it
+      this._seekedAtTime = newTime;
+      return "seeked" as const;
+    });
   }
 
   _whenPlayPaused(): CancellablePromise<"play-paused"> {

@@ -169,7 +169,7 @@ export class ChunkLoader {
     try {
       return await this.loadTrack(track, options, context);
     } catch (ex) {
-      console.log("error loading track", ex);
+      console.warn("error loading track", ex);
       const errorInfo = ex instanceof TTSErrorInfo ? ex : undefined;
       const canRetry =
         attempt < maxAttempts && (errorInfo ? errorInfo.isRetryable : true);
