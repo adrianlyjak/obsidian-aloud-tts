@@ -9,7 +9,6 @@ if (!openAiApiKey) {
 
 export default defineConfig({
   testDir: "./e2e",
-  testIgnore: ["*.memory.spec.ts"],
   outputDir: "./test-results",
   timeout: 2 * 60 * 1000,
   expect: { timeout: 30 * 1000 },
