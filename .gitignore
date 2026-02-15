@@ -5,6 +5,9 @@
 *.iml
 .idea
 
+
+.claude/settings.local.json
+
 # npm
 node_modules
 
