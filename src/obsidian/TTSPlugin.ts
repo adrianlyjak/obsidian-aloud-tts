@@ -192,6 +192,34 @@ export default class TTSPlugin extends Plugin {
     });
 
     this.addCommand({
+      id: "seek-backward-15",
+      name: "Seek backward 15 seconds",
+      checkCallback: (checking) => {
+        if (checking) return !!this.player.activeText;
+        const before = this.audio.audio.currentTime;
+        const target = before - 15;
+        console.log(`[seek-backward-15] before=${before}, target=${target}`);
+        if (target < 0) {
+          // Audio timeline starts at 0 (e.g. after a reset).
+          // Navigate backward by chunk position instead.
+          console.log(`[seek-backward-15] target < 0, using goToPrevious`);
+          this.player.activeText?.goToPrevious();
+        } else {
+          this.audio.audio.currentTime = target;
+        }
+      },
+    });
+
+    this.addCommand({
+      id: "seek-forward-15",
+      name: "Seek forward 15 seconds",
+      checkCallback: (checking) => {
+        if (checking) return !!this.player.activeText;
+        this.audio.audio.currentTime = this.audio.audio.currentTime + 15;
+      },
+    });
+
+    this.addCommand({
       id: "toggle-autoscroll",
       name: "Toggle autoscroll focus",
       checkCallback: (checking) => {

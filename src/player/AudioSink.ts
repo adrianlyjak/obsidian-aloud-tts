@@ -42,13 +42,6 @@ export interface AudioSink {
   /** called by the data source when the audio is complete */
   mediaComplete(): Promise<void>;
 
-  /**
-   * Returns and clears the last seek target — the currentTime value the user
-   * intended before any clamping by _onseeked. Returns undefined if no
-   * unclamped seek has occurred since the last call.
-   */
-  consumeLastSeekTarget(): number | undefined;
-
   /** release all resources held by the audio sink */
   destroy(): void;
 }
@@ -61,7 +54,6 @@ export class WebAudioSink implements AudioSink {
   _audio: HTMLAudioElement;
   private _sourceBuffer: SourceBuffer;
   private _objectUrl: string | undefined;
-  private _lastSeekTarget: number | undefined;
   _isPlaying = false;
 
   get audio(): HTMLAudioElement {
@@ -313,34 +305,21 @@ export class WebAudioSink implements AudioSink {
   };
 
   _onseeked = () => {
-    // Capture the intended seek target before any clamping so ChunkPlayer
-    // can map it back to the correct chunk position (e.g. after eviction).
-    const intendedTime = this._audio.currentTime;
-
+    const before = this._audio.currentTime;
+    const bStart = this._sourceBuffer.buffered.length > 0 ? this._sourceBuffer.buffered.start(0) : null;
+    const bEnd = this._sourceBuffer.buffered.length > 0 ? this._sourceBuffer.buffered.end(0) : null;
     if (!this._sourceBuffer.buffered.length) {
       this._audio.currentTime = 0;
     } else if (this.audio.currentTime > this._sourceBuffer.buffered.end(0)) {
       this._audio.currentTime = this._sourceBuffer.buffered.end(0);
     } else if (this._audio.currentTime < this._sourceBuffer.buffered.start(0)) {
-      // Can happen after SourceBuffer eviction — clamp to available data
       this._audio.currentTime = this._sourceBuffer.buffered.start(0);
     }
-
-    // Only store the target when clamping actually changed the position,
-    // so normal in-buffer seeks don't leave a stale target.
-    if (this._audio.currentTime !== intendedTime) {
-      this._lastSeekTarget = intendedTime;
-    }
-
+    const after = this._audio.currentTime;
+    console.log(`[AudioSink._onseeked] before=${before}, after=${after}, clamped=${before !== after}, buffered=[${bStart}, ${bEnd}]`);
     this._updateTrackStatus();
     this.loopCheckCompletion();
   };
-
-  consumeLastSeekTarget(): number | undefined {
-    const target = this._lastSeekTarget;
-    this._lastSeekTarget = undefined;
-    return target;
-  }
 
   restart() {
     this._audio.currentTime = 0;

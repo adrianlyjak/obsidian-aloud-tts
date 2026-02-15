@@ -28,6 +28,7 @@ export class ChunkPlayer {
   private isDestroyed = false;
   private playbackTimelineEpoch = 0;
   private playbackTimelineCursorSeconds = 0;
+  private _seekedAtTime: number | undefined;
 
   private cancelDemand: { cancel: () => void } | undefined = undefined;
   private cancelMonitorText: { cancel: () => void } | undefined = undefined;
@@ -161,6 +162,7 @@ export class ChunkPlayer {
 
     while (!this.isDestroyed) {
       const foreground = this._shouldBeActive();
+      console.log(`[_activate loop] top: foreground=${foreground}, position=${this.activeAudioText.position}, toReset=${JSON.stringify(toReset)}, isPlaying=${this.system.audioSink.isPlaying}, currentTime=${this.system.audioSink.audio.currentTime}`);
       this.cancelDemand?.cancel();
       this.cancelDemand = undefined;
       this.cancelMonitorText?.cancel();
@@ -201,7 +203,9 @@ export class ChunkPlayer {
         },
       );
       const [start, end] = getLoadedRange(this.activeAudioText);
+      console.log(`[_activate loop] waiting for transition, loadedRange=[${start}, ${end}]`);
       const transitionType = await this._onAudioAudioChanged(foreground);
+      console.log(`[_activate loop] transition: ${transitionType}, currentTime=${this.system.audioSink.audio.currentTime}`);
 
       if (transitionType === "position-changed") {
         const position = this.activeAudioText.position;
@@ -252,22 +256,49 @@ export class ChunkPlayer {
           await this._clearAudio();
         }
       } else if (transitionType === "seeked") {
-        const seekTarget = this.system.audioSink.consumeLastSeekTarget();
-        const position = getPositionAccordingToPlayback(
-          this.activeAudioText,
-          this.system.audioSink,
-        );
+        const seekedAtTime = this._seekedAtTime;
+        this._seekedAtTime = undefined;
 
-        if (position.type !== "Position" && seekTarget != null) {
-          // The seek was clamped (e.g. target was before evicted buffer).
-          // Use the original target to find the right chunk via timeline metadata.
+        // Check if the seek target is before the buffered range
+        const buffered = this.system.audioSink.audio.buffered;
+        const bufferedStart =
+          buffered && buffered.length > 0 ? buffered.start(0) : undefined;
+        const bufferedEnd =
+          buffered && buffered.length > 0 ? buffered.end(0) : undefined;
+        const currentTime = this.system.audioSink.audio.currentTime;
+
+        console.log(`[seeked handler] seekedAtTime=${seekedAtTime}, currentTime=${currentTime}, buffered=[${bufferedStart}, ${bufferedEnd}], position=${this.activeAudioText.position}`);
+
+        // Log chunk timeline info
+        const chunks = this.activeAudioText.audio.chunks;
+        const chunkInfo = chunks.map((c, i) => ({
+          i,
+          start: c.timelineStartSeconds,
+          end: c.timelineEndSeconds,
+          epoch: c.timelineEpoch,
+          hasAudio: !!c.audio,
+        })).filter(c => c.start != null || c.hasAudio);
+        console.log(`[seeked handler] chunk timeline:`, chunkInfo);
+
+        if (
+          seekedAtTime != null &&
+          bufferedStart != null &&
+          seekedAtTime < bufferedStart
+        ) {
+          // Before-buffer seek: use timeline metadata to find the target chunk
           const resolved = getChunkPositionForTimelineTime(
             this.activeAudioText,
-            seekTarget,
+            seekedAtTime,
           );
+          console.log(`[seeked handler] BEFORE-BUFFER: seekedAtTime=${seekedAtTime} < bufferedStart=${bufferedStart}, resolved to chunk ${resolved}`);
           this.activeAudioText.setPosition(resolved);
           toReset = { all: true };
         } else {
+          const position = getPositionAccordingToPlayback(
+            this.activeAudioText,
+            this.system.audioSink,
+          );
+          console.log(`[seeked handler] NORMAL: position=${JSON.stringify(position)}`);
           this.activeAudioText.setPosition(position.position);
           if (position.type !== "Position") {
             toReset = { all: true };
@@ -299,10 +330,12 @@ export class ChunkPlayer {
   }
 
   async _clearAudio() {
+    console.log(`[_clearAudio] starting, epoch was ${this.playbackTimelineEpoch}, position=${this.activeAudioText.position}`);
     this._rotateTimelineEpoch();
     this._clearChunks();
     this.chunkLoader.expireBefore();
     await this.system.audioSink.clearMedia();
+    console.log(`[_clearAudio] done, new epoch=${this.playbackTimelineEpoch}`);
   }
 
   _clearChunks() {
@@ -329,10 +362,23 @@ export class ChunkPlayer {
   }
 
   _whenSeeked(): CancellablePromise<"seeked"> {
+    const baseline = this.system.audioSink.audio.currentTime;
+    console.log(`[_whenSeeked] setup, baseline=${baseline}`);
     return CancellablePromise.fromEvent(
       this.system.audioSink.audio,
       "seeking",
-    ).thenCancellable(() => "seeked");
+    ).thenCancellable(() => {
+      const newTime = this.system.audioSink.audio.currentTime;
+      const delta = Math.abs(newTime - baseline);
+      console.log(`[_whenSeeked] seeking fired, newTime=${newTime}, baseline=${baseline}, delta=${delta}`);
+      if (delta < 0.5) {
+        console.log(`[_whenSeeked] spurious (delta < 0.5), re-listening`);
+        return this._whenSeeked();
+      }
+      this._seekedAtTime = newTime;
+      console.log(`[_whenSeeked] real seek detected, _seekedAtTime=${newTime}`);
+      return "seeked" as const;
+    });
   }
 
   _whenPlayPaused(): CancellablePromise<"play-paused"> {

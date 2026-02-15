@@ -45,7 +45,6 @@ function createAudioSink(currentTime: number): AudioSink {
     switchMedia: async () => undefined,
     appendMedia: async () => undefined,
     mediaComplete: async () => undefined,
-    consumeLastSeekTarget: () => undefined,
     destroy: () => undefined,
   };
 }

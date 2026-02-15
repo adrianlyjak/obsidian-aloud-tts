@@ -89,7 +89,9 @@ export class TTSEditorAction {
     // Prevent duplicates (leaf can be re-used)
     const container = view.containerEl as HTMLElement;
     const existing = container.querySelector(`[${EDITOR_ACTION_ATTR}="1"]`);
-    if (existing) return;
+    if (existing) {
+      existing.remove();
+    }
 
     // Create action button
     const action = view.addAction("audio-lines", "Aloud TTS", (evt) => {
