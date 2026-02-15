@@ -81,6 +81,7 @@ export class AudioTextChunk {
       setLoading: action,
       setLoaded: action,
       setAudioBuffer: action,
+      evictAudioData: action,
       releaseAudioBuffer: action,
     });
   }
@@ -124,6 +125,18 @@ export class AudioTextChunk {
     this.audioBuffer = audioBuffer;
     this.duration = audioBuffer.duration;
     this.offsetDuration = offsetDuration;
+  }
+  /**
+   * Evict heavy audio payloads while keeping timing metadata.
+   * Used when SourceBuffer has already dropped old media and we want
+   * seeks/timeline mapping to remain stable without retaining bytes.
+   */
+  evictAudioData() {
+    this.audio = undefined;
+    this.audioBuffer = undefined;
+    this.loading = false;
+    this.failed = undefined;
+    this.failureInfo = undefined;
   }
   /**
    * Release the decoded AudioBuffer to free native memory, while keeping

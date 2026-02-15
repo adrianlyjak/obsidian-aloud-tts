@@ -441,8 +441,28 @@ function pruneEvictedChunkState(
     }
     const chunkEnd = chunk.offsetDuration + chunk.duration;
     if (chunkEnd <= bufferedStart) {
-      chunk.reset();
+      // SourceBuffer has already evicted this media range from the HTMLAudioElement
+      // playback window. Drop chunk bytes/state so it can be reloaded on demand,
+      // but preserve timing metadata for stable seek mapping.
+      chunk.evictAudioData();
       chunkLoader.uncache(chunk.text);
+    }
+  }
+}
+
+function releaseDecodedAudioBuffersBehindPosition(
+  activeText: ActiveAudioText,
+): void {
+  // This is distinct from SourceBuffer eviction:
+  // - SourceBuffer eviction (AudioSink) trims media bytes retained by the media element.
+  // - This function releases decoded PCM AudioBuffers kept on chunk objects.
+  //
+  // Keep 1 chunk behind for smoother near-backward transitions.
+  const currentPos = activeText.position;
+  for (let i = 0; i < currentPos - 1; i++) {
+    const oldChunk = activeText.audio.chunks[i];
+    if (oldChunk?.audioBuffer) {
+      oldChunk.releaseAudioBuffer();
     }
   }
 }
@@ -556,18 +576,7 @@ const loadCheckLoop = (
                 offsetDuration,
               );
               pruneEvictedChunkState(activeText, system.audioSink, chunkLoader);
-              // Release decoded AudioBuffers from chunks behind the current
-              // position. Each AudioBuffer holds uncompressed PCM data (5-20x
-              // larger than MP3) — for long documents this is the primary
-              // source of native memory pressure / Oilpan crashes.
-              // Keep 1 chunk behind for smooth transitions.
-              const currentPos = activeText.position;
-              for (let i = 0; i < currentPos - 1; i++) {
-                const oldChunk = activeText.audio.chunks[i];
-                if (oldChunk?.audioBuffer) {
-                  oldChunk.releaseAudioBuffer();
-                }
-              }
+              releaseDecodedAudioBuffersBehindPosition(activeText);
             } else {
               chunk.reset(); // something interrupted, so reset
             }

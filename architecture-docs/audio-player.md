@@ -131,6 +131,7 @@ sequenceDiagram
 - **Persistent Storage**: Long-term storage across sessions
 - **Background Loading**: Proactive loading during idle time
 - **Queue Management**: Prioritizes chunks near current position
+- **Local Chunk State Pruning**: Chunks fully behind the retained SourceBuffer window are reset and uncached
 
 ### AudioSink (The Playback Engine)
 
@@ -237,6 +238,49 @@ Playhead:      ^
 Position:     chunk 6 (requires full reload)
 ```
 
+#### Seek After SourceBuffer Eviction
+
+When old buffered media has already been evicted, backward seek behavior depends on whether target time is still inside the retained SourceBuffer window.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant A as HTMLAudioElement
+    participant S as AudioSink
+    participant C as ChunkPlayer
+
+    Note over S: SourceBuffer retains only ~60s behind playhead
+    U->>A: seek(t_target)
+    A->>S: "seeked" event
+    S->>S: clamp currentTime into [buffered.start(0), buffered.end(0)]
+    S->>C: playback position changed
+    C->>C: getPositionAccordingToPlayback()
+    alt target still in retained window
+        C->>C: map to loaded chunk
+        Note over C: Continue playback without full reset
+    else target before buffered.start(0)
+        C->>C: classify as BeforeLoaded / out of loaded range
+        C->>S: clearMedia()
+        C->>C: reload chunks from new position
+        Note over C: Audible pause while rebuffering
+    end
+```
+
+```text
+Playback timeline (seconds) -------------------------------------------------->
+
+Before seek:
+Buffered window:        [120 ........................................ 220]
+Playhead:                                                          ^
+
+User seeks to t=150:
+Result: inside window -> immediate reposition, no hard reset
+
+User seeks to t=40:
+Result: before buffered.start(120) -> clamp then ChunkPlayer resets/reloads
+```
+
 #### Chunk Lifecycle in SourceBuffer
 
 ```
@@ -265,6 +309,7 @@ Chunk State Transitions:
 - `appendMedia(ArrayBuffer)`: Adds new chunk to end of SourceBuffer
 - `clearMedia()`: Empties entire SourceBuffer (used for seeking/reset)
 - `switchMedia(ArrayBuffer)`: Replaces entire SourceBuffer content
+- `_evictOldBufferData()`: Best-effort trimming of SourceBuffer data older than ~60 seconds behind playhead
 
 **Timestamp Management:**
 ```
@@ -487,6 +532,7 @@ graph TD
 - **Garbage Collection**: Automatic cleanup of old cached audio
 - **Position-based Expiry**: Remove chunks behind current position
 - **TTL-based Cleanup**: Time-based cache expiration
+- **Native Buffer Pressure Control**: Release decoded `AudioBuffer` objects for old chunks while keeping duration metadata
 
 ### Network Efficiency
 - **Background Preloading**: Load chunks before needed
@@ -507,6 +553,7 @@ const BUFFER_AHEAD = 3;              // Chunks to buffer ahead
 const CHUNK_CONTEXT_SIZE = 3;        // Context chunks for TTS
 const MAX_BACKGROUND_REQUESTS = 3;   // Concurrent background loads
 const MAX_LOCAL_TTL_MILLIS = 60000;  // Cache TTL in milliseconds
+const MAX_BUFFER_BEHIND_SECS = 60;   // SourceBuffer data retained behind playhead
 ```
 
 ## Debugging and Monitoring
@@ -523,4 +570,10 @@ const MAX_LOCAL_TTL_MILLIS = 60000;  // Cache TTL in milliseconds
 3. **State Desync**: Position mismatch between components
 4. **API Failures**: TTS service errors
 
-This architecture provides a robust, scalable solution for text-to-speech playback with intelligent buffering and seamless user experience. 
+## Current Limitations
+
+1. Text edits still trigger full audio reset in `ChunkPlayer` even when only a subset of chunks changes.
+2. SourceBuffer eviction and chunk pruning are intentionally best-effort and may require a full reset on unusual seek transitions.
+3. Offset/duration metadata is now part of seek mapping correctness, so regressions here can manifest as jumpy or incorrect seek positioning.
+
+This architecture provides a robust, scalable solution for text-to-speech playback with intelligent buffering and seamless user experience.
