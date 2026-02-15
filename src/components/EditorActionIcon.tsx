@@ -20,20 +20,15 @@ export const EditorActionIcon = observer(
     const isPlaying = activeText?.isPlaying ?? false;
     const currentChunk = activeText?.currentChunk;
     const audioBuffer = currentChunk?.audioBuffer;
-    const offsetDuration = currentChunk?.offsetDuration;
+    const timelineStart = currentChunk?.timelineStartSeconds;
 
-    if (
-      isPlaying &&
-      sink.audio &&
-      audioBuffer &&
-      offsetDuration !== undefined
-    ) {
+    if (isPlaying && sink.audio && audioBuffer && timelineStart != null) {
       // Show 5-bar mini AudioVisualizer when playing
       return (
         <AudioVisualizer
           audioElement={sink.audio}
           audioBuffer={audioBuffer}
-          offsetDurationSeconds={offsetDuration}
+          timelineStartSeconds={timelineStart}
           className="tts-editor-action-visualizer"
         />
       );

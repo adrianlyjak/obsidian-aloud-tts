@@ -252,13 +252,15 @@ const AudioStatusInfoContents: React.FC<{
     audio.audio &&
     player.activeText?.isPlaying &&
     player.activeText.currentChunk?.audioBuffer &&
-    player.activeText.currentChunk.offsetDuration !== undefined
+    player.activeText.currentChunk.timelineStartSeconds != null
   ) {
     return (
       <AudioVisualizer
         audioElement={audio.audio}
         audioBuffer={player.activeText.currentChunk?.audioBuffer}
-        offsetDurationSeconds={player.activeText.currentChunk?.offsetDuration}
+        timelineStartSeconds={
+          player.activeText.currentChunk?.timelineStartSeconds
+        }
       />
     );
   } else {

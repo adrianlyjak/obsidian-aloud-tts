@@ -41,6 +41,9 @@ export interface AudioSink {
   appendMedia(data: ArrayBuffer): Promise<void>;
   /** called by the data source when the audio is complete */
   mediaComplete(): Promise<void>;
+
+  /** release all resources held by the audio sink */
+  destroy(): void;
 }
 
 export class WebAudioSink implements AudioSink {
@@ -50,6 +53,7 @@ export class WebAudioSink implements AudioSink {
   _lastActivePlayPosition = 0;
   _audio: HTMLAudioElement;
   private _sourceBuffer: SourceBuffer;
+  private _objectUrl: string | undefined;
   _isPlaying = false;
 
   get audio(): HTMLAudioElement {
@@ -85,12 +89,14 @@ export class WebAudioSink implements AudioSink {
     audio.controls = true;
 
     // end required for ManagedMediaSource to open
-    audio.src = URL.createObjectURL(audioSource);
+    const objectUrl = URL.createObjectURL(audioSource);
+    audio.src = objectUrl;
     await once("sourceopen", audioSource);
 
     const sourceBuffer = audioSource!.addSourceBuffer("audio/mpeg");
     await onceBuffUpdateEnd(sourceBuffer);
     const sink = new WebAudioSink(audio, sourceBuffer);
+    sink._objectUrl = objectUrl;
     return sink;
   }
 
@@ -190,8 +196,35 @@ export class WebAudioSink implements AudioSink {
     }
     this._sourceBuffer.appendBuffer(data);
     await onceBuffUpdateEnd(this._sourceBuffer);
+    // Evict old data from SourceBuffer to prevent unbounded native memory growth
+    await this._evictOldBufferData();
     this.loopCheckCompletion();
     this._updateTrackStatus();
+  }
+
+  /**
+   * Trim SourceBuffer data that is well behind the current playback position.
+   * Prevents the SourceBuffer from accumulating all audio for a long document.
+   */
+  private static readonly MAX_BUFFER_BEHIND_SECS = 60;
+  private async _evictOldBufferData(): Promise<void> {
+    try {
+      const buffered = this._sourceBuffer.buffered;
+      if (buffered.length === 0) return;
+
+      const currentTime = this._audio.currentTime;
+      const bufferStart = buffered.start(0);
+      const behindAmount = currentTime - bufferStart;
+
+      if (behindAmount > WebAudioSink.MAX_BUFFER_BEHIND_SECS) {
+        const removeEnd = currentTime - WebAudioSink.MAX_BUFFER_BEHIND_SECS;
+        this._sourceBuffer.remove(bufferStart, removeEnd);
+        await onceBuffUpdateEnd(this._sourceBuffer);
+      }
+    } catch (e) {
+      // SourceBuffer eviction is best-effort — don't break playback
+      console.warn("Failed to evict old SourceBuffer data:", e);
+    }
   }
 
   async mediaComplete() {
@@ -276,6 +309,9 @@ export class WebAudioSink implements AudioSink {
       this._audio.currentTime = 0;
     } else if (this.audio.currentTime > this._sourceBuffer.buffered.end(0)) {
       this._audio.currentTime = this._sourceBuffer.buffered.end(0);
+    } else if (this._audio.currentTime < this._sourceBuffer.buffered.start(0)) {
+      // Can happen after SourceBuffer eviction — clamp to available data
+      this._audio.currentTime = this._sourceBuffer.buffered.start(0);
     }
     this._updateTrackStatus();
     this.loopCheckCompletion();
@@ -284,6 +320,35 @@ export class WebAudioSink implements AudioSink {
   restart() {
     this._audio.currentTime = 0;
     this.play();
+  }
+
+  destroy() {
+    clearTimeout(this._completionChecker);
+    this._audio.removeEventListener("play", this._onplay);
+    this._audio.removeEventListener("pause", this._onpause);
+    this._audio.removeEventListener("seeked", this._onseeked);
+    this._audio.pause();
+    // Clear any remaining buffered data while MediaSource is still open
+    try {
+      if (this._sourceBuffer.buffered.length > 0) {
+        this._sourceBuffer.remove(
+          0,
+          this._sourceBuffer.buffered.end(
+            this._sourceBuffer.buffered.length - 1,
+          ),
+        );
+      }
+    } catch (_) {
+      // May fail if MediaSource is already closing — that's fine
+    }
+    this._audio.removeAttribute("src");
+    // Forces the media element load algorithm, which releases all internal
+    // media resources (decoded frames, demuxer state, native pipeline)
+    this._audio.load();
+    if (this._objectUrl) {
+      URL.revokeObjectURL(this._objectUrl);
+      this._objectUrl = undefined;
+    }
   }
 }
 

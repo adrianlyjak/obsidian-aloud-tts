@@ -118,6 +118,8 @@ export class FakeAudioSink implements AudioSink {
 
   source: AudioNode | undefined;
   context: AudioContext | undefined;
+
+  destroy(): void {}
 }
 
 export function createTestModel(): TTSModel {

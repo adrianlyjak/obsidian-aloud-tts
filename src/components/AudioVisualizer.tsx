@@ -6,7 +6,7 @@ const BAR_COUNT = 6;
 export interface AudioVisualizerProps {
   audioElement: HTMLAudioElement;
   audioBuffer: AudioBuffer;
-  offsetDurationSeconds: number;
+  timelineStartSeconds: number;
   /** CSS class name for the container */
   className?: string;
 }
@@ -14,7 +14,7 @@ export interface AudioVisualizerProps {
 export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
   audioElement,
   audioBuffer,
-  offsetDurationSeconds,
+  timelineStartSeconds,
   className = "tts-audio-visualizer",
 }) => {
   const ref = React.useRef<HTMLElement | null>(null);
@@ -26,13 +26,13 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
         audioElement,
         audioBuffer,
         fft,
-        offsetDurationSeconds,
+        timelineStartSeconds,
       );
       return () => {
         destroyer.destroy();
       };
     }
-  }, [ref.current, audioElement, audioBuffer, offsetDurationSeconds, fft]);
+  }, [ref.current, audioElement, audioBuffer, timelineStartSeconds, fft]);
 
   return <div className={className} ref={(x) => (ref.current = x)}></div>;
 };
@@ -42,10 +42,10 @@ function getFrequencyBins(
   audioBuffer: AudioBuffer,
   audioElement: HTMLAudioElement,
   magnitudes: Float32Array,
-  offsetDurationSeconds: number,
+  timelineStartSeconds: number,
 ): Float32Array {
   const position =
-    (audioElement.currentTime - offsetDurationSeconds) * audioBuffer.sampleRate;
+    (audioElement.currentTime - timelineStartSeconds) * audioBuffer.sampleRate;
   const mono = audioBuffer
     .getChannelData(0)
     .subarray(position, position + fft.size);
@@ -66,7 +66,7 @@ export function attachVisualizationToDom(
   audioElement: HTMLAudioElement,
   audioBuffer: AudioBuffer,
   fft: FFT,
-  offsetDurationSeconds: number,
+  timelineStartSeconds: number,
 ): {
   destroy: () => void;
 } {
@@ -116,7 +116,7 @@ export function attachVisualizationToDom(
       audioBuffer,
       audioElement,
       dataArray,
-      offsetDurationSeconds,
+      timelineStartSeconds,
     );
 
     // Calculate band values

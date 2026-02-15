@@ -39,6 +39,7 @@ The plugin follows a modular architecture with clear separation of concerns:
 - `src/player/ActiveAudioText.ts` - Manages active text being played
 - `src/player/ChunkPlayer.ts` - Handles audio chunk sequencing
 - `src/player/ChunkLoader.ts` - Preloads audio chunks for smooth playback
+- `src/player/AudioTextChunk.ts` - Per-chunk loading and decoded-buffer metadata
 
 **Architecture**:
 The audio system uses a dependency injection pattern where `AudioSystem` acts as a service locator. Key components:
@@ -48,6 +49,7 @@ The audio system uses a dependency injection pattern where `AudioSystem` acts as
 - **AudioSink**: Abstraction over Web Audio API that handles actual audio playback
 - **ChunkPlayer**: Orchestrates the loading and playing of individual audio chunks
 - **ChunkLoader**: Background service that preloads upcoming audio chunks
+- **AudioTextChunk**: Holds per-chunk text, compressed audio bytes, and optional decoded `AudioBuffer` metadata
 
 **Text Processing Flow**:
 1. Text is split into chunks (sentences or paragraphs based on settings)
@@ -81,6 +83,7 @@ The audio system uses a dependency injection pattern where `AudioSystem` acts as
 **Files**:
 - `src/obsidian/ObsidianBridge.ts` - Bridge between Obsidian and audio system
 - `src/codemirror/TTSCodemirror.ts` - CodeMirror editor integration
+- `src/codemirror/TTSCodeMirrorCore.ts` - Shared synchronization and editor logic
 
 **ObsidianBridge Responsibilities**:
 - Editor state tracking (active/focused editors)
@@ -174,6 +177,9 @@ Obsidian commands encapsulate audio actions, providing consistent keyboard short
 - Content-addressed storage using MinHash
 - Configurable cache duration and location
 - Background cleanup of expired content
+- Two persistent backends are supported: IndexedDB (`local`) and vault files (`vault`, in `.tts`)
+- Runtime chunk loading also uses a short-lived in-memory cache in `ChunkLoader` (60 second TTL)
+- See `architecture-docs/caching-and-eviction.md` for cache layers and eviction details
 
 ### Settings Persistence
 - JSON-based storage through Obsidian's data API
@@ -191,6 +197,8 @@ Obsidian commands encapsulate audio actions, providing consistent keyboard short
 - Automatic cleanup of completed audio sessions
 - Disposal patterns for MobX observers
 - Web Audio API resource management
+- SourceBuffer data eviction keeps only a sliding playback window behind the current time
+- Decoded `AudioBuffer` data for older chunks is released to reduce native memory pressure
 
 ### Streaming Playback
 - Chunked audio allows for immediate playback start

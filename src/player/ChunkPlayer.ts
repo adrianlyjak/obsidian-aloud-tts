@@ -26,6 +26,8 @@ export class ChunkPlayer {
   private activeAudioText: ActiveAudioText;
   private system: AudioSystem;
   private isDestroyed = false;
+  private playbackTimelineEpoch = 0;
+  private playbackTimelineCursorSeconds = 0;
 
   private cancelDemand: { cancel: () => void } | undefined = undefined;
   private cancelMonitorText: { cancel: () => void } | undefined = undefined;
@@ -49,9 +51,83 @@ export class ChunkPlayer {
     mobx.makeObservable(this, {
       _activate: mobx.action,
       _clearChunks: mobx.action,
+      _rotateTimelineEpoch: mobx.action,
     });
 
+    this._rotateTimelineEpoch();
     this._activate();
+  }
+
+  _rotateTimelineEpoch() {
+    this.playbackTimelineEpoch += 1;
+    this.playbackTimelineCursorSeconds = 0;
+  }
+
+  private _chunkHasCurrentEpochTimeline(chunk: AudioTextChunk): boolean {
+    return (
+      chunk.timelineEpoch === this.playbackTimelineEpoch &&
+      chunk.timelineStartSeconds != null &&
+      chunk.timelineEndSeconds != null
+    );
+  }
+
+  private _assignTimelineForChunk(
+    activeText: ActiveAudioText,
+    position: number,
+    duration: number,
+  ): { timelineStartSeconds: number; timelineEpoch: number } {
+    const chunk = activeText.audio.chunks[position];
+    if (chunk && this._chunkHasCurrentEpochTimeline(chunk)) {
+      this.playbackTimelineCursorSeconds = Math.max(
+        this.playbackTimelineCursorSeconds,
+        chunk.timelineEndSeconds!,
+      );
+      return {
+        timelineStartSeconds: chunk.timelineStartSeconds!,
+        timelineEpoch: this.playbackTimelineEpoch,
+      };
+    }
+
+    const previousChunk = activeText.audio.chunks[position - 1];
+    if (
+      previousChunk &&
+      previousChunk.timelineEpoch === this.playbackTimelineEpoch &&
+      previousChunk.timelineEndSeconds != null
+    ) {
+      const timelineStartSeconds = previousChunk.timelineEndSeconds;
+      this.playbackTimelineCursorSeconds = Math.max(
+        this.playbackTimelineCursorSeconds,
+        timelineStartSeconds + duration,
+      );
+      return {
+        timelineStartSeconds,
+        timelineEpoch: this.playbackTimelineEpoch,
+      };
+    }
+
+    const nextChunk = activeText.audio.chunks[position + 1];
+    if (
+      nextChunk &&
+      nextChunk.timelineEpoch === this.playbackTimelineEpoch &&
+      nextChunk.timelineStartSeconds != null
+    ) {
+      const timelineStartSeconds = Math.max(
+        0,
+        nextChunk.timelineStartSeconds - duration,
+      );
+      this.playbackTimelineCursorSeconds = Math.max(
+        this.playbackTimelineCursorSeconds,
+        timelineStartSeconds + duration,
+      );
+      return {
+        timelineStartSeconds,
+        timelineEpoch: this.playbackTimelineEpoch,
+      };
+    }
+
+    const timelineStartSeconds = this.playbackTimelineCursorSeconds;
+    this.playbackTimelineCursorSeconds += duration;
+    return { timelineStartSeconds, timelineEpoch: this.playbackTimelineEpoch };
   }
 
   _shouldBeActive(): boolean {
@@ -114,6 +190,8 @@ export class ChunkPlayer {
             this.chunkLoader,
             BUFFER_AHEAD,
             CHUNK_CONTEXT_SIZE,
+            (activeText, position, duration) =>
+              this._assignTimelineForChunk(activeText, position, duration),
           )
         : undefined;
       this.cancelMonitorText = loopMonitorTextForChanges();
@@ -128,11 +206,20 @@ export class ChunkPlayer {
       if (transitionType === "position-changed") {
         const position = this.activeAudioText.position;
         if (start <= position && position <= end) {
-          // just jump the audio position if its already loaded to the buffer
-          const duration = getSequentialLoadedChunks(this.activeAudioText)
-            .slice(0, position - start)
-            .reduce((s, x) => s + x.duration!, 0);
-          this.system.audioSink.currentTime = duration;
+          const targetChunk = this.activeAudioText.audio.chunks[position];
+          const timelineStart = targetChunk?.timelineStartSeconds;
+          if (
+            targetChunk &&
+            this._chunkHasCurrentEpochTimeline(targetChunk) &&
+            timelineStart != null
+          ) {
+            // Seek directly to the chunk's monotonic timeline start.
+            this.system.audioSink.currentTime = timelineStart;
+          } else {
+            toReset = { all: true };
+            await this._clearAudio();
+            continue;
+          }
           // wait for seeking event to fire, otherwise seek will fire next iteration
           await CancellablePromise.fromEvent(
             this.system.audioSink.audio,
@@ -200,6 +287,7 @@ export class ChunkPlayer {
   }
 
   async _clearAudio() {
+    this._rotateTimelineEpoch();
     this._clearChunks();
     this.chunkLoader.expireBefore();
     await this.system.audioSink.clearMedia();
@@ -293,18 +381,17 @@ const whenCurrentChunkDonePlaying = (
     if (!active.isPlaying) {
       return CancellablePromise.resolve();
     }
-    const loadedChunks = getSequentialLoadedChunks(active);
-    const index = loadedChunks.findIndex((x) => x === chunk);
-    if (index === -1 || active.currentChunk !== chunk) {
+    if (active.currentChunk !== chunk) {
       return CancellablePromise.resolve();
     }
-    const duration = loadedChunks
-      .slice(0, index + 1)
-      .reduce((acc, x) => acc + (x.duration || 0), 0);
+    const chunkEnd = chunk.timelineEndSeconds;
+    if (chunkEnd == null) {
+      return CancellablePromise.delay(100).thenCancellable(() => innerLoop());
+    }
     const currentTime = audioSink.currentTime;
     const hasNotProgressed = lastCurrentTime && currentTime === lastCurrentTime;
     lastCurrentTime = currentTime;
-    const remaining = duration - currentTime;
+    const remaining = chunkEnd - currentTime;
     // frequently seems to report lower duration before the reported total duration, so
     // this is necessary otherwise it will stall
     if (remaining <= 0.1 || (hasNotProgressed && remaining < 1)) {
@@ -327,8 +414,7 @@ const whenCurrentChunkDonePlaying = (
 function getLoadedRange(active: ActiveAudioText): [number, number] {
   let low = active.position; // inclusive
   let high = active.position; // exclusive
-  const isLoaded = (x?: AudioTextChunk) =>
-    x?.audio && typeof x?.duration === "number";
+  const isLoaded = (x?: AudioTextChunk) => x?.audio && x.duration != null;
   while (low > 0 && isLoaded(active.audio.chunks[low - 1])) {
     low--;
   }
@@ -339,11 +425,6 @@ function getLoadedRange(active: ActiveAudioText): [number, number] {
     high++;
   }
   return [low, high];
-}
-
-function getSequentialLoadedChunks(active: ActiveAudioText): AudioTextChunk[] {
-  const [low, high] = getLoadedRange(active);
-  return active.audio.chunks.slice(low, high);
 }
 
 function nextToLoad(
@@ -365,28 +446,60 @@ function nextToLoad(
  * Finds the index of the chunk that the audio playback is currently at.
  * @returns
  */
-function getPositionAccordingToPlayback(
+export function getPositionAccordingToPlayback(
   active: ActiveAudioText,
   audioSink: AudioSink,
 ): PlaybackPosition {
   const [start, end] = getLoadedRange(active);
-  const loaded = active.audio.chunks.slice(start, end);
+  const loadedWithTimeline = active.audio.chunks
+    .slice(start, end)
+    .map((chunk, index) => ({
+      chunk,
+      position: start + index,
+    }))
+    .filter(
+      (item) =>
+        item.chunk.timelineStartSeconds != null &&
+        item.chunk.timelineEndSeconds != null,
+    );
+  const activeEpoch = loadedWithTimeline.reduce<number | undefined>(
+    (latest, item) => {
+      if (item.chunk.timelineEpoch == null) {
+        return latest;
+      }
+      if (latest == null) {
+        return item.chunk.timelineEpoch;
+      }
+      return Math.max(latest, item.chunk.timelineEpoch);
+    },
+    undefined,
+  );
+  const loaded =
+    activeEpoch != null
+      ? loadedWithTimeline.filter(
+          (item) => item.chunk.timelineEpoch === activeEpoch,
+        )
+      : loadedWithTimeline;
   if (loaded.length === 0) {
     return { type: "BeforeLoaded", position: Math.max(0, start - 1) };
   }
   const audioPosition = audioSink.audio.currentTime;
 
-  let running = 0;
   for (let i = 0; i < loaded.length; i++) {
-    const chunk = loaded[i];
-    running += chunk.duration!;
-    if (running >= audioPosition) {
-      return { type: "Position", position: start + i };
+    const { chunk, position } = loaded[i];
+    const chunkStart = chunk.timelineStartSeconds!;
+    const chunkEnd = chunk.timelineEndSeconds!;
+    if (audioPosition < chunkStart) {
+      return { type: "BeforeLoaded", position: Math.max(0, position - 1) };
+    }
+    if (audioPosition <= chunkEnd) {
+      return { type: "Position", position };
     }
   }
+  const lastLoadedPosition = loaded[loaded.length - 1]!.position;
   return {
     type: "AfterLoaded",
-    position: Math.min(end, active.audio.chunks.length),
+    position: Math.min(lastLoadedPosition + 1, active.audio.chunks.length),
   };
 }
 
@@ -411,6 +524,56 @@ type PlaybackPosition =
   | { type: "BeforeLoaded"; position: number }
   | { type: "AfterLoaded"; position: number }
   | { type: "Position"; position: number };
+
+function getBufferedStart(audio: HTMLAudioElement): number | undefined {
+  const buffered = audio.buffered;
+  if (!buffered || buffered.length === 0) {
+    return undefined;
+  }
+  return buffered.start(0);
+}
+
+function pruneEvictedChunkState(
+  activeText: ActiveAudioText,
+  audioSink: AudioSink,
+  chunkLoader: ChunkLoader,
+): void {
+  const bufferedStart = getBufferedStart(audioSink.audio);
+  if (bufferedStart == null) {
+    return;
+  }
+
+  for (const chunk of activeText.audio.chunks) {
+    if (!chunk.audio || chunk.timelineEndSeconds == null) {
+      continue;
+    }
+    const chunkEnd = chunk.timelineEndSeconds;
+    if (chunkEnd <= bufferedStart) {
+      // SourceBuffer has already evicted this media range from the HTMLAudioElement
+      // playback window. Drop chunk bytes/state so it can be reloaded on demand,
+      // but preserve timing metadata for stable seek mapping.
+      chunk.evictAudioData();
+      chunkLoader.uncache(chunk.text);
+    }
+  }
+}
+
+function releaseDecodedAudioBuffersBehindPosition(
+  activeText: ActiveAudioText,
+): void {
+  // This is distinct from SourceBuffer eviction:
+  // - SourceBuffer eviction (AudioSink) trims media bytes retained by the media element.
+  // - This function releases decoded PCM AudioBuffers kept on chunk objects.
+  //
+  // Keep 1 chunk behind for smoother near-backward transitions.
+  const currentPos = activeText.position;
+  for (let i = 0; i < currentPos - 1; i++) {
+    const oldChunk = activeText.audio.chunks[i];
+    if (oldChunk?.audioBuffer) {
+      oldChunk.releaseAudioBuffer();
+    }
+  }
+}
 
 function getContext(
   chunks: AudioTextChunk[],
@@ -487,6 +650,11 @@ const loadCheckLoop = (
   chunkLoader: ChunkLoader,
   maxBufferAhead: number,
   audioContextChunks: number,
+  assignTimeline: (
+    activeText: ActiveAudioText,
+    position: number,
+    duration: number,
+  ) => { timelineStartSeconds: number; timelineEpoch: number },
 ): CancellablePromise<void> => {
   let cancelled = false;
   const inner = (): Promise<void> => {
@@ -513,13 +681,18 @@ const loadCheckLoop = (
           .then((buff) => {
             const chunk = activeText.audio.chunks[position];
             if (chunk.audio) {
-              const offsetDuration = activeText.audio.chunks
-                .slice(0, position)
-                .reduce((acc, x) => acc + (x.duration || 0), 0);
+              const timeline = assignTimeline(
+                activeText,
+                position,
+                buff.duration,
+              );
               activeText.audio.chunks[position].setAudioBuffer(
                 buff,
-                offsetDuration,
+                timeline.timelineStartSeconds,
+                timeline.timelineEpoch,
               );
+              pruneEvictedChunkState(activeText, system.audioSink, chunkLoader);
+              releaseDecodedAudioBuffersBehindPosition(activeText);
             } else {
               chunk.reset(); // something interrupted, so reset
             }

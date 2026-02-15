@@ -13,10 +13,7 @@ import { ObsidianBridge } from "../obsidian/ObsidianBridge";
 import { PlayerView } from "../components/PlayerView";
 import { createDOM } from "../components/DownloadProgress";
 import { TTSPluginSettingsStore } from "../player/TTSPluginSettings";
-import {
-  createTTSHighlightExtension,
-  createPlayerSynchronizer,
-} from "./TTSCodeMirrorCore";
+import { createTTSHighlightExtension } from "./TTSCodeMirrorCore";
 import {
   createLoadingSpinnerExtension,
   ObsidianLoadingWidgetFactory,
@@ -69,10 +66,6 @@ export function TTSCodeMirror(
   sink: AudioSink,
   obsidian: ObsidianBridge,
 ): Extension {
-  // Set up synchronization using shared logic
-  // Note: disposer cleanup is handled automatically when the extension is destroyed
-  createPlayerSynchronizer(player, obsidian);
-
   const loadingWidgetFactory = new ObsidianLoadingWidgetFactory(createDOM);
 
   return [

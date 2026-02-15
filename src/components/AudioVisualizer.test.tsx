@@ -13,7 +13,7 @@ describe("AudioVisualizer", () => {
       <AudioVisualizer
         audioElement={mockAudioElement as any}
         audioBuffer={mockAudioBuffer as any}
-        offsetDurationSeconds={0}
+        timelineStartSeconds={0}
       />,
     );
 
