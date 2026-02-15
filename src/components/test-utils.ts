@@ -119,6 +119,10 @@ export class FakeAudioSink implements AudioSink {
   source: AudioNode | undefined;
   context: AudioContext | undefined;
 
+  consumeLastSeekTarget(): number | undefined {
+    return undefined;
+  }
+
   destroy(): void {}
 }
 
