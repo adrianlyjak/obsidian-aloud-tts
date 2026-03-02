@@ -120,11 +120,19 @@ export interface MinimaxModelConfig {
   minimax_useChinaEndpoint: boolean;
 }
 
+export type PollyAuthMode = "static" | "profile";
+
 export interface PollyModelConfig {
-  /** AWS Access Key ID */
+  /** Authentication mode: static credentials or AWS profile */
+  polly_authMode: PollyAuthMode;
+  /** AWS Access Key ID (used when authMode is 'static') */
   polly_accessKeyId: string;
-  /** AWS Secret Access Key */
+  /** AWS Secret Access Key (used when authMode is 'static') */
   polly_secretAccessKey: string;
+  /** AWS profile name (used when authMode is 'profile') */
+  polly_profile: string;
+  /** Command to refresh AWS credentials (e.g., 'mwinit -s -f') */
+  polly_refreshCommand: string;
   /** AWS region (e.g., us-east-1) */
   polly_region: string;
   /** Polly voice id to use (e.g., Joanna) */
@@ -222,8 +230,11 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   inworld_voiceId: "Ronald",
 
   // polly
+  polly_authMode: "static",
   polly_accessKeyId: "",
   polly_secretAccessKey: "",
+  polly_profile: "default",
+  polly_refreshCommand: "",
   polly_region: "us-east-1",
   polly_voiceId: "Joanna",
   polly_engine: "neural",
