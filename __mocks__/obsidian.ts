@@ -97,3 +97,16 @@ export interface TooltipOptions {
   delay?: number;
   placement?: string;
 }
+
+// Mock Platform
+export const Platform = {
+  isDesktopApp: false,
+  isMobileApp: false,
+  isMobile: false,
+  isIosApp: false,
+  isAndroidApp: false,
+  isMacOS: false,
+  isWin: false,
+  isLinux: false,
+  isSafari: false,
+};
