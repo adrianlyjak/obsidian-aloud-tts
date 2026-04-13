@@ -9,10 +9,10 @@ import {
 import { hexToArrayBuffer } from "../util/misc";
 import { AudioData } from "./tts-model";
 
-/** International endpoint (platform.minimax.io) */
-export const MINIMAX_API_URL = "https://api.minimax.io";
-/** China mainland endpoint (platform.minimaxi.com) */
-export const MINIMAX_CHINA_API_URL = "https://api.minimaxi.com";
+/** International/global endpoint (platform.minimax.io) */
+export const MINIMAX_API_URL = "https://api.minimaxi.chat";
+/** China mainland endpoint (platform.minimax.chat) */
+export const MINIMAX_CHINA_API_URL = "https://api.minimax.chat";
 
 /** Get the appropriate Minimax API URL based on settings */
 export function getMinimaxApiUrl(settings: TTSPluginSettings): string {

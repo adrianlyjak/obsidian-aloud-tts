@@ -116,7 +116,7 @@ export interface MinimaxModelConfig {
   minimax_ttsModel: string;
   /** the voice id to use */
   minimax_ttsVoice: string;
-  /** whether to use the China mainland endpoint (api.minimaxi.com) instead of international (api.minimax.io) */
+  /** whether to use the China mainland endpoint (api.minimax.chat) instead of international (api.minimaxi.chat) */
   minimax_useChinaEndpoint: boolean;
 }
 
