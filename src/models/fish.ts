@@ -1,3 +1,4 @@
+import { RequestUrlResponse, requestUrl } from "obsidian";
 import { TTSPluginSettings } from "../player/TTSPluginSettings";
 import {
   AudioTextContext,
@@ -73,11 +74,12 @@ export async function fishCallTextToSpeech(
     });
   }
 
-  const response = await fetch(`${FISH_API_URL}/v1/tts`, {
+  const response = await requestUrl({
+    url: `${FISH_API_URL}/v1/tts`,
     method: "POST",
+    contentType: "application/json",
     headers: {
       Authorization: `Bearer ${options.apiKey || ""}`,
-      "Content-Type": "application/json",
       model: options.model,
     },
     body: JSON.stringify({
@@ -87,11 +89,12 @@ export async function fishCallTextToSpeech(
       mp3_bitrate: 128,
       normalize: true,
     }),
+    throw: false,
   });
 
   await validate200Fish(response);
   return {
-    data: await response.arrayBuffer(),
+    data: response.arrayBuffer,
     format: "mp3",
   };
 }
@@ -113,42 +116,44 @@ export async function listFishVoices(
     params.set("self", "true");
   }
 
-  const response = await fetch(`${FISH_API_URL}/model?${params.toString()}`, {
+  const response = await requestUrl({
+    url: `${FISH_API_URL}/model?${params.toString()}`,
     headers: {
       Authorization: `Bearer ${apiKey}`,
     },
+    throw: false,
   });
 
   await validate200Fish(response);
-  const data = await response.json();
-  return parseFishVoiceList(data);
+  return parseFishVoiceList(response.json);
 }
 
 export async function getFishVoice(
   apiKey: string,
   voiceId: string,
 ): Promise<FishVoice> {
-  const response = await fetch(
-    `${FISH_API_URL}/model/${encodeURIComponent(voiceId)}`,
-    {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
+  const response = await requestUrl({
+    url: `${FISH_API_URL}/model/${encodeURIComponent(voiceId)}`,
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
     },
-  );
+    throw: false,
+  });
 
   await validate200Fish(response);
-  return parseFishVoice(await response.json());
+  return parseFishVoice(response.json);
 }
 
-export async function validate200Fish(response: Response): Promise<void> {
+export async function validate200Fish(
+  response: Pick<RequestUrlResponse, "status" | "json">,
+): Promise<void> {
   if (response.status < 300) {
     return;
   }
 
   let errorMessage: ErrorMessage | undefined;
   try {
-    errorMessage = fishErrorMessage(await response.json(), response.status);
+    errorMessage = fishErrorMessage(response.json, response.status);
   } catch {
     errorMessage = undefined;
   }
