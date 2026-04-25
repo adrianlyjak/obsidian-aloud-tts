@@ -9,6 +9,7 @@ import { azureTextToSpeech } from "./azure";
 import { minimaxTextToSpeech } from "./minimax";
 import { inworldTextToSpeech } from "./inworld";
 import { pollyTextToSpeech } from "./polly";
+import { fishTextToSpeech } from "./fish";
 
 export const REGISTRY: Record<ModelProvider, TTSModel> = {
   openai: openAITextToSpeech,
@@ -18,6 +19,7 @@ export const REGISTRY: Record<ModelProvider, TTSModel> = {
   elevenlabs: elevenLabsTextToSpeech,
   azure: azureTextToSpeech,
   minimax: minimaxTextToSpeech,
+  fish: fishTextToSpeech,
   inworld: inworldTextToSpeech,
   polly: pollyTextToSpeech,
 };

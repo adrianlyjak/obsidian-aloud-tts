@@ -14,6 +14,7 @@ Just add your API key from a supported provider. Choose from available voices.
 *   **Google Gemini:** (Gemini 2.5 series)
 *   **Hume AI:** (Hume voices with customization)
 *   **ElevenLabs:** (Model selection, voice selection, stability/similarity options)
+*   **Fish Audio:** (S2 Pro/S1 models with custom voice model IDs)
 *   **Azure Speech Services:** (Region, voice and output format selection)
 *   **MiniMax:** (speech-2.6-hd, speech-2.6-turbo, speech-02-hd, speech-02-turbo, speech-01-hd, speech-01-turbo)
 *   **AWS Polly:** (Region, voice, neural/standard engine, output format)
