@@ -124,6 +124,7 @@ export interface MinimaxModelConfig {
 
 export type FishModel = "s1" | "s2-pro";
 export type FishVoiceSource = "my-voices" | "custom";
+export type FishSentencePause = "none" | "short" | "long";
 
 export interface FishModelConfig {
   /** the API key to use */
@@ -134,6 +135,8 @@ export interface FishModelConfig {
   fish_voiceSource: FishVoiceSource;
   /** the voice model ID to use as reference_id */
   fish_voiceId: string;
+  /** Fish Audio pause control to insert between sentences */
+  fish_sentencePause: FishSentencePause;
 }
 
 export interface PollyModelConfig {
@@ -239,6 +242,7 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   fish_model: "s2-pro",
   fish_voiceSource: "custom",
   fish_voiceId: "",
+  fish_sentencePause: "none",
 
   // inworld
   inworld_apiKey: "",

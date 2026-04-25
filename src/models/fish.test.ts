@@ -4,6 +4,7 @@ import { DEFAULT_SETTINGS } from "../player/TTSPluginSettings";
 import { TTSModelOptions, TTSErrorInfo } from "./tts-model";
 import {
   FISH_API_URL,
+  addFishSentencePauses,
   fishCallTextToSpeech,
   fishTextToSpeech,
   getFishVoice,
@@ -31,12 +32,14 @@ describe("Fish Audio Model", () => {
         fish_apiKey: "test-api-key",
         fish_model: "s2-pro" as const,
         fish_voiceId: "voice-id",
+        fish_sentencePause: "long" as const,
       };
 
       const options = fishTextToSpeech.convertToOptions(settings);
 
       expect(options).toEqual({
         apiKey: "test-api-key",
+        instructions: "long",
         model: "s2-pro",
         voice: "voice-id",
       });
@@ -125,6 +128,32 @@ describe("Fish Audio Model", () => {
       expect(result.format).toBe("mp3");
     });
 
+    it("should add Fish Audio sentence pause controls", async () => {
+      const audio = new Uint8Array([1, 2, 3, 4]).buffer;
+      vi.mocked(requestUrl).mockResolvedValue(
+        fishResponse({ status: 200, arrayBuffer: audio }),
+      );
+
+      await fishCallTextToSpeech(
+        "Hello world. Next sentence?",
+        { ...options, instructions: "short" },
+        DEFAULT_SETTINGS,
+        {},
+      );
+
+      expect(requestUrl).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: JSON.stringify({
+            text: "Hello world. (break) Next sentence? (break)",
+            reference_id: "voice-id",
+            format: "mp3",
+            mp3_bitrate: 128,
+            normalize: false,
+          }),
+        }),
+      );
+    });
+
     it("should throw when no voice ID is configured", async () => {
       await expect(
         fishCallTextToSpeech(
@@ -158,6 +187,26 @@ describe("Fish Audio Model", () => {
           httpErrorCode: 422,
         });
       }
+    });
+  });
+
+  describe("addFishSentencePauses", () => {
+    it("should leave text unchanged when disabled", () => {
+      expect(addFishSentencePauses("Hello. Next.", "none")).toBe(
+        "Hello. Next.",
+      );
+    });
+
+    it("should insert short pauses between sentences and at sentence endings", () => {
+      expect(addFishSentencePauses("Hello. Next?", "short")).toBe(
+        "Hello. (break) Next? (break)",
+      );
+    });
+
+    it("should insert long pauses while preserving trailing whitespace", () => {
+      expect(addFishSentencePauses("Hello. Next.  ", "long")).toBe(
+        "Hello. (long-break) Next. (long-break)  ",
+      );
     });
   });
 

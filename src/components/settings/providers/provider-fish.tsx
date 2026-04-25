@@ -28,6 +28,7 @@ export const FishSettings = observer(
         ) : (
           <FishCustomVoiceComponent store={store} />
         )}
+        <FishSentencePauseComponent store={store} />
       </>
     );
   },
@@ -174,6 +175,27 @@ const FishCustomVoiceComponent: React.FC<{
       provider="fish"
       fieldName="fish_voiceId"
       placeholder="e.g. 7f92f8afb8ec43bf81429cc1c9199cb1"
+    />
+  );
+});
+
+const FISH_SENTENCE_PAUSES = [
+  { label: "None", value: "none" },
+  { label: "Short", value: "short" },
+  { label: "Long", value: "long" },
+] as const;
+
+const FishSentencePauseComponent: React.FC<{
+  store: TTSPluginSettingsStore;
+}> = observer(({ store }) => {
+  return (
+    <OptionSelectSetting
+      name="Sentence Pause"
+      description="Add Fish Audio pause controls between sentences. Use this when a voice reads at the right pace but moves too quickly into the next sentence."
+      store={store}
+      provider="fish"
+      fieldName="fish_sentencePause"
+      options={FISH_SENTENCE_PAUSES}
     />
   );
 });

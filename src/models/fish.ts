@@ -1,5 +1,8 @@
 import { RequestUrlResponse, requestUrl } from "obsidian";
-import { TTSPluginSettings } from "../player/TTSPluginSettings";
+import {
+  FishSentencePause,
+  TTSPluginSettings,
+} from "../player/TTSPluginSettings";
 import {
   AudioTextContext,
   ErrorMessage,
@@ -33,6 +36,7 @@ export const fishTextToSpeech: TTSModel = {
       apiKey: settings.fish_apiKey,
       model: settings.fish_model,
       voice: settings.fish_voiceId,
+      instructions: settings.fish_sentencePause,
     };
   },
 };
@@ -73,6 +77,7 @@ export async function fishCallTextToSpeech(
       },
     });
   }
+  const sentencePause = parseFishSentencePause(options.instructions);
 
   const response = await requestUrl({
     url: `${FISH_API_URL}/v1/tts`,
@@ -83,11 +88,11 @@ export async function fishCallTextToSpeech(
       model: options.model,
     },
     body: JSON.stringify({
-      text,
+      text: addFishSentencePauses(text, sentencePause),
       reference_id: options.voice,
       format: "mp3",
       mp3_bitrate: 128,
-      normalize: true,
+      normalize: sentencePause === "none",
     }),
     throw: false,
   });
@@ -97,6 +102,41 @@ export async function fishCallTextToSpeech(
     data: response.arrayBuffer,
     format: "mp3",
   };
+}
+
+export function addFishSentencePauses(
+  text: string,
+  sentencePause: FishSentencePause,
+): string {
+  const pauseTag = fishPauseTag(sentencePause);
+  if (!pauseTag) {
+    return text;
+  }
+
+  const textWithInternalPauses = text.replace(
+    /([.!?]["')\]]?)(\s+)/g,
+    `$1 ${pauseTag}$2`,
+  );
+
+  return textWithInternalPauses.replace(
+    /([.!?]["')\]]?)(\s*)$/u,
+    `$1 ${pauseTag}$2`,
+  );
+}
+
+function parseFishSentencePause(value: string | undefined): FishSentencePause {
+  return value === "short" || value === "long" ? value : "none";
+}
+
+function fishPauseTag(sentencePause: FishSentencePause): string | undefined {
+  switch (sentencePause) {
+    case "short":
+      return "(break)";
+    case "long":
+      return "(long-break)";
+    case "none":
+      return undefined;
+  }
 }
 
 export async function listFishVoices(
