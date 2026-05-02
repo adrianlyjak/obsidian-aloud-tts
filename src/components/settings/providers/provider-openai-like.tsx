@@ -36,6 +36,25 @@ export const OpenAICompatibleSettings = observer(
           provider="openaicompat"
           fieldName="openaicompat_ttsVoice"
         />
+        <TextInputSetting
+          name="Generation Speed"
+          description="Speed sent to the OpenAI-compatible TTS API when generating audio. This is different from the local playback speed control. Useful for providers that support a TTS speed parameter, such as OpenRouter/Kokoro. Example: 0.75, 1, 1.25, 1.5, 2."
+          store={store}
+          provider="openaicompat"
+          fieldName="openaicompat_generationSpeed"
+          placeholder="1"
+          validation={{
+            validate: (value) => {
+              if (!value) {
+                return true;
+              }
+
+              const n = Number.parseFloat(value);
+              return Number.isFinite(n) && n > 0 && n <= 4;
+            },
+            errorMessage: "Enter a number greater than 0 and up to 4",
+          }}
+        />
         <OptionSelectSetting
           name="Audio Format"
           description="The audio format to request from the API."
