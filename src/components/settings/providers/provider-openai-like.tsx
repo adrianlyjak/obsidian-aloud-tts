@@ -8,6 +8,7 @@ import { OptionSelectSetting, TextInputSetting } from "../setting-components";
 const AUDIO_FORMAT_OPTIONS = [
   { label: "MP3", value: "mp3" },
   { label: "WAV", value: "wav" },
+  { label: "PCM", value: "pcm" },
 ] as const;
 
 export const OpenAICompatibleSettings = observer(

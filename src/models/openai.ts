@@ -99,7 +99,9 @@ export async function openAICompatCallTextToSpeech(
   settings: TTSPluginSettings,
   context: AudioTextContext = {},
 ): Promise<AudioData> {
-  const responseFormat = (options.responseFormat || "mp3") as MediaFormat;
+  const responseFormat = String(
+    options.responseFormat || "mp3",
+  ).toLowerCase() as MediaFormat;
 
   const response = await fetch(
     (options.apiUri || OPENAI_API_URL) + "/v1/audio/speech",
