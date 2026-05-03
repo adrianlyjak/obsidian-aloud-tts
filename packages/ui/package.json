@@ -1,0 +1,28 @@
+{
+  "name": "@open-tts/ui",
+  "private": true,
+  "version": "0.15.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config ../../vitest.config.ts packages/ui/src",
+    "build": "pnpm run typecheck"
+  },
+  "dependencies": {
+    "@codemirror/language": "^6.10.3",
+    "@codemirror/state": "^6.4.1",
+    "@codemirror/view": "^6.34.1",
+    "fft.js": "^4.0.4",
+    "lucide-react": "^0.526.0",
+    "mobx": "^6.13.3",
+    "mobx-react-lite": "^4.0.7",
+    "open-tts": "workspace:*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

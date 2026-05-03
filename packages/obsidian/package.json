@@ -1,0 +1,24 @@
+{
+  "name": "obsidian-aloud-tts",
+  "private": true,
+  "version": "0.15.1",
+  "description": "Highlight and speak text from your obsidian notes",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config ../../vitest.config.ts packages/obsidian/src",
+    "build": "pnpm run typecheck && node esbuild.config.mjs production"
+  },
+  "dependencies": {
+    "@codemirror/state": "^6.4.1",
+    "@codemirror/view": "^6.34.1",
+    "@open-tts/ui": "workspace:*",
+    "mobx": "^6.13.3",
+    "mobx-react-lite": "^4.0.7",
+    "obsidian": "^1.7.2",
+    "open-tts": "workspace:*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

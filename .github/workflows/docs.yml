@@ -3,7 +3,7 @@ name: Deploy Docs to GitHub Pages
 on:
   push:
     branches: [ main ]
-    paths: [ 'docs/**' ]
+    paths: [ 'docs/**', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml' ]
   workflow_dispatch:
 
 permissions:
@@ -25,20 +25,16 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
       
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: latest
+      - name: Enable Corepack
+        run: corepack enable
       
       - name: Install dependencies
         run: pnpm install
-        working-directory: ./docs
       
       - name: Build docs
-        run: pnpm run build
-        working-directory: ./docs
+        run: pnpm docs:build
       
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -57,4 +53,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4 
+        uses: actions/deploy-pages@v4

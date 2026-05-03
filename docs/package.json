@@ -1,5 +1,6 @@
 {
   "name": "obsidian-aloud-tts-docs",
+  "private": true,
   "type": "module",
   "version": "0.0.1",
   "description": "Documentation for Obsidian Aloud TTS Plugin",

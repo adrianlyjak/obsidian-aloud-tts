@@ -89,8 +89,8 @@ jobs:
 
       - name: Extract new version
         run: |
-          echo "VERSION=$(jq -r .version package.json)" >> $GITHUB_ENV
-          echo "New version: $(jq -r .version package.json)"
+          echo "VERSION=$(jq -r .version packages/obsidian/package.json)" >> $GITHUB_ENV
+          echo "New version: $(jq -r .version packages/obsidian/package.json)"
 
       - name: Trigger release workflow
         uses: actions/github-script@v7

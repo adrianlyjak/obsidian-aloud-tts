@@ -15,14 +15,14 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: [["list"], ["html", { outputFolder: "playwright-report" }]],
   use: {
-    baseURL: "http://127.0.0.1:5173/src/web/",
+    baseURL: "http://127.0.0.1:5173/",
     trace: "on",
     screenshot: "on",
     video: "on",
   },
   webServer: {
     command: "pnpm web:dev",
-    url: "http://127.0.0.1:5173/src/web/",
+    url: "http://127.0.0.1:5173/",
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
     stdout: "pipe",
