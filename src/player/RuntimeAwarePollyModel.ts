@@ -16,10 +16,6 @@ const POLLY_UNAVAILABLE =
 const POLLY_PROFILE_MISSING =
   "AWS profile credentials could not be read for this profile.";
 
-/**
- * Returns an effective auth mode: if the settings say "profile" but the runtime
- * doesn't support it (e.g. mobile), treat as "static".
- */
 function effectiveAuthMode(
   settings: TTSPluginSettings,
   runtime: RuntimeServices,

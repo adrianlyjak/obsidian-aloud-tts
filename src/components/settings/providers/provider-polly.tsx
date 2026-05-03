@@ -191,8 +191,8 @@ const AwsProfile: React.FC<{
         }
       />
       <DeviceTextInput
-        name="Refresh Command"
-        description="Optional. The local command to refresh AWS credentials when they expire. For SSO profiles, use aws sso login --profile profile-name, or the full path to aws if Obsidian cannot find it."
+        name="Advanced Refresh Command"
+        description="Optional. Leave blank unless this profile needs a custom SSO login command, such as aws sso login --sso-session name."
         value={refreshCommand}
         onChange={(polly_refreshCommand) =>
           store.updateSettings({ polly_refreshCommand })
@@ -202,7 +202,7 @@ const AwsProfile: React.FC<{
         <div className="setting-item-info">
           <div className="setting-item-name">Refresh Credentials</div>
           <div className="setting-item-description">
-            Run the refresh command on this device.
+            Run the advanced refresh command on this device.
             {message && <div>{message}</div>}
           </div>
         </div>
@@ -310,7 +310,13 @@ const PollyVoiceComponent: React.FC<{
 
   const region = store.settings.polly_region;
   const selectedEngine = store.settings.polly_engine;
-  const { polly_authMode, polly_profile, polly_awsCliPath } = store.settings;
+  const {
+    polly_accessKeyId,
+    polly_authMode,
+    polly_awsCliPath,
+    polly_profile,
+    polly_secretAccessKey,
+  } = store.settings;
 
   React.useEffect(() => {
     if (!region) {
@@ -356,7 +362,16 @@ const PollyVoiceComponent: React.FC<{
     };
 
     fetchVoices();
-  }, [polly_authMode, polly_profile, polly_awsCliPath, region, store, runtime]);
+  }, [
+    polly_accessKeyId,
+    polly_authMode,
+    polly_awsCliPath,
+    polly_profile,
+    polly_secretAccessKey,
+    region,
+    store,
+    runtime,
+  ]);
 
   const filteredVoices = React.useMemo(() => {
     if (!selectedEngine) return voices;
@@ -367,7 +382,6 @@ const PollyVoiceComponent: React.FC<{
     );
   }, [voices, selectedEngine]);
 
-  // Auto-correct incompatible voice selection when engine changes or voices load
   React.useEffect(() => {
     const currentVoiceId = store.settings.polly_voiceId;
     if (!currentVoiceId) return;

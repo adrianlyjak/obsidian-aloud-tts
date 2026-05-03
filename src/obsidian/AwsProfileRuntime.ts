@@ -4,6 +4,7 @@ import {
   AwsCredentials,
   AwsProfileRuntime,
   CredentialRefreshResult,
+  unavailableAwsProfileRuntime,
 } from "../player/RuntimeServices";
 
 type NodeRequire = (moduleName: string) => unknown;
@@ -47,7 +48,7 @@ type AwsExecutableDiscoveryResult =
 
 export function createObsidianAwsProfileRuntime(): AwsProfileRuntime {
   if (!Platform.isDesktopApp || !windowRequire()) {
-    return unavailableObsidianAwsProfileRuntime;
+    return unavailableAwsProfileRuntime;
   }
   let refreshInFlight: Promise<CredentialRefreshResult> | undefined;
   return {
@@ -81,7 +82,7 @@ export function createObsidianAwsProfileRuntime(): AwsProfileRuntime {
           return { ok: true, credentials };
         }
       } catch {
-        // Fall through to the AWS CLI provider chain below.
+        // Static profiles are optional; the CLI can resolve SSO and process providers.
       }
       const cliResult = await readAwsCliCredentials(profile, awsCliPath);
       if (cliResult.ok) {
@@ -211,25 +212,6 @@ export function parseAwsCredentialProcessOutput(
     return null;
   }
 }
-
-const unavailableObsidianAwsProfileRuntime: AwsProfileRuntime = {
-  available: false,
-  async listProfiles(): Promise<string[]> {
-    return [];
-  },
-  async readCredentials(): Promise<AwsCredentialReadResult> {
-    return {
-      ok: false,
-      error: "AWS profile authentication is unavailable on this device.",
-    };
-  },
-  async refreshCredentials(): Promise<CredentialRefreshResult> {
-    return {
-      ok: false,
-      error: "AWS profile authentication is unavailable on this device.",
-    };
-  },
-};
 
 async function runRefreshCommand(
   command: string,
