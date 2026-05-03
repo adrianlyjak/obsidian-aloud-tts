@@ -143,12 +143,33 @@ const AwsProfile: React.FC<{
 }> = observer(({ store, pollyAuthSettings, runtime }) => {
   const [refreshing, setRefreshing] = React.useState(false);
   const [message, setMessage] = React.useState<string | undefined>();
+  const [profiles, setProfiles] = React.useState<string[]>([]);
   const profile = pollyAuthSettings.settings.polly_profile;
+  const awsCliPath = pollyAuthSettings.settings.polly_awsCliPath;
   const refreshCommand = pollyAuthSettings.settings.polly_refreshCommand;
 
   React.useEffect(() => {
+    let cancelled = false;
+    runtime.awsProfiles
+      .listProfiles(awsCliPath)
+      .then((profileNames) => {
+        if (!cancelled) {
+          setProfiles(profileNames);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setProfiles([]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [awsCliPath, runtime]);
+
+  React.useEffect(() => {
     store.checkApiKey();
-  }, [profile, store]);
+  }, [awsCliPath, profile, store]);
 
   const refresh = React.useCallback(async () => {
     setRefreshing(true);
@@ -167,18 +188,25 @@ const AwsProfile: React.FC<{
 
   return (
     <>
-      <DeviceTextInput
-        name="AWS Profile Name"
-        description="The local AWS profile name to read from your credentials file."
-        value={profile}
-        placeholder="default"
+      <AwsProfileName
+        profile={profile}
+        profiles={profiles}
         onChange={(polly_profile) =>
           pollyAuthSettings.updateSettings({ polly_profile })
         }
       />
       <DeviceTextInput
+        name="AWS CLI Path"
+        description="Optional. Leave blank to auto-discover aws from Obsidian's PATH, your login shell, or Windows PATH."
+        value={awsCliPath}
+        placeholder="aws"
+        onChange={(polly_awsCliPath) =>
+          pollyAuthSettings.updateSettings({ polly_awsCliPath })
+        }
+      />
+      <DeviceTextInput
         name="Refresh Command"
-        description="The local command to refresh AWS credentials when they expire."
+        description="Optional. The local command to refresh AWS credentials when they expire. For SSO profiles, use aws sso login --profile profile-name, or the full path to aws if Obsidian cannot find it."
         value={refreshCommand}
         onChange={(polly_refreshCommand) =>
           pollyAuthSettings.updateSettings({ polly_refreshCommand })
@@ -208,6 +236,41 @@ const AwsProfile: React.FC<{
     </>
   );
 });
+
+const AwsProfileName: React.FC<{
+  profile: string;
+  profiles: string[];
+  onChange(value: string): void;
+}> = ({ profile, profiles, onChange }) => {
+  const listId = React.useId();
+  return (
+    <div className="setting-item">
+      <div className="setting-item-info">
+        <div className="setting-item-name">AWS Profile Name</div>
+        <div className="setting-item-description">
+          The local AWS profile name to resolve through your AWS credentials or
+          config.
+        </div>
+      </div>
+      <div className="setting-item-control">
+        <input
+          type="text"
+          list={profiles.length > 0 ? listId : undefined}
+          placeholder="default"
+          value={profile}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        {profiles.length > 0 && (
+          <datalist id={listId}>
+            {profiles.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const DeviceTextInput: React.FC<{
   name: string;
@@ -262,8 +325,12 @@ const PollyVoiceComponent: React.FC<{
 
   const region = store.settings.polly_region;
   const selectedEngine = store.settings.polly_engine;
-  const { polly_authMode, polly_profile, polly_refreshCommand } =
-    pollyAuthSettings.settings;
+  const {
+    polly_authMode,
+    polly_profile,
+    polly_awsCliPath,
+    polly_refreshCommand,
+  } = pollyAuthSettings.settings;
 
   React.useEffect(() => {
     if (!region) {
@@ -313,6 +380,7 @@ const PollyVoiceComponent: React.FC<{
   }, [
     polly_authMode,
     polly_profile,
+    polly_awsCliPath,
     polly_refreshCommand,
     region,
     store,

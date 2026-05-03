@@ -4,6 +4,10 @@ export interface AwsCredentials {
   sessionToken?: string;
 }
 
+export type AwsCredentialReadResult =
+  | { ok: true; credentials: AwsCredentials }
+  | { ok: false; error: string };
+
 export interface CredentialRefreshResult {
   ok: boolean;
   error?: string;
@@ -11,7 +15,11 @@ export interface CredentialRefreshResult {
 
 export interface AwsProfileRuntime {
   readonly available: boolean;
-  readCredentials(profile: string): Promise<AwsCredentials | null>;
+  listProfiles(awsCliPath?: string): Promise<string[]>;
+  readCredentials(
+    profile: string,
+    awsCliPath?: string,
+  ): Promise<AwsCredentialReadResult>;
   refreshCredentials(command: string): Promise<CredentialRefreshResult>;
 }
 
@@ -21,8 +29,14 @@ export interface RuntimeServices {
 
 export const unavailableAwsProfileRuntime: AwsProfileRuntime = {
   available: false,
-  async readCredentials(): Promise<AwsCredentials | null> {
-    return null;
+  async listProfiles(): Promise<string[]> {
+    return [];
+  },
+  async readCredentials(): Promise<AwsCredentialReadResult> {
+    return {
+      ok: false,
+      error: "AWS profile authentication is unavailable on this device.",
+    };
   },
   async refreshCredentials(): Promise<CredentialRefreshResult> {
     return {

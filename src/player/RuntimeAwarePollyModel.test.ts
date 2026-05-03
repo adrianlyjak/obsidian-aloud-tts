@@ -37,10 +37,14 @@ function runtime(): RuntimeServices {
   return {
     awsProfiles: {
       available: true,
+      listProfiles: vi.fn().mockResolvedValue(["default"]),
       readCredentials: vi.fn().mockResolvedValue({
-        accessKeyId: "profile-key",
-        secretAccessKey: "profile-secret",
-        sessionToken: "session",
+        ok: true,
+        credentials: {
+          accessKeyId: "profile-key",
+          secretAccessKey: "profile-secret",
+          sessionToken: "session",
+        },
       }),
       refreshCredentials: vi.fn().mockResolvedValue({ ok: true }),
     },
@@ -112,5 +116,43 @@ describe("RuntimeAwarePollyModel", () => {
 
     expect(services.awsProfiles.refreshCredentials).toHaveBeenCalledTimes(1);
     expect(mocks.pollyCall).toHaveBeenCalledTimes(2);
+  });
+
+  it("refreshes and retries when profile credentials are missing", async () => {
+    const auth = memoryPollyAuthSettingsStore({
+      polly_authMode: "profile",
+      polly_refreshCommand: "aws sso login",
+    });
+    const services = runtime();
+    vi.mocked(services.awsProfiles.readCredentials)
+      .mockResolvedValueOnce({
+        ok: false,
+        error: 'AWS CLI executable "aws" was not found.',
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        credentials: {
+          accessKeyId: "profile-key",
+          secretAccessKey: "profile-secret",
+        },
+      });
+
+    await runtimeAwareTTSModel(auth, services).call(
+      "hello",
+      { model: "neural" },
+      { ...DEFAULT_SETTINGS, modelProvider: "polly" },
+    );
+
+    expect(services.awsProfiles.refreshCredentials).toHaveBeenCalledTimes(1);
+    expect(mocks.pollyCall).toHaveBeenCalledTimes(1);
+    expect(mocks.pollyCall).toHaveBeenCalledWith(
+      "hello",
+      { model: "neural" },
+      expect.objectContaining({
+        polly_accessKeyId: "profile-key",
+        polly_secretAccessKey: "profile-secret",
+      }),
+      undefined,
+    );
   });
 });

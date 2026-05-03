@@ -6,12 +6,14 @@ export type PollyAuthMode = "static" | "profile";
 export interface PollyAuthSettings {
   polly_authMode: PollyAuthMode;
   polly_profile: string;
+  polly_awsCliPath: string;
   polly_refreshCommand: string;
 }
 
 export const DEFAULT_POLLY_AUTH_SETTINGS: PollyAuthSettings = {
   polly_authMode: "static",
   polly_profile: "default",
+  polly_awsCliPath: "",
   polly_refreshCommand: "",
 };
 
@@ -89,6 +91,7 @@ export function parsePollyAuthSettings(value: unknown): PollyAuthSettings {
   return {
     polly_authMode: authMode,
     polly_profile: normalizedProfile(partial.polly_profile),
+    polly_awsCliPath: normalizedText(partial.polly_awsCliPath),
     polly_refreshCommand: normalizedRefreshCommand(
       partial.polly_refreshCommand,
     ),
@@ -106,6 +109,9 @@ function parsePollyAuthSettingsUpdate(
   if (update.polly_profile !== undefined) {
     next.polly_profile = normalizedProfile(update.polly_profile);
   }
+  if (update.polly_awsCliPath !== undefined) {
+    next.polly_awsCliPath = normalizedText(update.polly_awsCliPath);
+  }
   if (update.polly_refreshCommand !== undefined) {
     next.polly_refreshCommand = normalizedRefreshCommand(
       update.polly_refreshCommand,
@@ -120,4 +126,8 @@ function normalizedProfile(value: unknown): string {
 
 function normalizedRefreshCommand(value: unknown): string {
   return typeof value === "string" ? value : "";
+}
+
+function normalizedText(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
 }

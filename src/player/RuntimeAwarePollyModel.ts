@@ -32,12 +32,12 @@ export function runtimeAwareTTSModel(
       return callback(settings);
     }
 
-    const effectiveSettings = await settingsWithProfileCredentials(
-      settings,
-      pollyAuthSettings,
-      runtime,
-    );
     try {
+      const effectiveSettings = await settingsWithProfileCredentials(
+        settings,
+        pollyAuthSettings,
+        runtime,
+      );
       return await callback(effectiveSettings);
     } catch (error) {
       if (!shouldRefreshAndRetry(error, pollyAuthSettings)) {
@@ -141,13 +141,17 @@ export async function resolvePollyCredentials(
   if (!runtime.awsProfiles.available) {
     return POLLY_UNAVAILABLE;
   }
-  const credentials = await runtime.awsProfiles.readCredentials(
+  const result = await runtime.awsProfiles.readCredentials(
     pollyAuthSettings.settings.polly_profile,
+    pollyAuthSettings.settings.polly_awsCliPath,
   );
-  if (!credentials?.accessKeyId || !credentials.secretAccessKey) {
-    return POLLY_PROFILE_MISSING;
+  if (!result.ok) {
+    return result.error || POLLY_PROFILE_MISSING;
   }
-  return credentials;
+  if (!result.credentials.accessKeyId || !result.credentials.secretAccessKey) {
+    return "AWS profile did not resolve access key and secret key credentials.";
+  }
+  return result.credentials;
 }
 
 async function settingsWithProfileCredentials(
@@ -161,7 +165,7 @@ async function settingsWithProfileCredentials(
     runtime,
   );
   if (typeof credentials === "string") {
-    throw new Error(credentials);
+    throw pollyProfileCredentialError(credentials);
   }
   return {
     ...settings,
@@ -182,7 +186,7 @@ async function credentialsOrThrow(
     runtime,
   );
   if (typeof credentials === "string") {
-    throw new Error(credentials);
+    throw pollyProfileCredentialError(credentials);
   }
   return credentials;
 }
@@ -230,7 +234,21 @@ function shouldRefreshAndRetry(
   return (
     pollyAuthSettings.settings.polly_authMode === "profile" &&
     !!pollyAuthSettings.settings.polly_refreshCommand.trim() &&
-    error instanceof TTSErrorInfo &&
-    (error.httpErrorCode === 401 || error.httpErrorCode === 403)
+    ((error instanceof TTSErrorInfo &&
+      (error.httpErrorCode === 401 ||
+        error.httpErrorCode === 403 ||
+        error.ttsErrorCode() === "aws_profile_credentials")) ||
+      (error instanceof Error && !(error instanceof TTSErrorInfo)))
   );
+}
+
+function pollyProfileCredentialError(message: string): TTSErrorInfo {
+  return new TTSErrorInfo("AWS profile credential error", {
+    error: {
+      message,
+      type: "aws_profile_credentials",
+      code: "aws_profile_credentials",
+      param: null,
+    },
+  });
 }

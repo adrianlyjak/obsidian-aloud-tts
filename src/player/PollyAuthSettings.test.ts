@@ -17,11 +17,13 @@ describe("PollyAuthSettings", () => {
       parsePollyAuthSettings({
         polly_authMode: "profile",
         polly_profile: " work ",
+        polly_awsCliPath: " /usr/bin/aws ",
         polly_refreshCommand: "aws sso login",
       }),
     ).toEqual({
       polly_authMode: "profile",
       polly_profile: "work",
+      polly_awsCliPath: "/usr/bin/aws",
       polly_refreshCommand: "aws sso login",
     });
   });
@@ -36,6 +38,7 @@ describe("PollyAuthSettings", () => {
     const store = memoryPollyAuthSettingsStore({
       polly_authMode: "profile",
       polly_profile: "work",
+      polly_awsCliPath: "/usr/bin/aws",
       polly_refreshCommand: "aws sso login",
     });
 
@@ -44,6 +47,7 @@ describe("PollyAuthSettings", () => {
     expect(store.settings).toEqual({
       polly_authMode: "profile",
       polly_profile: "personal",
+      polly_awsCliPath: "/usr/bin/aws",
       polly_refreshCommand: "aws sso login",
     });
   });
