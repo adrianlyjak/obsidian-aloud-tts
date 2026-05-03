@@ -13,10 +13,11 @@ export default function cleanMarkup(md: string) {
   // Convert LaTeX math to speakable text (before other markdown processing
   // since $ can interfere with emphasis regexes)
   output = output.replace(/\$\$([\s\S]*?)\$\$/g, (_, m) => cleanMath(m));
-  // Inline math: must contain a backslash command or braces (not just plain text/numbers).
-  // This avoids matching currency like "$5" or "$10" while catching "$\leq$" or "${x}_{1}$".
+  // Inline math: either contains LaTeX syntax (\, {}, ^, _) or doesn't start
+  // with a digit. Currency like "$5" or "$10" always starts with a digit;
+  // math variables like "$n$" or "$x + y$" don't.
   output = output.replace(/\$([^$\n]+?)\$/g, (_, m) =>
-    /[\\{}^_]/.test(m) ? cleanMath(m) : "$" + m + "$",
+    /[\\{}^_]/.test(m) || !/^\d/.test(m.trim()) ? cleanMath(m) : "$" + m + "$",
   );
 
   // Remove horizontal rules
