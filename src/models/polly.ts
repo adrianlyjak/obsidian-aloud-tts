@@ -1,4 +1,5 @@
 import { TTSPluginSettings } from "../player/TTSPluginSettings";
+import { AwsCredentials } from "../player/RuntimeServices";
 import { AudioData } from "./tts-model";
 import {
   AudioTextContext,
@@ -51,12 +52,6 @@ export type PollyVoice = {
   languageName: string;
   supportedEngines?: string[];
 };
-
-export interface PollyAwsCredentials {
-  accessKeyId: string;
-  secretAccessKey: string;
-  sessionToken?: string;
-}
 
 export const pollyTextToSpeech: TTSModel = {
   call: pollyCallTextToSpeech,
@@ -188,7 +183,7 @@ export async function listPollyVoices(
 }
 
 export async function listPollyVoicesWithCredentials(
-  credentials: PollyAwsCredentials,
+  credentials: AwsCredentials,
   region: string,
 ): Promise<PollyVoice[]> {
   return listPollyVoices(

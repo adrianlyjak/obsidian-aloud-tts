@@ -11,8 +11,6 @@ import {
 import { TTSPluginSettings } from "./TTSPluginSettings";
 import { AwsCredentials, RuntimeServices } from "./RuntimeServices";
 
-const POLLY_UNAVAILABLE =
-  "AWS profile authentication is unavailable on this device.";
 const POLLY_PROFILE_MISSING =
   "AWS profile credentials could not be read for this profile.";
 
@@ -132,9 +130,6 @@ export async function resolvePollyCredentials(
       accessKeyId: settings.polly_accessKeyId,
       secretAccessKey: settings.polly_secretAccessKey,
     };
-  }
-  if (!runtime.awsProfiles.available) {
-    return POLLY_UNAVAILABLE;
   }
   const result = await runtime.awsProfiles.readCredentials(
     settings.polly_profile,

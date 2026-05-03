@@ -284,14 +284,11 @@ async function readAwsCliCredentials(
 async function listAwsProfiles(
   awsCliPath: string | undefined,
 ): Promise<string[]> {
-  const names = new Set<string>();
-  for (const name of await listLocalAwsProfiles()) {
-    names.add(name);
-  }
-  for (const name of await listAwsCliProfiles(awsCliPath)) {
-    names.add(name);
-  }
-  return sortProfileNames([...names]);
+  const [localNames, cliNames] = await Promise.all([
+    listLocalAwsProfiles(),
+    listAwsCliProfiles(awsCliPath),
+  ]);
+  return sortProfileNames([...new Set([...localNames, ...cliNames])]);
 }
 
 async function listLocalAwsProfiles(): Promise<string[]> {
@@ -404,48 +401,14 @@ function runExecutable(
   executable: string,
   args: readonly string[],
 ): Promise<AwsCliResult> {
-  return new Promise((resolve) => {
-    let settled = false;
-    let child: { kill(): void } | undefined;
-    const finish = (result: AwsCliResult): void => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      window.clearTimeout(timeout);
-      resolve(result);
-    };
-    const timeout = window.setTimeout(() => {
-      child?.kill();
-      finish({
-        ok: false,
-        error: "AWS CLI credential resolution timed out.",
-      });
-    }, REFRESH_TIMEOUT_MILLIS + 1000);
-    try {
-      child = childProcess.execFile(
-        executable,
-        args,
-        { timeout: REFRESH_TIMEOUT_MILLIS, windowsHide: true },
-        (error, stdout, stderr) => {
-          if (error) {
-            finish({
-              ok: false,
-              error: awsCliError(executable, error, stderr),
-              executableNotFound: errorCode(error) === "ENOENT",
-            });
-            return;
-          }
-          finish({ ok: true, stdout });
-        },
-      );
-    } catch {
-      finish({
-        ok: false,
-        error: `AWS CLI executable "${executable}" could not be started.`,
-      });
-    }
-  });
+  return execFileWithTimeout(
+    childProcess,
+    executable,
+    args,
+    REFRESH_TIMEOUT_MILLIS,
+    (exec, error, stderr) => awsCliError(exec, error, stderr),
+    (exec) => `AWS CLI executable "${exec}" could not be started.`,
+  );
 }
 
 async function discoverAwsExecutable(
@@ -500,6 +463,24 @@ function runDiscoveryCommand(
   executable: string,
   args: readonly string[],
 ): Promise<AwsCliResult> {
+  return execFileWithTimeout(
+    childProcess,
+    executable,
+    args,
+    DISCOVERY_TIMEOUT_MILLIS,
+    (_exec, error, stderr) => errorSummary(error, stderr),
+    (exec) => `Executable "${exec}" could not be started.`,
+  );
+}
+
+function execFileWithTimeout(
+  childProcess: ChildProcessModule,
+  executable: string,
+  args: readonly string[],
+  timeoutMillis: number,
+  formatError: (executable: string, error: unknown, stderr: string) => string,
+  formatSpawnError: (executable: string) => string,
+): Promise<AwsCliResult> {
   return new Promise((resolve) => {
     let settled = false;
     let child: { kill(): void } | undefined;
@@ -515,19 +496,19 @@ function runDiscoveryCommand(
       child?.kill();
       finish({
         ok: false,
-        error: "AWS CLI executable discovery timed out.",
+        error: `Timed out after ${Math.round(timeoutMillis / 1000)}s running "${executable}".`,
       });
-    }, DISCOVERY_TIMEOUT_MILLIS + 1000);
+    }, timeoutMillis + 1000);
     try {
       child = childProcess.execFile(
         executable,
         args,
-        { timeout: DISCOVERY_TIMEOUT_MILLIS, windowsHide: true },
+        { timeout: timeoutMillis, windowsHide: true },
         (error, stdout, stderr) => {
           if (error) {
             finish({
               ok: false,
-              error: errorSummary(error, stderr),
+              error: formatError(executable, error, stderr),
               executableNotFound: errorCode(error) === "ENOENT",
             });
             return;
@@ -538,7 +519,7 @@ function runDiscoveryCommand(
     } catch {
       finish({
         ok: false,
-        error: `Executable "${executable}" could not be started.`,
+        error: formatSpawnError(executable),
       });
     }
   });

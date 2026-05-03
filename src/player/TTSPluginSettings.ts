@@ -127,7 +127,6 @@ export interface PollyModelConfig {
   polly_accessKeyId: string;
   /** AWS Secret Access Key */
   polly_secretAccessKey: string;
-  /** Temporary AWS session token. Runtime-only; not persisted in DEFAULT_SETTINGS. */
   polly_sessionToken?: string;
   /** AWS region (e.g., us-east-1) */
   polly_region: string;

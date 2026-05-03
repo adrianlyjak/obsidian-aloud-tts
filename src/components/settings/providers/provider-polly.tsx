@@ -70,14 +70,11 @@ const AuthMode: React.FC<{
               option.value === "profile" && !runtime.awsProfiles.available,
           }))}
           value={store.settings.polly_authMode}
-          onChange={(value) => {
-            if (value === "profile" && !runtime.awsProfiles.available) {
-              return;
-            }
+          onChange={(value) =>
             store.updateSettings({
               polly_authMode: value as PollyAuthMode,
-            });
-          }}
+            })
+          }
         />
       </div>
     </div>
@@ -325,6 +322,7 @@ const PollyVoiceComponent: React.FC<{
       return;
     }
 
+    let cancelled = false;
     const fetchVoices = async () => {
       setError(null);
       try {
@@ -332,6 +330,7 @@ const PollyVoiceComponent: React.FC<{
           store.settings,
           runtime,
         );
+        if (cancelled) return;
         if (typeof credentials === "string") {
           setVoices([]);
           setError(credentials);
@@ -341,6 +340,7 @@ const PollyVoiceComponent: React.FC<{
           credentials,
           region,
         );
+        if (cancelled) return;
         setVoices(fetchedVoices);
 
         const currentVoice = store.settings.polly_voiceId;
@@ -353,6 +353,7 @@ const PollyVoiceComponent: React.FC<{
           });
         }
       } catch (err) {
+        if (cancelled) return;
         console.error("Failed to fetch Polly voices:", err);
         setError(
           "Failed to load voices. Please check your AWS credentials and region.",
@@ -362,6 +363,9 @@ const PollyVoiceComponent: React.FC<{
     };
 
     fetchVoices();
+    return () => {
+      cancelled = true;
+    };
   }, [
     polly_accessKeyId,
     polly_authMode,
@@ -369,7 +373,6 @@ const PollyVoiceComponent: React.FC<{
     polly_profile,
     polly_secretAccessKey,
     region,
-    store,
     runtime,
   ]);
 
