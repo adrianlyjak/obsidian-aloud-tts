@@ -68,10 +68,32 @@ describe("OpenAI-Like Model", () => {
       });
     });
 
-    it("should convert generation speed to a number", () => {
+    it("should pass through pcm response format", () => {
       const testSettings = {
         ...DEFAULT_SETTINGS,
-        openaicompat_generationSpeed: "1.5",
+        openaicompat_apiKey: "test-api-key",
+        openaicompat_apiBase: "https://custom-api.example.com",
+        openaicompat_ttsModel: "tts-1",
+        openaicompat_ttsVoice: "alloy",
+        openaicompat_responseFormat: "pcm" as const,
+      };
+
+      const options = openAILikeTextToSpeech.convertToOptions(testSettings);
+
+      expect(options).toEqual({
+        apiKey: "test-api-key",
+        apiUri: "https://custom-api.example.com",
+        model: "tts-1",
+        voice: "alloy",
+        responseFormat: "pcm",
+        generationSpeed: 1,
+      });
+    });
+
+    it("should pass through generation speed", () => {
+      const testSettings = {
+        ...DEFAULT_SETTINGS,
+        openaicompat_generationSpeed: 1.5,
       };
 
       const options = openAILikeTextToSpeech.convertToOptions(testSettings);
@@ -82,7 +104,7 @@ describe("OpenAI-Like Model", () => {
     it("should fall back to generation speed 1 for invalid values", () => {
       const testSettings = {
         ...DEFAULT_SETTINGS,
-        openaicompat_generationSpeed: "invalid",
+        openaicompat_generationSpeed: Number.NaN,
       };
 
       const options = openAILikeTextToSpeech.convertToOptions(testSettings);
@@ -93,7 +115,7 @@ describe("OpenAI-Like Model", () => {
     it("should fall back to generation speed 1 for out-of-range values", () => {
       const testSettings = {
         ...DEFAULT_SETTINGS,
-        openaicompat_generationSpeed: "5",
+        openaicompat_generationSpeed: 5,
       };
 
       const options = openAILikeTextToSpeech.convertToOptions(testSettings);

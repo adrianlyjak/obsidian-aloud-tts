@@ -5,9 +5,7 @@ export const openAILikeTextToSpeech: TTSModel = {
   call: openAICompatCallTextToSpeech,
   validateConnection: async () => undefined,
   convertToOptions: (settings): TTSModelOptions => {
-    const generationSpeed = Number.parseFloat(
-      settings.openaicompat_generationSpeed || "1",
-    );
+    const generationSpeed = settings.openaicompat_generationSpeed;
 
     return {
       apiKey: settings.openaicompat_apiKey,
@@ -17,7 +15,7 @@ export const openAILikeTextToSpeech: TTSModel = {
       responseFormat: settings.openaicompat_responseFormat,
       generationSpeed:
         Number.isFinite(generationSpeed) &&
-        generationSpeed > 0 &&
+        generationSpeed >= 0.5 &&
         generationSpeed <= 4
           ? generationSpeed
           : 1,

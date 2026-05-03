@@ -12,6 +12,7 @@ export type TTSPluginSettings = {
   cacheType: "local" | "vault";
   cacheDurationMillis: number;
   showPlayerView: PlayerViewMode;
+  showEditorActionButton: boolean;
   autoScrollPlayerView: boolean;
   version: number;
   audioFolder: string;
@@ -82,7 +83,7 @@ export interface OpenAICompatModelConfig {
   /** the response format to request from the API (mp3, wav, pcm). Defaults to mp3. */
   openaicompat_responseFormat: OpenAICompatResponseFormat;
   /** the generation speed to request from compatible TTS APIs. Defaults to 1. */
-  openaicompat_generationSpeed: string;
+  openaicompat_generationSpeed: number;
 }
 
 export interface ElevenLabsModelConfig {
@@ -180,6 +181,7 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   cacheDurationMillis: 1000 * 60 * 60 * 24 * 7, // 7 days
   cacheType: "local",
   showPlayerView: "always-mobile",
+  showEditorActionButton: true,
   autoScrollPlayerView: true,
   // gemini
   gemini_apiKey: "",
@@ -202,7 +204,7 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   openaicompat_ttsModel: "",
   openaicompat_ttsVoice: "",
   openaicompat_responseFormat: "mp3",
-  openaicompat_generationSpeed: "1",
+  openaicompat_generationSpeed: 1,
   // elevenlabs
   elevenlabs_apiKey: "",
   elevenlabs_model: "eleven_multilingual_v2",
