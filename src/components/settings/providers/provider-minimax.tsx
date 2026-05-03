@@ -13,7 +13,7 @@ export const MinimaxSettings = observer(
   ({ store }: { store: TTSPluginSettingsStore }) => {
     const useChinaEndpoint = store.settings.minimax_useChinaEndpoint;
     const helpUrl = useChinaEndpoint
-      ? "https://platform.minimaxi.com/user-center/basic-information/interface-key"
+      ? "https://platform.minimax.chat/user-center/basic-information/interface-key"
       : "https://platform.minimax.io/user-center/basic-information/interface-key";
 
     return (
@@ -25,11 +25,11 @@ export const MinimaxSettings = observer(
               Enable this if you have an API key from the China mainland
               platform (
               <a
-                href="https://platform.minimaxi.com"
+                href="https://platform.minimax.chat"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                platform.minimaxi.com
+                platform.minimax.chat
               </a>
               ). Leave disabled for the international platform (
               <a
