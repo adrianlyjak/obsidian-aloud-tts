@@ -161,6 +161,73 @@ Just some text with dashes`;
     );
   });
 
+  it("should convert inline math to speakable text", () => {
+    const md =
+      "Starting with the constraint $6{x}_{1} + 4{x}_{2} \\leq {24}$";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual(
+      "Starting with the constraint 6x sub 1 + 4x sub 2 less than or equal to 24",
+    );
+  });
+
+  it("should convert display math to speakable text", () => {
+    const md = "Consider:\n$$\\frac{a}{b} + \\sqrt{c}$$\nwhich is neat.";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual(
+      "Consider:\na over b + square root of c\nwhich is neat.",
+    );
+  });
+
+  it("should handle Greek letters in math", () => {
+    const md = "$\\alpha + \\beta = \\gamma$";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("alpha + beta = gamma");
+  });
+
+  it("should handle superscripts and subscripts", () => {
+    const md = "$x^{2} + y^3 + z_{i}$";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("x to the 2 + y to the 3 + z sub i");
+  });
+
+  it("should handle \\frac with nested content", () => {
+    const md = "$\\frac{x + 1}{y - 2}$";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("x + 1 over y - 2");
+  });
+
+  it("should handle comparison operators", () => {
+    const md = "$a \\geq b$ and $c \\neq d$";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual(
+      "a greater than or equal to b and c not equal to d",
+    );
+  });
+
+  it("should handle sum/integral notation", () => {
+    const md = "$\\sum_{i=1}^{n} x_i$";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("sum of sub i=1 to the n x sub i");
+  });
+
+  it("should drop unknown LaTeX commands gracefully", () => {
+    const md = "$\\mathrm{kg} \\cdot \\mathrm{m}$";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("kg times m");
+  });
+
+  it("should not treat currency dollar signs as math", () => {
+    const md = "The price is $5 and the cost is $10.";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("The price is $5 and the cost is $10.");
+  });
+
+  it("should handle display math blocks on their own lines", () => {
+    const md = "Result:\n$$E = mc^{2}$$\nis famous.";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("Result:\nE = mc to the 2\nis famous.");
+  });
+
   it("should handle tables by removing markup and preserving content", () => {
     const tableText = `| Column 1 | Column 2 | Column 3 |
 |----------|----------|----------|

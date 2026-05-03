@@ -10,6 +10,15 @@ export default function cleanMarkup(md: string) {
   // First, remove frontmatter (must be done before other transformations)
   output = removeFrontMatter(output);
 
+  // Convert LaTeX math to speakable text (before other markdown processing
+  // since $ can interfere with emphasis regexes)
+  output = output.replace(/\$\$([\s\S]*?)\$\$/g, (_, m) => cleanMath(m));
+  // Inline math: must contain a backslash command or braces (not just plain text/numbers).
+  // This avoids matching currency like "$5" or "$10" while catching "$\leq$" or "${x}_{1}$".
+  output = output.replace(/\$([^$\n]+?)\$/g, (_, m) =>
+    /[\\{}^_]/.test(m) ? cleanMath(m) : "$" + m + "$",
+  );
+
   // Remove horizontal rules
   output = output.replace(/^\s*(\*{3,}|_{3,}|-{3,})\s*$/gm, "");
 
@@ -121,4 +130,128 @@ function removeFrontMatter(md: string): string {
 
   // No valid frontmatter found
   return md;
+}
+
+/** Maps of LaTeX commands to speakable text */
+const LATEX_COMMANDS: Record<string, string> = {
+  // Relations
+  "\\leq": "less than or equal to",
+  "\\le": "less than or equal to",
+  "\\geq": "greater than or equal to",
+  "\\ge": "greater than or equal to",
+  "\\neq": "not equal to",
+  "\\ne": "not equal to",
+  "\\approx": "approximately",
+  "\\sim": "approximately",
+  "\\equiv": "equivalent to",
+  "\\propto": "proportional to",
+  "\\ll": "much less than",
+  "\\gg": "much greater than",
+  // Operators
+  "\\times": "times",
+  "\\cdot": "times",
+  "\\div": "divided by",
+  "\\pm": "plus or minus",
+  "\\mp": "minus or plus",
+  // Structures
+  "\\infty": "infinity",
+  "\\partial": "partial",
+  "\\nabla": "del",
+  // Set/logic
+  "\\in": "in",
+  "\\notin": "not in",
+  "\\subset": "subset of",
+  "\\subseteq": "subset of",
+  "\\supset": "superset of",
+  "\\cup": "union",
+  "\\cap": "intersection",
+  "\\emptyset": "empty set",
+  "\\forall": "for all",
+  "\\exists": "there exists",
+  "\\neg": "not",
+  "\\land": "and",
+  "\\lor": "or",
+  // Arrows
+  "\\to": "to",
+  "\\rightarrow": "to",
+  "\\leftarrow": "from",
+  "\\Rightarrow": "implies",
+  "\\Leftarrow": "is implied by",
+  "\\iff": "if and only if",
+  "\\leftrightarrow": "if and only if",
+  // Misc
+  "\\ldots": "...",
+  "\\cdots": "...",
+  "\\dots": "...",
+  "\\quad": " ",
+  "\\qquad": " ",
+  "\\,": " ",
+  "\\;": " ",
+  "\\!": "",
+  "\\\\": " ",
+};
+
+/**
+ * Convert LaTeX math content to speakable text.
+ * Handles fractions, roots, subscripts, superscripts, Greek letters,
+ * and common commands. Unknown commands are dropped.
+ */
+function cleanMath(math: string): string {
+  let out = math;
+
+  // \frac{a}{b} → "a over b"
+  out = out.replace(/\\frac\s*\{([^}]*)\}\s*\{([^}]*)\}/g, "$1 over $2");
+
+  // \sqrt[n]{x} → "nth root of x", \sqrt{x} → "square root of x"
+  out = out.replace(
+    /\\sqrt\s*\[([^\]]*)\]\s*\{([^}]*)\}/g,
+    "$1th root of $2",
+  );
+  out = out.replace(/\\sqrt\s*\{([^}]*)\}/g, "square root of $1");
+
+  // \sum, \prod, \int with optional limits
+  out = out.replace(/\\sum/g, "sum of");
+  out = out.replace(/\\prod/g, "product of");
+  out = out.replace(/\\int/g, "integral of");
+  out = out.replace(/\\lim/g, "limit of");
+  out = out.replace(/\\log/g, "log");
+  out = out.replace(/\\ln/g, "ln");
+  out = out.replace(/\\sin/g, "sin");
+  out = out.replace(/\\cos/g, "cos");
+  out = out.replace(/\\tan/g, "tan");
+
+  // Replace known commands from the map (longest match first via iteration)
+  for (const [cmd, speech] of Object.entries(LATEX_COMMANDS)) {
+    // Escape backslash for regex, match the command not followed by a letter
+    const escaped = cmd.replace(/\\/g, "\\\\");
+    out = out.replace(new RegExp(escaped + "(?![a-zA-Z])", "g"), speech);
+  }
+
+  // Greek letters: strip backslash, TTS handles the word
+  // (alpha, beta, gamma, delta, epsilon, theta, lambda, mu, sigma, omega, pi, phi, etc.)
+  out = out.replace(
+    /\\(alpha|beta|gamma|delta|epsilon|varepsilon|zeta|eta|theta|vartheta|iota|kappa|lambda|mu|nu|xi|pi|rho|sigma|tau|upsilon|phi|varphi|chi|psi|omega|Gamma|Delta|Theta|Lambda|Xi|Pi|Sigma|Upsilon|Phi|Psi|Omega)\b/g,
+    "$1",
+  );
+
+  // Drop remaining \commands (unknown ones)
+  out = out.replace(/\\[a-zA-Z]+/g, "");
+  // Drop remaining backslashes
+  out = out.replace(/\\/g, "");
+
+  // Superscript: x^{2} → "x to the 2", x^2 → "x to the 2"
+  out = out.replace(/\^\{([^}]*)\}/g, " to the $1");
+  out = out.replace(/\^(\S)/g, " to the $1");
+
+  // Subscript: x_{i} → "x sub i", x_i → "x sub i"
+  out = out.replace(/_\{([^}]*)\}/g, " sub $1");
+  out = out.replace(/_(\S)/g, " sub $1");
+
+  // Remove remaining braces
+  out = out.replace(/[{}]/g, "");
+
+  // Collapse whitespace
+  out = out.replace(/\s+/g, " ").trim();
+
+  return out;
 }
