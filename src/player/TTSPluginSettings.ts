@@ -125,6 +125,8 @@ export interface PollyModelConfig {
   polly_accessKeyId: string;
   /** AWS Secret Access Key */
   polly_secretAccessKey: string;
+  /** Temporary AWS session token. Runtime-only; not persisted in DEFAULT_SETTINGS. */
+  polly_sessionToken?: string;
   /** AWS region (e.g., us-east-1) */
   polly_region: string;
   /** Polly voice id to use (e.g., Joanna) */
@@ -248,9 +250,16 @@ export interface TTSPluginSettingsStore {
   setSpeed(speed: number): void;
 }
 
+export interface PluginSettingsStoreOptions {
+  validateConnection?: (
+    settings: TTSPluginSettings,
+  ) => Promise<string | undefined>;
+}
+
 export async function pluginSettingsStore(
   loadData: () => Promise<unknown>,
   saveData: (data: unknown) => Promise<void>,
+  opts: PluginSettingsStoreOptions = {},
 ): Promise<TTSPluginSettingsStore> {
   const store = observable(
     {
@@ -263,9 +272,10 @@ export async function pluginSettingsStore(
       },
       checkApiKey: debounce(async () => {
         store.setApiKeyValidity(undefined, undefined);
-        const error = await REGISTRY[
-          store.settings.modelProvider
-        ].validateConnection(store.settings);
+        const error = await (
+          opts.validateConnection ||
+          REGISTRY[store.settings.modelProvider].validateConnection
+        )(store.settings);
         store.setApiKeyValidity(error ? false : true, error);
       }, 500),
       updateSettings: async (

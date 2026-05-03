@@ -4,13 +4,24 @@ import { TTSPluginSettingsStore } from "../../player/TTSPluginSettings";
 import { AudioStore } from "../../player/AudioStore";
 import { IconButton } from "../../components/IconButton";
 import { TTSSettingsTabComponent } from "../../components/TTSSettingsTabComponent";
+import { PollyAuthSettingsStore } from "../../player/PollyAuthSettings";
+import { RuntimeServices } from "../../player/RuntimeServices";
 
 export const SettingsModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   settingsStore: TTSPluginSettingsStore;
   audioStore: AudioStore;
-}> = ({ isOpen, onClose, settingsStore, audioStore }) => {
+  pollyAuthSettings: PollyAuthSettingsStore;
+  runtime: RuntimeServices;
+}> = ({
+  isOpen,
+  onClose,
+  settingsStore,
+  audioStore,
+  pollyAuthSettings,
+  runtime,
+}) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   // Handle modal open/close
@@ -40,7 +51,12 @@ export const SettingsModal: React.FC<{
       </div>
 
       <div className="web-tts-settings-modal-content">
-        <TTSSettingsTabComponent store={settingsStore} player={audioStore} />
+        <TTSSettingsTabComponent
+          store={settingsStore}
+          player={audioStore}
+          pollyAuthSettings={pollyAuthSettings}
+          runtime={runtime}
+        />
       </div>
     </dialog>
   );

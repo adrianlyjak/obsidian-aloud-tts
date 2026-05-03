@@ -6,6 +6,8 @@ import {
   DEFAULT_SETTINGS,
 } from "../player/TTSPluginSettings";
 import { createAudioSystem } from "../player/AudioSystem";
+import { memoryPollyAuthSettingsStore } from "../player/PollyAuthSettings";
+import { unavailableRuntimeServices } from "../player/RuntimeServices";
 import { ChunkLoader } from "../player/ChunkLoader";
 import { memoryStorage } from "../player/AudioCache";
 import { AudioSink, TrackStatus } from "../player/AudioSink";
@@ -143,6 +145,8 @@ export function createTestAudioStore(): AudioStore {
     audioSink: () => new FakeAudioSink(),
     ttsModel: () => createTestModel(),
     settings: () => DEFAULT_SETTINGS,
+    runtime: () => unavailableRuntimeServices,
+    pollyAuthSettings: () => memoryPollyAuthSettingsStore(),
     config: () => ({ backgroundLoaderIntervalMillis: 10 }),
     audioStore: (sys) => loadAudioStore({ system: sys }),
     chunkLoader: (sys) => new ChunkLoader({ system: sys }),

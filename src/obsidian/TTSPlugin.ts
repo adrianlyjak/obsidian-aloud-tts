@@ -2,7 +2,6 @@ import { TTSCodeMirror } from "../codemirror/TTSCodemirror";
 import { createPlayerSynchronizer } from "../codemirror/TTSCodeMirrorCore";
 
 import { Editor, MarkdownView, Notice, Plugin, addIcon } from "obsidian";
-import { REGISTRY } from "../models/registry";
 import { TTSSettingTab } from "../components/TTSPluginSettingsTab";
 import { AudioSink, WebAudioSink } from "../player/AudioSink";
 import { AudioStore, loadAudioStore } from "../player/AudioStore";
@@ -10,18 +9,18 @@ import { AudioSystem, createAudioSystem } from "../player/AudioSystem";
 import { ChunkLoader } from "../player/ChunkLoader";
 import {
   MARKETING_NAME,
-  TTSPluginSettings,
   TTSPluginSettingsStore,
   pluginSettingsStore,
 } from "../player/TTSPluginSettings";
 import { ObsidianBridge, ObsidianBridgeImpl } from "./ObsidianBridge";
 import { configurableAudioCache } from "./ObsidianPlayer";
-import {
-  AudioTextContext,
-  TTSModel,
-  TTSModelOptions,
-} from "../models/tts-model";
 import { TTSEditorAction } from "./TTSEditorAction";
+import {
+  PollyAuthSettingsStore,
+  indexedDBPollyAuthSettingsStore,
+} from "../player/PollyAuthSettings";
+import { runtimeAwareTTSModel } from "../player/RuntimeAwarePollyModel";
+import { createObsidianAwsProfileRuntime } from "./AwsProfileRuntime";
 
 // standard lucide.dev icon, but for some reason not working as a ribbon icon without registering it
 // https://lucide.dev/icons/audio-lines
@@ -32,6 +31,7 @@ addIcon(
 
 export default class TTSPlugin extends Plugin {
   settings: TTSPluginSettingsStore;
+  pollyAuthSettings: PollyAuthSettingsStore;
 
   system: AudioSystem;
   bridge: ObsidianBridge;
@@ -220,7 +220,14 @@ export default class TTSPlugin extends Plugin {
 
     // This adds a settings tab so the user can configure various aspects of the plugin
     this.addSettingTab(
-      new TTSSettingTab(this.app, this, this.settings, this.player),
+      new TTSSettingTab(
+        this.app,
+        this,
+        this.settings,
+        this.system.pollyAuthSettings,
+        this.system.runtime,
+        this.player,
+      ),
     );
   }
 
@@ -234,9 +241,16 @@ export default class TTSPlugin extends Plugin {
   }
 
   async loadSettings() {
+    this.pollyAuthSettings = await indexedDBPollyAuthSettingsStore();
     this.settings = await pluginSettingsStore(
       () => this.loadData(),
       (data) => this.saveData(data),
+      {
+        validateConnection: (settings) =>
+          this.system
+            ? this.system.ttsModel.validateConnection(settings)
+            : Promise.resolve(undefined),
+      },
     );
 
     const audio = await WebAudioSink.create();
@@ -244,10 +258,15 @@ export default class TTSPlugin extends Plugin {
     this.cache = cache;
     this.system = createAudioSystem({
       settings: () => this.settings.settings,
+      runtime: () => ({
+        awsProfiles: createObsidianAwsProfileRuntime(),
+      }),
+      pollyAuthSettings: () => this.pollyAuthSettings,
       audioSink: () => audio,
       audioStore: (sys) => loadAudioStore({ system: sys }),
       storage: () => cache,
-      ttsModel: (system) => ProxiedTTSModel(system.settings),
+      ttsModel: (system) =>
+        runtimeAwareTTSModel(system.pollyAuthSettings, system.runtime),
       chunkLoader: (system) => new ChunkLoader({ system }),
       config: () => ({
         backgroundLoaderIntervalMillis: 1000,
@@ -255,26 +274,4 @@ export default class TTSPlugin extends Plugin {
     });
     this.bridge = new ObsidianBridgeImpl(this.app, this.player, this.settings);
   }
-}
-
-function ProxiedTTSModel(settings: TTSPluginSettings): TTSModel {
-  const getModel = () => {
-    return REGISTRY[settings.modelProvider];
-  };
-  return {
-    call: (
-      text: string,
-      options: TTSModelOptions,
-      settings: TTSPluginSettings,
-      context?: AudioTextContext,
-    ) => {
-      return getModel().call(text, options, settings, context);
-    },
-    validateConnection: (settings: TTSPluginSettings) => {
-      return getModel().validateConnection(settings);
-    },
-    convertToOptions: (settings: TTSPluginSettings) => {
-      return getModel().convertToOptions(settings);
-    },
-  };
 }

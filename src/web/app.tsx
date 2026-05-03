@@ -8,15 +8,17 @@ import { IndexedDBAudioStorage } from "./IndexedDBAudioStorage";
 import { WebAudioSink } from "../player/AudioSink";
 import * as React from "react";
 import { useEffect, useState, type FC, useRef } from "react";
-import { createAudioSystem } from "../player/AudioSystem";
+import { AudioSystem, createAudioSystem } from "../player/AudioSystem";
 import { ChunkLoader } from "../player/ChunkLoader";
-import { REGISTRY } from "../models/registry";
 import { EditorView } from "@codemirror/view";
 import { TooltipProvider } from "../util/TooltipContext";
 import { CommandBar } from "./components/CommandBar";
 import { WebEditor } from "./components/WebEditor";
 import { SettingsModal } from "./components/SettingsModal";
 import { WebBridgeImpl, WebObsidianBridge } from "./components/WebBridge";
+import { unavailableRuntimeServices } from "../player/RuntimeServices";
+import { indexedDBPollyAuthSettingsStore } from "../player/PollyAuthSettings";
+import { runtimeAwareTTSModel } from "../player/RuntimeAwarePollyModel";
 
 const STORAGE_KEYS = {
   SETTINGS: "tts-settings",
@@ -24,6 +26,8 @@ const STORAGE_KEYS = {
 };
 
 async function main() {
+  const pollyAuthSettings = await indexedDBPollyAuthSettingsStore();
+  const systemRef: { current?: AudioSystem } = {};
   const settingsStore = await pluginSettingsStore(
     async () => {
       const loaded = localStorage.getItem(STORAGE_KEYS.SETTINGS);
@@ -32,15 +36,21 @@ async function main() {
     async (data) => {
       localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(data));
     },
+    {
+      validateConnection: (settings) =>
+        systemRef.current
+          ? systemRef.current.ttsModel.validateConnection(settings)
+          : Promise.resolve(undefined),
+    },
   );
 
   const audioSink = await WebAudioSink.create();
 
   const system = createAudioSystem({
     settings: () => settingsStore.settings,
-    ttsModel: () => {
-      return REGISTRY[system.settings.modelProvider];
-    },
+    runtime: () => unavailableRuntimeServices,
+    pollyAuthSettings: () => pollyAuthSettings,
+    ttsModel: (sys) => runtimeAwareTTSModel(sys.pollyAuthSettings, sys.runtime),
     storage: () => new IndexedDBAudioStorage(),
     audioSink: () => audioSink,
     audioStore: (sys) => loadAudioStore({ system: sys }),
@@ -49,6 +59,7 @@ async function main() {
       backgroundLoaderIntervalMillis: 1000,
     }),
   });
+  systemRef.current = system;
 
   const store = system.audioStore;
 
@@ -59,7 +70,12 @@ async function main() {
   const reactRoot = createRoot(root);
   reactRoot.render(
     <TooltipProvider>
-      <App settingsStore={settingsStore} store={store} sink={audioSink} />
+      <App
+        settingsStore={settingsStore}
+        store={store}
+        sink={audioSink}
+        system={system}
+      />
     </TooltipProvider>,
   );
 }
@@ -68,7 +84,8 @@ const App: FC<{
   settingsStore: TTSPluginSettingsStore;
   store: AudioStore;
   sink: WebAudioSink;
-}> = ({ settingsStore, store, sink }) => {
+  system: ReturnType<typeof createAudioSystem>;
+}> = ({ settingsStore, store, sink, system }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [editorView, setEditorView] = useState<EditorView | undefined>();
 
@@ -116,6 +133,8 @@ const App: FC<{
         onClose={handleCloseModal}
         settingsStore={settingsStore}
         audioStore={store}
+        pollyAuthSettings={system.pollyAuthSettings}
+        runtime={system.runtime}
       />
     </div>
   );

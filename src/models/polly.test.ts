@@ -77,4 +77,31 @@ describe("AWS Polly Model", () => {
     expect(out.data).toBe(buf);
     expect(out.format).toBe("mp3");
   });
+
+  it("includes session token when signing requests", async () => {
+    const buf = new ArrayBuffer(8);
+    vi.mocked(fetch).mockResolvedValue({
+      status: 200,
+      arrayBuffer: vi.fn().mockResolvedValue(buf),
+    } as any);
+    const s = {
+      ...DEFAULT_SETTINGS,
+      polly_accessKeyId: "AKIA...",
+      polly_secretAccessKey: "secret",
+      polly_sessionToken: "session-token",
+      polly_region: "us-east-1",
+      polly_voiceId: "Joanna",
+      polly_engine: "neural" as const,
+    } as const;
+
+    await pollyCallTextToSpeech(
+      "hello",
+      pollyTextToSpeech.convertToOptions(s as any),
+      s as any,
+    );
+
+    expect(vi.mocked(fetch).mock.calls[0][1]?.headers).toMatchObject({
+      "x-amz-security-token": "session-token",
+    });
+  });
 });
