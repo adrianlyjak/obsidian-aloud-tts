@@ -9,7 +9,6 @@ import {
   TTSModelOptions,
 } from "../models/tts-model";
 import { TTSPluginSettings } from "./TTSPluginSettings";
-import { PollyAuthSettingsStore } from "./PollyAuthSettings";
 import { AwsCredentials, RuntimeServices } from "./RuntimeServices";
 
 const POLLY_UNAVAILABLE =
@@ -17,17 +16,28 @@ const POLLY_UNAVAILABLE =
 const POLLY_PROFILE_MISSING =
   "AWS profile credentials could not be read for this profile.";
 
-export function runtimeAwareTTSModel(
-  pollyAuthSettings: PollyAuthSettingsStore,
+/**
+ * Returns an effective auth mode: if the settings say "profile" but the runtime
+ * doesn't support it (e.g. mobile), treat as "static".
+ */
+function effectiveAuthMode(
+  settings: TTSPluginSettings,
   runtime: RuntimeServices,
-): TTSModel {
+): "static" | "profile" {
+  if (settings.polly_authMode === "profile" && runtime.awsProfiles.available) {
+    return "profile";
+  }
+  return "static";
+}
+
+export function runtimeAwareTTSModel(runtime: RuntimeServices): TTSModel {
   async function withPollyCredentials<T>(
     settings: TTSPluginSettings,
     callback: (effectiveSettings: TTSPluginSettings) => Promise<T>,
   ): Promise<T> {
     if (
       settings.modelProvider !== "polly" ||
-      pollyAuthSettings.settings.polly_authMode === "static"
+      effectiveAuthMode(settings, runtime) === "static"
     ) {
       return callback(settings);
     }
@@ -35,20 +45,18 @@ export function runtimeAwareTTSModel(
     try {
       const effectiveSettings = await settingsWithProfileCredentials(
         settings,
-        pollyAuthSettings,
         runtime,
       );
       return await callback(effectiveSettings);
     } catch (error) {
-      if (!shouldRefreshAndRetry(error, pollyAuthSettings)) {
+      if (!shouldRefreshAndRetry(error, settings)) {
         throw error;
       }
-      if (!(await refreshProfileCredentials(pollyAuthSettings, runtime))) {
+      if (!(await refreshProfileCredentials(settings, runtime))) {
         throw error;
       }
       const refreshedSettings = await settingsWithProfileCredentials(
         settings,
-        pollyAuthSettings,
         runtime,
       );
       return callback(refreshedSettings);
@@ -75,7 +83,7 @@ export function runtimeAwareTTSModel(
     ): Promise<string | undefined> {
       if (
         settings.modelProvider !== "polly" ||
-        pollyAuthSettings.settings.polly_authMode === "static"
+        effectiveAuthMode(settings, runtime) === "static"
       ) {
         return getModel(settings).validateConnection(settings);
       }
@@ -83,23 +91,15 @@ export function runtimeAwareTTSModel(
         return "Please specify an AWS region";
       }
       try {
-        await validatePollyProfileConnection(
-          settings,
-          pollyAuthSettings,
-          runtime,
-        );
+        await validatePollyProfileConnection(settings, runtime);
         return undefined;
       } catch (error) {
         if (
-          shouldRefreshAndRetry(error, pollyAuthSettings) &&
-          (await refreshProfileCredentials(pollyAuthSettings, runtime))
+          shouldRefreshAndRetry(error, settings) &&
+          (await refreshProfileCredentials(settings, runtime))
         ) {
           try {
-            await validatePollyProfileConnection(
-              settings,
-              pollyAuthSettings,
-              runtime,
-            );
+            await validatePollyProfileConnection(settings, runtime);
             return undefined;
           } catch {
             return "Invalid AWS credentials or insufficient permissions";
@@ -112,11 +112,11 @@ export function runtimeAwareTTSModel(
       const options = getModel(settings).convertToOptions(settings);
       if (
         settings.modelProvider === "polly" &&
-        pollyAuthSettings.settings.polly_authMode === "profile"
+        effectiveAuthMode(settings, runtime) === "profile"
       ) {
         return {
           ...options,
-          apiKey: `profile:${pollyAuthSettings.settings.polly_profile}`,
+          apiKey: `profile:${settings.polly_profile}`,
         };
       }
       return options;
@@ -126,10 +126,9 @@ export function runtimeAwareTTSModel(
 
 export async function resolvePollyCredentials(
   settings: TTSPluginSettings,
-  pollyAuthSettings: PollyAuthSettingsStore,
   runtime: RuntimeServices,
 ): Promise<AwsCredentials | string> {
-  if (pollyAuthSettings.settings.polly_authMode === "static") {
+  if (effectiveAuthMode(settings, runtime) === "static") {
     if (!settings.polly_accessKeyId || !settings.polly_secretAccessKey) {
       return REQUIRE_API_KEY;
     }
@@ -142,8 +141,8 @@ export async function resolvePollyCredentials(
     return POLLY_UNAVAILABLE;
   }
   const result = await runtime.awsProfiles.readCredentials(
-    pollyAuthSettings.settings.polly_profile,
-    pollyAuthSettings.settings.polly_awsCliPath,
+    settings.polly_profile,
+    settings.polly_awsCliPath,
   );
   if (!result.ok) {
     return result.error || POLLY_PROFILE_MISSING;
@@ -156,14 +155,9 @@ export async function resolvePollyCredentials(
 
 async function settingsWithProfileCredentials(
   settings: TTSPluginSettings,
-  pollyAuthSettings: PollyAuthSettingsStore,
   runtime: RuntimeServices,
 ): Promise<TTSPluginSettings> {
-  const credentials = await resolvePollyCredentials(
-    settings,
-    pollyAuthSettings,
-    runtime,
-  );
+  const credentials = await resolvePollyCredentials(settings, runtime);
   if (typeof credentials === "string") {
     throw pollyProfileCredentialError(credentials);
   }
@@ -175,41 +169,23 @@ async function settingsWithProfileCredentials(
   };
 }
 
-async function credentialsOrThrow(
+async function validatePollyProfileConnection(
   settings: TTSPluginSettings,
-  pollyAuthSettings: PollyAuthSettingsStore,
   runtime: RuntimeServices,
-): Promise<AwsCredentials> {
-  const credentials = await resolvePollyCredentials(
-    settings,
-    pollyAuthSettings,
-    runtime,
-  );
+): Promise<void> {
+  const credentials = await resolvePollyCredentials(settings, runtime);
   if (typeof credentials === "string") {
     throw pollyProfileCredentialError(credentials);
   }
-  return credentials;
-}
-
-async function validatePollyProfileConnection(
-  settings: TTSPluginSettings,
-  pollyAuthSettings: PollyAuthSettingsStore,
-  runtime: RuntimeServices,
-): Promise<void> {
-  const credentials = await credentialsOrThrow(
-    settings,
-    pollyAuthSettings,
-    runtime,
-  );
   await listPollyVoicesWithCredentials(credentials, settings.polly_region);
 }
 
 async function refreshProfileCredentials(
-  pollyAuthSettings: PollyAuthSettingsStore,
+  settings: TTSPluginSettings,
   runtime: RuntimeServices,
 ): Promise<boolean> {
   const result = await runtime.awsProfiles.refreshCredentials(
-    pollyAuthSettings.settings.polly_refreshCommand,
+    settings.polly_refreshCommand,
   );
   return result.ok;
 }
@@ -229,11 +205,11 @@ function pollyValidationError(error: unknown): string {
 
 function shouldRefreshAndRetry(
   error: unknown,
-  pollyAuthSettings: PollyAuthSettingsStore,
+  settings: TTSPluginSettings,
 ): boolean {
   return (
-    pollyAuthSettings.settings.polly_authMode === "profile" &&
-    !!pollyAuthSettings.settings.polly_refreshCommand.trim() &&
+    settings.polly_authMode === "profile" &&
+    !!settings.polly_refreshCommand.trim() &&
     ((error instanceof TTSErrorInfo &&
       (error.httpErrorCode === 401 ||
         error.httpErrorCode === 403 ||

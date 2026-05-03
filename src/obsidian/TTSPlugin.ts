@@ -15,10 +15,6 @@ import {
 import { ObsidianBridge, ObsidianBridgeImpl } from "./ObsidianBridge";
 import { configurableAudioCache } from "./ObsidianPlayer";
 import { TTSEditorAction } from "./TTSEditorAction";
-import {
-  PollyAuthSettingsStore,
-  indexedDBPollyAuthSettingsStore,
-} from "../player/PollyAuthSettings";
 import { runtimeAwareTTSModel } from "../player/RuntimeAwarePollyModel";
 import { createObsidianAwsProfileRuntime } from "./AwsProfileRuntime";
 
@@ -31,7 +27,6 @@ addIcon(
 
 export default class TTSPlugin extends Plugin {
   settings: TTSPluginSettingsStore;
-  pollyAuthSettings: PollyAuthSettingsStore;
 
   system: AudioSystem;
   bridge: ObsidianBridge;
@@ -224,7 +219,6 @@ export default class TTSPlugin extends Plugin {
         this.app,
         this,
         this.settings,
-        this.system.pollyAuthSettings,
         this.system.runtime,
         this.player,
       ),
@@ -241,7 +235,6 @@ export default class TTSPlugin extends Plugin {
   }
 
   async loadSettings() {
-    this.pollyAuthSettings = await indexedDBPollyAuthSettingsStore();
     this.settings = await pluginSettingsStore(
       () => this.loadData(),
       (data) => this.saveData(data),
@@ -261,12 +254,10 @@ export default class TTSPlugin extends Plugin {
       runtime: () => ({
         awsProfiles: createObsidianAwsProfileRuntime(),
       }),
-      pollyAuthSettings: () => this.pollyAuthSettings,
       audioSink: () => audio,
       audioStore: (sys) => loadAudioStore({ system: sys }),
       storage: () => cache,
-      ttsModel: (system) =>
-        runtimeAwareTTSModel(system.pollyAuthSettings, system.runtime),
+      ttsModel: (system) => runtimeAwareTTSModel(system.runtime),
       chunkLoader: (system) => new ChunkLoader({ system }),
       config: () => ({
         backgroundLoaderIntervalMillis: 1000,

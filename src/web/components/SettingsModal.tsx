@@ -4,7 +4,6 @@ import { TTSPluginSettingsStore } from "../../player/TTSPluginSettings";
 import { AudioStore } from "../../player/AudioStore";
 import { IconButton } from "../../components/IconButton";
 import { TTSSettingsTabComponent } from "../../components/TTSSettingsTabComponent";
-import { PollyAuthSettingsStore } from "../../player/PollyAuthSettings";
 import { RuntimeServices } from "../../player/RuntimeServices";
 
 export const SettingsModal: React.FC<{
@@ -12,16 +11,8 @@ export const SettingsModal: React.FC<{
   onClose: () => void;
   settingsStore: TTSPluginSettingsStore;
   audioStore: AudioStore;
-  pollyAuthSettings: PollyAuthSettingsStore;
   runtime: RuntimeServices;
-}> = ({
-  isOpen,
-  onClose,
-  settingsStore,
-  audioStore,
-  pollyAuthSettings,
-  runtime,
-}) => {
+}> = ({ isOpen, onClose, settingsStore, audioStore, runtime }) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   // Handle modal open/close
@@ -54,7 +45,6 @@ export const SettingsModal: React.FC<{
         <TTSSettingsTabComponent
           store={settingsStore}
           player={audioStore}
-          pollyAuthSettings={pollyAuthSettings}
           runtime={runtime}
         />
       </div>

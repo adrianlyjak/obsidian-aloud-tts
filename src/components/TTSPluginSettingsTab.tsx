@@ -5,12 +5,10 @@ import { AudioStore } from "../player/AudioStore";
 import { TTSPluginSettingsStore } from "../player/TTSPluginSettings";
 import { TTSSettingsTabComponent } from "./TTSSettingsTabComponent";
 import { ObsidianTooltipProvider } from "../util/ObsidianTooltipService";
-import { PollyAuthSettingsStore } from "../player/PollyAuthSettings";
 import { RuntimeServices } from "../player/RuntimeServices";
 
 export class TTSSettingTab extends PluginSettingTab {
   settings: TTSPluginSettingsStore;
-  pollyAuthSettings: PollyAuthSettingsStore;
   runtime: RuntimeServices;
   mainPlayer: AudioStore;
   miniPlayer: AudioStore;
@@ -21,13 +19,11 @@ export class TTSSettingTab extends PluginSettingTab {
     app: App,
     plugin: Plugin,
     settings: TTSPluginSettingsStore,
-    pollyAuthSettings: PollyAuthSettingsStore,
     runtime: RuntimeServices,
     player: AudioStore,
   ) {
     super(app, plugin);
     this.settings = settings;
-    this.pollyAuthSettings = pollyAuthSettings;
     this.runtime = runtime;
     this.mainPlayer = player;
   }
@@ -41,7 +37,6 @@ export class TTSSettingTab extends PluginSettingTab {
       <ObsidianTooltipProvider>
         <TTSSettingsTabComponent
           store={this.settings}
-          pollyAuthSettings={this.pollyAuthSettings}
           runtime={this.runtime}
           player={this.mainPlayer}
         />

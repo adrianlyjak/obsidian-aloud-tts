@@ -120,6 +120,8 @@ export interface MinimaxModelConfig {
   minimax_useChinaEndpoint: boolean;
 }
 
+export type PollyAuthMode = "static" | "profile";
+
 export interface PollyModelConfig {
   /** AWS Access Key ID */
   polly_accessKeyId: string;
@@ -133,6 +135,14 @@ export interface PollyModelConfig {
   polly_voiceId: string;
   /** Polly engine (standard or neural) */
   polly_engine: "standard" | "neural";
+  /** Whether to use static credentials or an AWS profile */
+  polly_authMode: PollyAuthMode;
+  /** The AWS profile name to use when polly_authMode is "profile" */
+  polly_profile: string;
+  /** Optional path to the AWS CLI executable */
+  polly_awsCliPath: string;
+  /** Optional command to refresh credentials (e.g., aws sso login) */
+  polly_refreshCommand: string;
 }
 
 export const playViewModes = [
@@ -229,6 +239,10 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   polly_region: "us-east-1",
   polly_voiceId: "Joanna",
   polly_engine: "neural",
+  polly_authMode: "static",
+  polly_profile: "default",
+  polly_awsCliPath: "",
+  polly_refreshCommand: "",
 
   version: 2,
   audioFolder: "aloud",

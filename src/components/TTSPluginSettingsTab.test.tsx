@@ -9,7 +9,6 @@ import {
   modelProviders,
 } from "../player/TTSPluginSettings";
 import { createTestAudioStore, createTestSettingsStore } from "./test-utils";
-import { memoryPollyAuthSettingsStore } from "../player/PollyAuthSettings";
 import { unavailableRuntimeServices } from "../player/RuntimeServices";
 
 // Mock components that have obsidian dependencies
@@ -47,7 +46,6 @@ describe("TTSPluginSettingsTab", () => {
       <TTSSettingsTabComponent
         store={stores.settingsStore}
         player={stores.audioStore}
-        pollyAuthSettings={memoryPollyAuthSettingsStore()}
         runtime={unavailableRuntimeServices}
       />,
     );

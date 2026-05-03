@@ -1,6 +1,9 @@
 import { observer } from "mobx-react-lite";
 import React from "react";
-import { TTSPluginSettingsStore } from "../../../player/TTSPluginSettings";
+import {
+  PollyAuthMode,
+  TTSPluginSettingsStore,
+} from "../../../player/TTSPluginSettings";
 import { OptionSelectSetting, TextInputSetting } from "../setting-components";
 import { ApiKeyComponent } from "../api-key-component";
 import {
@@ -9,10 +12,6 @@ import {
   POLLY_ENGINES,
   PollyVoice,
 } from "../../../models/polly";
-import {
-  PollyAuthMode,
-  PollyAuthSettingsStore,
-} from "../../../player/PollyAuthSettings";
 import { RuntimeServices } from "../../../player/RuntimeServices";
 import { OptionSelect } from "../option-select";
 import { resolvePollyCredentials } from "../../../player/RuntimeAwarePollyModel";
@@ -25,41 +24,31 @@ const AUTH_MODE_OPTIONS: readonly { label: string; value: PollyAuthMode }[] = [
 export const PollySettings = observer(
   ({
     store,
-    pollyAuthSettings,
     runtime,
   }: {
     store: TTSPluginSettingsStore;
-    pollyAuthSettings: PollyAuthSettingsStore;
     runtime: RuntimeServices;
   }) => {
     return (
       <>
-        <AuthMode pollyAuthSettings={pollyAuthSettings} runtime={runtime} />
-        {pollyAuthSettings.settings.polly_authMode === "static" ? (
+        <AuthMode store={store} runtime={runtime} />
+        {store.settings.polly_authMode === "static" ? (
           <AwsCredentials store={store} />
         ) : (
-          <AwsProfile
-            store={store}
-            pollyAuthSettings={pollyAuthSettings}
-            runtime={runtime}
-          />
+          <AwsProfile store={store} runtime={runtime} />
         )}
         <PollyRegionComponent store={store} />
         <PollyEngineComponent store={store} />
-        <PollyVoiceComponent
-          store={store}
-          pollyAuthSettings={pollyAuthSettings}
-          runtime={runtime}
-        />
+        <PollyVoiceComponent store={store} runtime={runtime} />
       </>
     );
   },
 );
 
 const AuthMode: React.FC<{
-  pollyAuthSettings: PollyAuthSettingsStore;
+  store: TTSPluginSettingsStore;
   runtime: RuntimeServices;
-}> = observer(({ pollyAuthSettings, runtime }) => {
+}> = observer(({ store, runtime }) => {
   return (
     <div className="setting-item">
       <div className="setting-item-info">
@@ -80,12 +69,12 @@ const AuthMode: React.FC<{
             disabled:
               option.value === "profile" && !runtime.awsProfiles.available,
           }))}
-          value={pollyAuthSettings.settings.polly_authMode}
+          value={store.settings.polly_authMode}
           onChange={(value) => {
             if (value === "profile" && !runtime.awsProfiles.available) {
               return;
             }
-            pollyAuthSettings.updateSettings({
+            store.updateSettings({
               polly_authMode: value as PollyAuthMode,
             });
           }}
@@ -138,15 +127,14 @@ const AwsCredentials: React.FC<{ store: TTSPluginSettingsStore }> = observer(
 
 const AwsProfile: React.FC<{
   store: TTSPluginSettingsStore;
-  pollyAuthSettings: PollyAuthSettingsStore;
   runtime: RuntimeServices;
-}> = observer(({ store, pollyAuthSettings, runtime }) => {
+}> = observer(({ store, runtime }) => {
   const [refreshing, setRefreshing] = React.useState(false);
   const [message, setMessage] = React.useState<string | undefined>();
   const [profiles, setProfiles] = React.useState<string[]>([]);
-  const profile = pollyAuthSettings.settings.polly_profile;
-  const awsCliPath = pollyAuthSettings.settings.polly_awsCliPath;
-  const refreshCommand = pollyAuthSettings.settings.polly_refreshCommand;
+  const profile = store.settings.polly_profile;
+  const awsCliPath = store.settings.polly_awsCliPath;
+  const refreshCommand = store.settings.polly_refreshCommand;
 
   React.useEffect(() => {
     let cancelled = false;
@@ -191,9 +179,7 @@ const AwsProfile: React.FC<{
       <AwsProfileName
         profile={profile}
         profiles={profiles}
-        onChange={(polly_profile) =>
-          pollyAuthSettings.updateSettings({ polly_profile })
-        }
+        onChange={(polly_profile) => store.updateSettings({ polly_profile })}
       />
       <DeviceTextInput
         name="AWS CLI Path"
@@ -201,7 +187,7 @@ const AwsProfile: React.FC<{
         value={awsCliPath}
         placeholder="aws"
         onChange={(polly_awsCliPath) =>
-          pollyAuthSettings.updateSettings({ polly_awsCliPath })
+          store.updateSettings({ polly_awsCliPath })
         }
       />
       <DeviceTextInput
@@ -209,7 +195,7 @@ const AwsProfile: React.FC<{
         description="Optional. The local command to refresh AWS credentials when they expire. For SSO profiles, use aws sso login --profile profile-name, or the full path to aws if Obsidian cannot find it."
         value={refreshCommand}
         onChange={(polly_refreshCommand) =>
-          pollyAuthSettings.updateSettings({ polly_refreshCommand })
+          store.updateSettings({ polly_refreshCommand })
         }
       />
       <div className="setting-item">
@@ -317,20 +303,14 @@ const PollyRegionComponent: React.FC<{ store: TTSPluginSettingsStore }> =
 
 const PollyVoiceComponent: React.FC<{
   store: TTSPluginSettingsStore;
-  pollyAuthSettings: PollyAuthSettingsStore;
   runtime: RuntimeServices;
-}> = observer(({ store, pollyAuthSettings, runtime }) => {
+}> = observer(({ store, runtime }) => {
   const [voices, setVoices] = React.useState<PollyVoice[]>([]);
   const [error, setError] = React.useState<string | null>(null);
 
   const region = store.settings.polly_region;
   const selectedEngine = store.settings.polly_engine;
-  const {
-    polly_authMode,
-    polly_profile,
-    polly_awsCliPath,
-    polly_refreshCommand,
-  } = pollyAuthSettings.settings;
+  const { polly_authMode, polly_profile, polly_awsCliPath } = store.settings;
 
   React.useEffect(() => {
     if (!region) {
@@ -344,7 +324,6 @@ const PollyVoiceComponent: React.FC<{
       try {
         const credentials = await resolvePollyCredentials(
           store.settings,
-          pollyAuthSettings,
           runtime,
         );
         if (typeof credentials === "string") {
@@ -377,16 +356,7 @@ const PollyVoiceComponent: React.FC<{
     };
 
     fetchVoices();
-  }, [
-    polly_authMode,
-    polly_profile,
-    polly_awsCliPath,
-    polly_refreshCommand,
-    region,
-    store,
-    pollyAuthSettings,
-    runtime,
-  ]);
+  }, [polly_authMode, polly_profile, polly_awsCliPath, region, store, runtime]);
 
   const filteredVoices = React.useMemo(() => {
     if (!selectedEngine) return voices;
@@ -423,7 +393,7 @@ const PollyVoiceComponent: React.FC<{
   }
 
   const canLoad =
-    pollyAuthSettings.settings.polly_authMode === "profile"
+    store.settings.polly_authMode === "profile"
       ? runtime.awsProfiles.available
       : !!store.settings.polly_accessKeyId &&
         !!store.settings.polly_secretAccessKey;

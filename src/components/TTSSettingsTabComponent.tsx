@@ -23,15 +23,13 @@ import { OpenAICompatibleSettings } from "./settings/providers/provider-openai-l
 import { MinimaxSettings } from "./settings/providers/provider-minimax";
 import { InworldSettings } from "./settings/providers/provider-inworld";
 import { PollySettings } from "./settings/providers/provider-polly";
-import { PollyAuthSettingsStore } from "../player/PollyAuthSettings";
 import { RuntimeServices } from "../player/RuntimeServices";
 
 export const TTSSettingsTabComponent: React.FC<{
   store: TTSPluginSettingsStore;
-  pollyAuthSettings: PollyAuthSettingsStore;
   runtime: RuntimeServices;
   player: AudioStore;
-}> = observer(({ store, pollyAuthSettings, runtime, player }) => {
+}> = observer(({ store, runtime, player }) => {
   const [isActive, setActive] = React.useState(false);
   return (
     <>
@@ -74,11 +72,7 @@ export const TTSSettingsTabComponent: React.FC<{
           <InworldSettings store={store} />
         )}
         {store.settings.modelProvider === "polly" && (
-          <PollySettings
-            store={store}
-            pollyAuthSettings={pollyAuthSettings}
-            runtime={runtime}
-          />
+          <PollySettings store={store} runtime={runtime} />
         )}
       </SettingSection>
 

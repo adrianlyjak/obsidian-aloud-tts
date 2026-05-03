@@ -17,7 +17,6 @@ import { WebEditor } from "./components/WebEditor";
 import { SettingsModal } from "./components/SettingsModal";
 import { WebBridgeImpl, WebObsidianBridge } from "./components/WebBridge";
 import { unavailableRuntimeServices } from "../player/RuntimeServices";
-import { indexedDBPollyAuthSettingsStore } from "../player/PollyAuthSettings";
 import { runtimeAwareTTSModel } from "../player/RuntimeAwarePollyModel";
 
 const STORAGE_KEYS = {
@@ -26,7 +25,6 @@ const STORAGE_KEYS = {
 };
 
 async function main() {
-  const pollyAuthSettings = await indexedDBPollyAuthSettingsStore();
   const systemRef: { current?: AudioSystem } = {};
   const settingsStore = await pluginSettingsStore(
     async () => {
@@ -49,8 +47,7 @@ async function main() {
   const system = createAudioSystem({
     settings: () => settingsStore.settings,
     runtime: () => unavailableRuntimeServices,
-    pollyAuthSettings: () => pollyAuthSettings,
-    ttsModel: (sys) => runtimeAwareTTSModel(sys.pollyAuthSettings, sys.runtime),
+    ttsModel: (sys) => runtimeAwareTTSModel(sys.runtime),
     storage: () => new IndexedDBAudioStorage(),
     audioSink: () => audioSink,
     audioStore: (sys) => loadAudioStore({ system: sys }),
@@ -133,7 +130,6 @@ const App: FC<{
         onClose={handleCloseModal}
         settingsStore={settingsStore}
         audioStore={store}
-        pollyAuthSettings={system.pollyAuthSettings}
         runtime={system.runtime}
       />
     </div>

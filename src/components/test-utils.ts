@@ -6,7 +6,6 @@ import {
   DEFAULT_SETTINGS,
 } from "../player/TTSPluginSettings";
 import { createAudioSystem } from "../player/AudioSystem";
-import { memoryPollyAuthSettingsStore } from "../player/PollyAuthSettings";
 import { unavailableRuntimeServices } from "../player/RuntimeServices";
 import { ChunkLoader } from "../player/ChunkLoader";
 import { memoryStorage } from "../player/AudioCache";
@@ -146,7 +145,6 @@ export function createTestAudioStore(): AudioStore {
     ttsModel: () => createTestModel(),
     settings: () => DEFAULT_SETTINGS,
     runtime: () => unavailableRuntimeServices,
-    pollyAuthSettings: () => memoryPollyAuthSettingsStore(),
     config: () => ({ backgroundLoaderIntervalMillis: 10 }),
     audioStore: (sys) => loadAudioStore({ system: sys }),
     chunkLoader: (sys) => new ChunkLoader({ system: sys }),
