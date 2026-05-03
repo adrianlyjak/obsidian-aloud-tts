@@ -115,7 +115,7 @@ describe("OpenAI-Like Model", () => {
     it("should fall back to generation speed 1 for out-of-range values", () => {
       const testSettings = {
         ...DEFAULT_SETTINGS,
-        openaicompat_generationSpeed: 5,
+        openaicompat_generationSpeed: 3,
       };
 
       const options = openAILikeTextToSpeech.convertToOptions(testSettings);
