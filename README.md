@@ -47,3 +47,7 @@ You can also configure a custom API endpoint if you have an OpenAI compatible AP
 ### Alternate TTS Models
 
 You can also run alternate models if you have an OpenAI‑compatible API server that exposes `/v1/audio/speech` (for example, `openedai-speech`). Configure the URL and API key in the plugin settings under “OpenAI Compatible (Advanced)”.
+
+### Support
+
+If you find this plugin useful, you can [support development on Ko-fi](https://ko-fi.com/adrianlyjak). Donations help cover API keys for testing provider integrations.

@@ -35,7 +35,10 @@ export default defineConfig({
 				// Custom CSS for purple theme
 				'./src/styles/custom.css',
 			],
-			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/adrianlyjak/obsidian-aloud-tts' }],
+			social: [
+				{ icon: 'github', label: 'GitHub', href: 'https://github.com/adrianlyjak/obsidian-aloud-tts' },
+				{ icon: 'heart', label: 'Support on Ko-fi', href: 'https://ko-fi.com/adrianlyjak' },
+			],
 			sidebar: [
 				{
 					label: 'Getting Started',
