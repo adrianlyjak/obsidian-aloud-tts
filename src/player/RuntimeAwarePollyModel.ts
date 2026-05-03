@@ -43,10 +43,7 @@ export function runtimeAwareTTSModel(
       if (!shouldRefreshAndRetry(error, pollyAuthSettings)) {
         throw error;
       }
-      const result = await runtime.awsProfiles.refreshCredentials(
-        pollyAuthSettings.settings.polly_refreshCommand,
-      );
-      if (!result.ok) {
+      if (!(await refreshProfileCredentials(pollyAuthSettings, runtime))) {
         throw error;
       }
       const refreshedSettings = await settingsWithProfileCredentials(
@@ -76,58 +73,39 @@ export function runtimeAwareTTSModel(
     async validateConnection(
       settings: TTSPluginSettings,
     ): Promise<string | undefined> {
-      if (settings.modelProvider !== "polly") {
-        return getModel(settings).validateConnection(settings);
-      }
-      if (pollyAuthSettings.settings.polly_authMode === "static") {
+      if (
+        settings.modelProvider !== "polly" ||
+        pollyAuthSettings.settings.polly_authMode === "static"
+      ) {
         return getModel(settings).validateConnection(settings);
       }
       if (!settings.polly_region.trim()) {
         return "Please specify an AWS region";
       }
       try {
-        const credentials = await credentialsOrThrow(
+        await validatePollyProfileConnection(
           settings,
           pollyAuthSettings,
           runtime,
         );
-        await listPollyVoicesWithCredentials(
-          credentials,
-          settings.polly_region,
-        );
         return undefined;
       } catch (error) {
-        if (shouldRefreshAndRetry(error, pollyAuthSettings)) {
-          const result = await runtime.awsProfiles.refreshCredentials(
-            pollyAuthSettings.settings.polly_refreshCommand,
-          );
-          if (result.ok) {
-            try {
-              const credentials = await credentialsOrThrow(
-                settings,
-                pollyAuthSettings,
-                runtime,
-              );
-              await listPollyVoicesWithCredentials(
-                credentials,
-                settings.polly_region,
-              );
-              return undefined;
-            } catch {
-              return "Invalid AWS credentials or insufficient permissions";
-            }
-          }
-        }
-        if (error instanceof TTSErrorInfo) {
-          if (error.httpErrorCode === 403 || error.httpErrorCode === 401) {
+        if (
+          shouldRefreshAndRetry(error, pollyAuthSettings) &&
+          (await refreshProfileCredentials(pollyAuthSettings, runtime))
+        ) {
+          try {
+            await validatePollyProfileConnection(
+              settings,
+              pollyAuthSettings,
+              runtime,
+            );
+            return undefined;
+          } catch {
             return "Invalid AWS credentials or insufficient permissions";
           }
-          if (error.httpErrorCode !== undefined) {
-            return `HTTP error code ${error.httpErrorCode}: ${error.ttsJsonMessage() || error.message}`;
-          }
-          return error.ttsJsonMessage() || error.message;
         }
-        return error instanceof Error ? error.message : POLLY_PROFILE_MISSING;
+        return pollyValidationError(error);
       }
     },
     convertToOptions(settings: TTSPluginSettings): TTSModelOptions {
@@ -207,6 +185,42 @@ async function credentialsOrThrow(
     throw new Error(credentials);
   }
   return credentials;
+}
+
+async function validatePollyProfileConnection(
+  settings: TTSPluginSettings,
+  pollyAuthSettings: PollyAuthSettingsStore,
+  runtime: RuntimeServices,
+): Promise<void> {
+  const credentials = await credentialsOrThrow(
+    settings,
+    pollyAuthSettings,
+    runtime,
+  );
+  await listPollyVoicesWithCredentials(credentials, settings.polly_region);
+}
+
+async function refreshProfileCredentials(
+  pollyAuthSettings: PollyAuthSettingsStore,
+  runtime: RuntimeServices,
+): Promise<boolean> {
+  const result = await runtime.awsProfiles.refreshCredentials(
+    pollyAuthSettings.settings.polly_refreshCommand,
+  );
+  return result.ok;
+}
+
+function pollyValidationError(error: unknown): string {
+  if (error instanceof TTSErrorInfo) {
+    if (error.httpErrorCode === 403 || error.httpErrorCode === 401) {
+      return "Invalid AWS credentials or insufficient permissions";
+    }
+    if (error.httpErrorCode !== undefined) {
+      return `HTTP error code ${error.httpErrorCode}: ${error.ttsJsonMessage() || error.message}`;
+    }
+    return error.ttsJsonMessage() || error.message;
+  }
+  return error instanceof Error ? error.message : POLLY_PROFILE_MISSING;
 }
 
 function shouldRefreshAndRetry(

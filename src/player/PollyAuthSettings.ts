@@ -27,7 +27,7 @@ export function memoryPollyAuthSettingsStore(
     {
       settings: parsePollyAuthSettings(initial),
       async updateSettings(update: Partial<PollyAuthSettings>): Promise<void> {
-        Object.assign(this.settings, parsePollyAuthSettings(update));
+        Object.assign(this.settings, parsePollyAuthSettingsUpdate(update));
       },
     },
     {
@@ -70,7 +70,7 @@ function persistedPollyAuthSettingsStore(
     {
       settings: parsePollyAuthSettings(initial),
       async updateSettings(update: Partial<PollyAuthSettings>): Promise<void> {
-        Object.assign(this.settings, parsePollyAuthSettings(update));
+        Object.assign(this.settings, parsePollyAuthSettingsUpdate(update));
         await db.put("settings", { ...this.settings }, "polly-auth");
       },
     },
@@ -88,7 +88,36 @@ export function parsePollyAuthSettings(value: unknown): PollyAuthSettings {
   const authMode = partial.polly_authMode === "profile" ? "profile" : "static";
   return {
     polly_authMode: authMode,
-    polly_profile: partial.polly_profile?.trim() || "default",
-    polly_refreshCommand: partial.polly_refreshCommand || "",
+    polly_profile: normalizedProfile(partial.polly_profile),
+    polly_refreshCommand: normalizedRefreshCommand(
+      partial.polly_refreshCommand,
+    ),
   };
+}
+
+function parsePollyAuthSettingsUpdate(
+  update: Partial<PollyAuthSettings>,
+): Partial<PollyAuthSettings> {
+  const next: Partial<PollyAuthSettings> = {};
+  if (update.polly_authMode !== undefined) {
+    next.polly_authMode =
+      update.polly_authMode === "profile" ? "profile" : "static";
+  }
+  if (update.polly_profile !== undefined) {
+    next.polly_profile = normalizedProfile(update.polly_profile);
+  }
+  if (update.polly_refreshCommand !== undefined) {
+    next.polly_refreshCommand = normalizedRefreshCommand(
+      update.polly_refreshCommand,
+    );
+  }
+  return next;
+}
+
+function normalizedProfile(value: unknown): string {
+  return typeof value === "string" && value.trim() ? value.trim() : "default";
+}
+
+function normalizedRefreshCommand(value: unknown): string {
+  return typeof value === "string" ? value : "";
 }

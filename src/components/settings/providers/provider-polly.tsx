@@ -143,17 +143,17 @@ const AwsProfile: React.FC<{
 }> = observer(({ store, pollyAuthSettings, runtime }) => {
   const [refreshing, setRefreshing] = React.useState(false);
   const [message, setMessage] = React.useState<string | undefined>();
+  const profile = pollyAuthSettings.settings.polly_profile;
+  const refreshCommand = pollyAuthSettings.settings.polly_refreshCommand;
 
   React.useEffect(() => {
     store.checkApiKey();
-  }, [pollyAuthSettings.settings.polly_profile, store]);
+  }, [profile, store]);
 
   const refresh = React.useCallback(async () => {
     setRefreshing(true);
     setMessage(undefined);
-    const result = await runtime.awsProfiles.refreshCredentials(
-      pollyAuthSettings.settings.polly_refreshCommand,
-    );
+    const result = await runtime.awsProfiles.refreshCredentials(refreshCommand);
     setRefreshing(false);
     setMessage(
       result.ok
@@ -163,14 +163,14 @@ const AwsProfile: React.FC<{
     if (result.ok) {
       store.checkApiKey();
     }
-  }, [pollyAuthSettings, runtime, store]);
+  }, [refreshCommand, runtime, store]);
 
   return (
     <>
       <DeviceTextInput
         name="AWS Profile Name"
         description="The local AWS profile name to read from your credentials file."
-        value={pollyAuthSettings.settings.polly_profile}
+        value={profile}
         placeholder="default"
         onChange={(polly_profile) =>
           pollyAuthSettings.updateSettings({ polly_profile })
@@ -179,7 +179,7 @@ const AwsProfile: React.FC<{
       <DeviceTextInput
         name="Refresh Command"
         description="The local command to refresh AWS credentials when they expire."
-        value={pollyAuthSettings.settings.polly_refreshCommand}
+        value={refreshCommand}
         onChange={(polly_refreshCommand) =>
           pollyAuthSettings.updateSettings({ polly_refreshCommand })
         }
@@ -198,7 +198,7 @@ const AwsProfile: React.FC<{
             disabled={
               refreshing ||
               !runtime.awsProfiles.available ||
-              !pollyAuthSettings.settings.polly_refreshCommand.trim()
+              !refreshCommand.trim()
             }
           >
             {refreshing ? "Refreshing..." : "Refresh"}
@@ -262,7 +262,8 @@ const PollyVoiceComponent: React.FC<{
 
   const region = store.settings.polly_region;
   const selectedEngine = store.settings.polly_engine;
-  const authSettings = JSON.stringify(pollyAuthSettings.settings);
+  const { polly_authMode, polly_profile, polly_refreshCommand } =
+    pollyAuthSettings.settings;
 
   React.useEffect(() => {
     if (!region) {
@@ -309,7 +310,15 @@ const PollyVoiceComponent: React.FC<{
     };
 
     fetchVoices();
-  }, [authSettings, region, store, pollyAuthSettings, runtime]);
+  }, [
+    polly_authMode,
+    polly_profile,
+    polly_refreshCommand,
+    region,
+    store,
+    pollyAuthSettings,
+    runtime,
+  ]);
 
   const filteredVoices = React.useMemo(() => {
     if (!selectedEngine) return voices;

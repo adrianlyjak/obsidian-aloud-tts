@@ -31,4 +31,20 @@ describe("PollyAuthSettings", () => {
     await store.updateSettings({ polly_authMode: "profile" });
     expect(store.settings.polly_authMode).toBe("profile");
   });
+
+  it("preserves existing values on partial updates", async () => {
+    const store = memoryPollyAuthSettingsStore({
+      polly_authMode: "profile",
+      polly_profile: "work",
+      polly_refreshCommand: "aws sso login",
+    });
+
+    await store.updateSettings({ polly_profile: " personal " });
+
+    expect(store.settings).toEqual({
+      polly_authMode: "profile",
+      polly_profile: "personal",
+      polly_refreshCommand: "aws sso login",
+    });
+  });
 });
