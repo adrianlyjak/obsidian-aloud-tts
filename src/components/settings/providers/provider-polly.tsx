@@ -173,11 +173,23 @@ const AwsProfile: React.FC<{
 
   return (
     <>
-      <AwsProfileName
-        profile={profile}
-        profiles={profiles}
-        onChange={(polly_profile) => store.updateSettings({ polly_profile })}
-      />
+      <div className="setting-item">
+        <div className="setting-item-info">
+          <div className="setting-item-name">AWS Profile Name</div>
+          <div className="setting-item-description">
+            The local AWS profile to resolve credentials from.
+          </div>
+        </div>
+        <div className="setting-item-control">
+          <OptionSelect
+            options={profiles.map((name) => ({ label: name, value: name }))}
+            value={profile}
+            onChange={(polly_profile) =>
+              store.updateSettings({ polly_profile })
+            }
+          />
+        </div>
+      </div>
       <DeviceTextInput
         name="AWS CLI Path"
         description="Optional. Leave blank to auto-discover aws from Obsidian's PATH, your login shell, or Windows PATH."
@@ -219,41 +231,6 @@ const AwsProfile: React.FC<{
     </>
   );
 });
-
-const AwsProfileName: React.FC<{
-  profile: string;
-  profiles: string[];
-  onChange(value: string): void;
-}> = ({ profile, profiles, onChange }) => {
-  const listId = React.useId();
-  return (
-    <div className="setting-item">
-      <div className="setting-item-info">
-        <div className="setting-item-name">AWS Profile Name</div>
-        <div className="setting-item-description">
-          The local AWS profile name to resolve through your AWS credentials or
-          config.
-        </div>
-      </div>
-      <div className="setting-item-control">
-        <input
-          type="text"
-          list={profiles.length > 0 ? listId : undefined}
-          placeholder="default"
-          value={profile}
-          onChange={(event) => onChange(event.target.value)}
-        />
-        {profiles.length > 0 && (
-          <datalist id={listId}>
-            {profiles.map((name) => (
-              <option key={name} value={name} />
-            ))}
-          </datalist>
-        )}
-      </div>
-    </div>
-  );
-};
 
 const DeviceTextInput: React.FC<{
   name: string;
