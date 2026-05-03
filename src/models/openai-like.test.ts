@@ -64,5 +64,26 @@ describe("OpenAI-Like Model", () => {
         responseFormat: "wav",
       });
     });
+
+    it("should pass through pcm response format", () => {
+      const testSettings = {
+        ...DEFAULT_SETTINGS,
+        openaicompat_apiKey: "test-api-key",
+        openaicompat_apiBase: "https://custom-api.example.com",
+        openaicompat_ttsModel: "tts-1",
+        openaicompat_ttsVoice: "alloy",
+        openaicompat_responseFormat: "pcm" as const,
+      };
+
+      const options = openAILikeTextToSpeech.convertToOptions(testSettings);
+
+      expect(options).toEqual({
+        apiKey: "test-api-key",
+        apiUri: "https://custom-api.example.com",
+        model: "tts-1",
+        voice: "alloy",
+        responseFormat: "pcm",
+      });
+    });
   });
 });
