@@ -162,8 +162,7 @@ Just some text with dashes`;
   });
 
   it("should convert inline math to speakable text", () => {
-    const md =
-      "Starting with the constraint $6{x}_{1} + 4{x}_{2} \\leq {24}$";
+    const md = "Starting with the constraint $6{x}_{1} + 4{x}_{2} \\leq {24}$";
     const cleaned = cleanMarkup(md);
     expect(cleaned).toEqual(
       "Starting with the constraint 6x sub 1 + 4x sub 2 less than or equal to 24",

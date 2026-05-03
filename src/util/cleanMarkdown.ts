@@ -202,10 +202,7 @@ function cleanMath(math: string): string {
   // \frac{a}{b} → "a over b"
   out = out.replace(/\\frac\s*\{([^}]*)\}\s*\{([^}]*)\}/g, "$1 over $2");
   // \sqrt[n]{x} → "nth root of x", \sqrt{x} → "square root of x"
-  out = out.replace(
-    /\\sqrt\s*\[([^\]]*)\]\s*\{([^}]*)\}/g,
-    "$1th root of $2",
-  );
+  out = out.replace(/\\sqrt\s*\[([^\]]*)\]\s*\{([^}]*)\}/g, "$1th root of $2");
   out = out.replace(/\\sqrt\s*\{([^}]*)\}/g, "square root of $1");
 
   // Named commands from the map
