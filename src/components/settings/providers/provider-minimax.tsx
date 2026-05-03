@@ -70,6 +70,8 @@ export const MinimaxSettings = observer(
 );
 
 const MINIMAX_MODELS = [
+  { label: "speech-2.8-hd", value: "speech-2.8-hd" },
+  { label: "speech-2.8-turbo", value: "speech-2.8-turbo" },
   { label: "speech-2.6-hd", value: "speech-2.6-hd" },
   { label: "speech-2.6-turbo", value: "speech-2.6-turbo" },
   { label: "speech-02-hd", value: "speech-02-hd" },
