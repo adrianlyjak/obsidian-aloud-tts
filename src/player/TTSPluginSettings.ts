@@ -12,6 +12,7 @@ export type TTSPluginSettings = {
   cacheType: "local" | "vault";
   cacheDurationMillis: number;
   showPlayerView: PlayerViewMode;
+  showEditorActionButton: boolean;
   autoScrollPlayerView: boolean;
   version: number;
   audioFolder: string;
@@ -175,6 +176,7 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   cacheDurationMillis: 1000 * 60 * 60 * 24 * 7, // 7 days
   cacheType: "local",
   showPlayerView: "always-mobile",
+  showEditorActionButton: true,
   autoScrollPlayerView: true,
   // gemini
   gemini_apiKey: "",

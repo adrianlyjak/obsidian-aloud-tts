@@ -76,6 +76,7 @@ export const TTSSettingsTabComponent: React.FC<{
 
       <SettingSection title="User Interface">
         <PlayerDisplayMode store={store} />
+        <EditorActionButtonToggle store={store} />
       </SettingSection>
 
       <SettingSection title="Storage">
@@ -187,6 +188,7 @@ function describeMode(mode: PlayerViewMode): string {
       return "Never show";
   }
 }
+
 const PlayerDisplayMode: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
@@ -220,6 +222,33 @@ const PlayerDisplayMode: React.FC<{
             </option>
           ))}
         </select>
+      </div>
+    </div>
+  );
+});
+
+const EditorActionButtonToggle: React.FC<{
+  store: TTSPluginSettingsStore;
+}> = observer(({ store }) => {
+  return (
+    <div className="setting-item">
+      <div className="setting-item-info">
+        <div className="setting-item-name">Show Editor Action Button</div>
+        <div className="setting-item-description">
+          Show the Aloud play button in the editor header actions.
+        </div>
+      </div>
+      <div className="setting-item-control">
+        <div
+          className={`checkbox-container${store.settings.showEditorActionButton ? " is-enabled" : ""}`}
+          onClick={() =>
+            store.updateSettings({
+              showEditorActionButton: !store.settings.showEditorActionButton,
+            })
+          }
+        >
+          <input type="checkbox" tabIndex={0} />
+        </div>
       </div>
     </div>
   );
