@@ -52,7 +52,9 @@ export class TTSEditorAction {
     // Add to newly opened leaves
     this.plugin.registerEvent(
       this.plugin.app.workspace.on("active-leaf-change", (leaf) => {
-        this.addToLeaf(leaf);
+        if (this.settings.settings.showEditorActionButton) {
+          this.addToLeaf(leaf);
+        }
         this.pruneLeafStates();
       }),
     );
@@ -63,10 +65,21 @@ export class TTSEditorAction {
       }),
     );
 
-    // Add to all existing leaves
-    this.plugin.app.workspace.iterateAllLeaves((leaf) => {
-      this.addToLeaf(leaf);
+    // React to setting changes
+    const settingDisposer = autorun(() => {
+      const show = this.settings.settings.showEditorActionButton;
+      if (show) {
+        this.plugin.app.workspace.iterateAllLeaves((leaf) => {
+          this.addToLeaf(leaf);
+        });
+      } else {
+        this.removeAllButtons();
+      }
     });
+    this.plugin.register(() => settingDisposer());
+
+    // Add to all existing leaves (autorun above handles the initial add,
+    // but we still need the event handlers registered first)
   }
 
   /**
@@ -80,6 +93,17 @@ export class TTSEditorAction {
       state.root.unmount();
     }
     this.leafStates.clear();
+  }
+
+  private removeAllButtons(): void {
+    this.closeMenu();
+    for (const [leaf, state] of this.leafStates) {
+      this.disposeLeafState(leaf, state);
+    }
+    // Remove any action buttons that aren't tracked in leafStates (desktop)
+    document
+      .querySelectorAll(`[${EDITOR_ACTION_ATTR}="1"]`)
+      .forEach((el) => el.remove());
   }
 
   private addToLeaf(leaf: WorkspaceLeaf | null): void {
