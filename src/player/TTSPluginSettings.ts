@@ -121,17 +121,28 @@ export interface MinimaxModelConfig {
   minimax_useChinaEndpoint: boolean;
 }
 
+export type PollyAuthMode = "static" | "profile";
+
 export interface PollyModelConfig {
   /** AWS Access Key ID */
   polly_accessKeyId: string;
   /** AWS Secret Access Key */
   polly_secretAccessKey: string;
+  polly_sessionToken?: string;
   /** AWS region (e.g., us-east-1) */
   polly_region: string;
   /** Polly voice id to use (e.g., Joanna) */
   polly_voiceId: string;
   /** Polly engine (standard or neural) */
   polly_engine: "standard" | "neural";
+  /** Whether to use static credentials or an AWS profile */
+  polly_authMode: PollyAuthMode;
+  /** The AWS profile name to use when polly_authMode is "profile" */
+  polly_profile: string;
+  /** Optional path to the AWS CLI executable */
+  polly_awsCliPath: string;
+  /** Optional command to refresh credentials (e.g., aws sso login) */
+  polly_refreshCommand: string;
 }
 
 export const playViewModes = [
@@ -229,6 +240,10 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   polly_region: "us-east-1",
   polly_voiceId: "Joanna",
   polly_engine: "neural",
+  polly_authMode: "static",
+  polly_profile: "default",
+  polly_awsCliPath: "",
+  polly_refreshCommand: "",
 
   version: 2,
   audioFolder: "aloud",
@@ -250,9 +265,16 @@ export interface TTSPluginSettingsStore {
   setSpeed(speed: number): void;
 }
 
+export interface PluginSettingsStoreOptions {
+  validateConnection?: (
+    settings: TTSPluginSettings,
+  ) => Promise<string | undefined>;
+}
+
 export async function pluginSettingsStore(
   loadData: () => Promise<unknown>,
   saveData: (data: unknown) => Promise<void>,
+  opts: PluginSettingsStoreOptions = {},
 ): Promise<TTSPluginSettingsStore> {
   const store = observable(
     {
@@ -265,9 +287,10 @@ export async function pluginSettingsStore(
       },
       checkApiKey: debounce(async () => {
         store.setApiKeyValidity(undefined, undefined);
-        const error = await REGISTRY[
-          store.settings.modelProvider
-        ].validateConnection(store.settings);
+        const error = await (
+          opts.validateConnection ||
+          REGISTRY[store.settings.modelProvider].validateConnection
+        )(store.settings);
         store.setApiKeyValidity(error ? false : true, error);
       }, 500),
       updateSettings: async (

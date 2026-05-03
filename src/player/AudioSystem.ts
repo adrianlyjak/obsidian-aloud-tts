@@ -4,6 +4,7 @@ import { AudioStore } from "./AudioStore";
 import { TTSModel } from "../models/tts-model";
 import { TTSPluginSettings } from "./TTSPluginSettings";
 import { ChunkLoader } from "./ChunkLoader";
+import { RuntimeServices } from "./RuntimeServices";
 
 // Configuration options for the AudioSystem
 export interface AudioSystemConfig {
@@ -17,6 +18,7 @@ export interface AudioSystem {
   readonly storage: AudioCache;
   readonly chunkLoader: ChunkLoader;
   readonly ttsModel: TTSModel;
+  readonly runtime: RuntimeServices;
   readonly config: AudioSystemConfig;
 }
 

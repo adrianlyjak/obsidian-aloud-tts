@@ -97,3 +97,7 @@ export interface TooltipOptions {
   delay?: number;
   placement?: string;
 }
+
+export const Platform = {
+  isDesktopApp: false,
+};

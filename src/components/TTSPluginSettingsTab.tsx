@@ -5,9 +5,11 @@ import { AudioStore } from "../player/AudioStore";
 import { TTSPluginSettingsStore } from "../player/TTSPluginSettings";
 import { TTSSettingsTabComponent } from "./TTSSettingsTabComponent";
 import { ObsidianTooltipProvider } from "../util/ObsidianTooltipService";
+import { RuntimeServices } from "../player/RuntimeServices";
 
 export class TTSSettingTab extends PluginSettingTab {
   settings: TTSPluginSettingsStore;
+  runtime: RuntimeServices;
   mainPlayer: AudioStore;
   miniPlayer: AudioStore;
   wasPlaying: boolean = false;
@@ -17,10 +19,12 @@ export class TTSSettingTab extends PluginSettingTab {
     app: App,
     plugin: Plugin,
     settings: TTSPluginSettingsStore,
+    runtime: RuntimeServices,
     player: AudioStore,
   ) {
     super(app, plugin);
     this.settings = settings;
+    this.runtime = runtime;
     this.mainPlayer = player;
   }
 
@@ -33,6 +37,7 @@ export class TTSSettingTab extends PluginSettingTab {
       <ObsidianTooltipProvider>
         <TTSSettingsTabComponent
           store={this.settings}
+          runtime={this.runtime}
           player={this.mainPlayer}
         />
       </ObsidianTooltipProvider>,

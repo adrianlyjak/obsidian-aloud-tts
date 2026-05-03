@@ -1,4 +1,5 @@
 import { TTSPluginSettings } from "../player/TTSPluginSettings";
+import { AwsCredentials } from "../player/RuntimeServices";
 import { AudioData } from "./tts-model";
 import {
   AudioTextContext,
@@ -66,6 +67,7 @@ export const pollyTextToSpeech: TTSModel = {
         settings.polly_accessKeyId,
         settings.polly_secretAccessKey,
         settings.polly_region,
+        settings.polly_sessionToken,
       );
       return undefined;
     } catch (error) {
@@ -129,6 +131,7 @@ export async function pollyCallTextToSpeech(
     body: requestBody,
     accessKeyId: settings.polly_accessKeyId,
     secretAccessKey: settings.polly_secretAccessKey,
+    sessionToken: settings.polly_sessionToken,
   });
 
   const response = await fetch(endpoint, {
@@ -147,6 +150,7 @@ export async function listPollyVoices(
   accessKeyId: string,
   secretAccessKey: string,
   region: string,
+  sessionToken?: string,
 ): Promise<PollyVoice[]> {
   const endpoint = `https://polly.${region}.amazonaws.com/v1/voices`;
 
@@ -159,6 +163,7 @@ export async function listPollyVoices(
     headers: {},
     accessKeyId,
     secretAccessKey,
+    sessionToken,
   });
 
   const response = await fetch(endpoint, {
@@ -175,6 +180,18 @@ export async function listPollyVoices(
       ? (v.SupportedEngines as string[])
       : [],
   }));
+}
+
+export async function listPollyVoicesWithCredentials(
+  credentials: AwsCredentials,
+  region: string,
+): Promise<PollyVoice[]> {
+  return listPollyVoices(
+    credentials.accessKeyId,
+    credentials.secretAccessKey,
+    region,
+    credentials.sessionToken,
+  );
 }
 
 async function validate200Polly(response: Response) {
@@ -215,6 +232,7 @@ type SignRequest = {
   body?: string;
   accessKeyId: string;
   secretAccessKey: string;
+  sessionToken?: string;
 };
 
 async function signAwsRequest(req: SignRequest): Promise<{
@@ -238,6 +256,9 @@ async function signAwsRequest(req: SignRequest): Promise<{
     "x-amz-content-sha256": payloadHash,
     ...lowerCaseHeaders,
   };
+  if (req.sessionToken) {
+    headers["x-amz-security-token"] = req.sessionToken;
+  }
   const signedHeaders = Object.keys(headers)
     .map((h) => h.toLowerCase())
     .sort()

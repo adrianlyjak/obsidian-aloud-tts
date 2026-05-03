@@ -7,6 +7,7 @@ import { TTSModel, TTSModelOptions } from "../models/tts-model";
 import { DEFAULT_SETTINGS, TTSPluginSettings } from "./TTSPluginSettings";
 import { ActiveAudioText } from "./ActiveAudioText";
 import { createAudioSystem } from "./AudioSystem";
+import { unavailableRuntimeServices } from "./RuntimeServices";
 import { AudioTextOptions } from "./AudioTextChunk";
 import { ChunkLoader } from "./ChunkLoader";
 import { FakeAudioSink, createTestModel } from "../components/test-utils";
@@ -684,6 +685,7 @@ function createStore({
     audioSink: () => audioSink,
     ttsModel: () => textToSpeech,
     settings: () => ttsSettings,
+    runtime: () => unavailableRuntimeServices,
     config: () => ({
       backgroundLoaderIntervalMillis: 10,
     }),
