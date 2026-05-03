@@ -10,6 +10,16 @@ export default function cleanMarkup(md: string) {
   // First, remove frontmatter (must be done before other transformations)
   output = removeFrontMatter(output);
 
+  // Convert LaTeX math to speakable text (before other markdown processing
+  // since $ can interfere with emphasis regexes)
+  output = output.replace(/\$\$([\s\S]*?)\$\$/g, (_, m) => cleanMath(m));
+  // Inline math: either contains LaTeX syntax (\, {}, ^, _) or doesn't start
+  // with a digit. Currency like "$5" or "$10" always starts with a digit;
+  // math variables like "$n$" or "$x + y$" don't.
+  output = output.replace(/\$([^$\n]+?)\$/g, (_, m) =>
+    /[\\{}^_]/.test(m) || !/^\d/.test(m.trim()) ? cleanMath(m) : "$" + m + "$",
+  );
+
   // Remove horizontal rules
   output = output.replace(/^\s*(\*{3,}|_{3,}|-{3,})\s*$/gm, "");
 
@@ -121,4 +131,105 @@ function removeFrontMatter(md: string): string {
 
   // No valid frontmatter found
   return md;
+}
+
+/** LaTeX command → speakable text. Looked up with word-boundary matching. */
+const LATEX_COMMANDS: Record<string, string> = {
+  "\\leq": "less than or equal to",
+  "\\le": "less than or equal to",
+  "\\geq": "greater than or equal to",
+  "\\ge": "greater than or equal to",
+  "\\neq": "not equal to",
+  "\\ne": "not equal to",
+  "\\approx": "approximately",
+  "\\sim": "approximately",
+  "\\equiv": "equivalent to",
+  "\\propto": "proportional to",
+  "\\ll": "much less than",
+  "\\gg": "much greater than",
+  "\\times": "times",
+  "\\cdot": "times",
+  "\\div": "divided by",
+  "\\pm": "plus or minus",
+  "\\mp": "minus or plus",
+  "\\infty": "infinity",
+  "\\partial": "partial",
+  "\\nabla": "del",
+  "\\in": "in",
+  "\\notin": "not in",
+  "\\subset": "subset of",
+  "\\subseteq": "subset of",
+  "\\supset": "superset of",
+  "\\cup": "union",
+  "\\cap": "intersection",
+  "\\emptyset": "empty set",
+  "\\forall": "for all",
+  "\\exists": "there exists",
+  "\\neg": "not",
+  "\\land": "and",
+  "\\lor": "or",
+  "\\to": "to",
+  "\\rightarrow": "to",
+  "\\leftarrow": "from",
+  "\\Rightarrow": "implies",
+  "\\Leftarrow": "is implied by",
+  "\\iff": "if and only if",
+  "\\leftrightarrow": "if and only if",
+  "\\sum": "sum of",
+  "\\prod": "product of",
+  "\\int": "integral of",
+  "\\lim": "limit of",
+  "\\log": "log",
+  "\\ln": "ln",
+  "\\sin": "sin",
+  "\\cos": "cos",
+  "\\tan": "tan",
+  "\\ldots": "...",
+  "\\cdots": "...",
+  "\\dots": "...",
+  "\\quad": " ",
+  "\\qquad": " ",
+  "\\,": " ",
+  "\\;": " ",
+  "\\!": "",
+  "\\\\": " ",
+};
+
+/** Convert LaTeX math content to speakable text. Unknown commands are dropped. */
+function cleanMath(math: string): string {
+  let out = math;
+
+  // Structural commands that consume brace-delimited arguments
+  // \frac{a}{b} → "a over b"
+  out = out.replace(/\\frac\s*\{([^}]*)\}\s*\{([^}]*)\}/g, "$1 over $2");
+  // \sqrt[n]{x} → "nth root of x", \sqrt{x} → "square root of x"
+  out = out.replace(/\\sqrt\s*\[([^\]]*)\]\s*\{([^}]*)\}/g, "$1th root of $2");
+  out = out.replace(/\\sqrt\s*\{([^}]*)\}/g, "square root of $1");
+
+  // Named commands from the map
+  for (const [cmd, speech] of Object.entries(LATEX_COMMANDS)) {
+    const escaped = cmd.replace(/\\/g, "\\\\");
+    out = out.replace(new RegExp(escaped + "(?![a-zA-Z])", "g"), speech);
+  }
+
+  // Greek letters: strip backslash, TTS pronounces the word
+  out = out.replace(
+    /\\(alpha|beta|gamma|delta|epsilon|varepsilon|zeta|eta|theta|vartheta|iota|kappa|lambda|mu|nu|xi|pi|rho|sigma|tau|upsilon|phi|varphi|chi|psi|omega|Gamma|Delta|Theta|Lambda|Xi|Pi|Sigma|Upsilon|Phi|Psi|Omega)\b/g,
+    "$1",
+  );
+
+  // Drop remaining \commands and stray backslashes
+  out = out.replace(/\\[a-zA-Z]+/g, "");
+  out = out.replace(/\\/g, "");
+
+  // x^{2} → "x to the 2", x_i → "x sub i"
+  out = out.replace(/\^\{([^}]*)\}/g, " to the $1");
+  out = out.replace(/\^(\S)/g, " to the $1");
+  out = out.replace(/_\{([^}]*)\}/g, " sub $1");
+  out = out.replace(/_(\S)/g, " sub $1");
+
+  out = out.replace(/[{}]/g, "");
+  out = out.replace(/\s+/g, " ").trim();
+
+  return out;
 }
