@@ -16,6 +16,7 @@ vi.mock("./IconButton", () => ({
     <button onClick={onClick}>{children}</button>
   ),
   IconSpan: ({ children }: any) => <span>{children}</span>,
+  TooltipSpan: ({ children }: any) => <span>{children}</span>,
   Spinner: () => <div>Loading...</div>,
 }));
 

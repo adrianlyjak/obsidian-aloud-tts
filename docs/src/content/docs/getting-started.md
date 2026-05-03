@@ -23,7 +23,7 @@ After installing the plugin, you need to configure a TTS provider to enable text
 
     <!-- `[INSERT SCREENSHOT: settings_panel_location.png]` -->
 
-2.  **Choose a TTS Provider**: Select a provider from the dropdown menu, such as OpenAI, Google Gemini, Hume AI, or Inworld.
+2.  **Choose a TTS Provider**: Select a provider from the dropdown menu, such as OpenAI, Google Gemini, Hume AI, Fish Audio, or Inworld.
 
     <!-- `[INSERT SCREENSHOT: provider_selection.png]` -->
 
@@ -44,4 +44,4 @@ To test your setup:
 3.  Open the Command Palette (`Cmd/Ctrl+P`).
 4.  Search for "Speak selection" and run the command.
 
-Audio should begin playing shortly, and the currently spoken sentence will be highlighted in the editor. 
+Audio should begin playing shortly, and the currently spoken sentence will be highlighted in the editor.

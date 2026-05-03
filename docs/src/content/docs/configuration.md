@@ -11,7 +11,7 @@ The Aloud TTS plugin offers a variety of settings to customize your text-to-spee
 
 These settings control the core behavior of the plugin.
 
--   **TTS Provider**: Choose the text-to-speech service you want to use. Each provider offers different voices and pricing. Supported providers include OpenAI, Google Gemini, ElevenLabs, Inworld, many other TTS providers, and any OpenAI-compatible API.
+-   **TTS Provider**: Choose the text-to-speech service you want to use. Each provider offers different voices and pricing. Supported providers include OpenAI, Google Gemini, ElevenLabs, Fish Audio, Inworld, many other TTS providers, and any OpenAI-compatible API.
 -   **Playback Speed**: Adjust the default playback speed. The default is `1.0x`. This can also be adjusted from the player UI.
 -   **Audio Folder**: The directory in your vault where exported audio files are saved. The default is `aloud/`.
 
@@ -70,6 +70,20 @@ For users who self-host a TTS service or use a third-party provider with an Open
 -   **Stability**: Controls how stable/consistent the voice is (0–1).
 -   **Similarity Boost**: Controls how closely the output matches the base voice (0–1).
 -   **Context Mode**: Optionally include previous sentences for continuity.
+
+### Fish Audio
+
+-   **API Key**: Your API key from [Fish Audio](https://fish.audio/app/api-keys).
+-   **Model**: The Fish Audio TTS model to use: `S2 Pro` or `S1`.
+-   **Voice Source**: Choose `My Voices` to load voices from your Fish Audio account after entering a valid API key, or choose `Custom Voice ID` to enter a model ID manually.
+-   **Voice**: The Fish Audio voice model ID to use as the API `reference_id`.
+-   **Custom Voice ID**: A voice model ID for unlisted or shared Fish Audio voices. Fish Audio uses `reference_id` to point TTS requests at a voice model.
+-   **Sentence Pause**: Optionally insert Fish Audio pause controls between sentences. Use this when a voice sounds good but moves too quickly into the next sentence.
+
+Notes:
+-   Fish Audio API requests use your own Fish Audio account and billing.
+-   `S2 Pro` is the default model and supports Fish Audio's latest TTS features. `S1` is also available for voices or workflows that work better with that model.
+-   If you use `Custom Voice ID`, copy the model ID from Fish Audio and paste it into the setting exactly.
 
 ### Azure Speech Services
 

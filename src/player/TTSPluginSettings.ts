@@ -23,6 +23,7 @@ export type TTSPluginSettings = {
   ElevenLabsModelConfig &
   AzureModelConfig &
   MinimaxModelConfig &
+  FishModelConfig &
   InworldModelConfig &
   PollyModelConfig);
 
@@ -121,6 +122,23 @@ export interface MinimaxModelConfig {
   minimax_useChinaEndpoint: boolean;
 }
 
+export type FishModel = "s1" | "s2-pro";
+export type FishVoiceSource = "my-voices" | "custom";
+export type FishSentencePause = "none" | "short" | "long";
+
+export interface FishModelConfig {
+  /** the API key to use */
+  fish_apiKey: string;
+  /** the Fish Audio TTS model to use */
+  fish_model: FishModel;
+  /** whether to pick from account voices or enter an ID manually */
+  fish_voiceSource: FishVoiceSource;
+  /** the voice model ID to use as reference_id */
+  fish_voiceId: string;
+  /** Fish Audio pause control to insert between sentences */
+  fish_sentencePause: FishSentencePause;
+}
+
 export interface PollyModelConfig {
   /** AWS Access Key ID */
   polly_accessKeyId: string;
@@ -164,6 +182,7 @@ export const modelProviders = [
   "gemini",
   "hume",
   "minimax",
+  "fish",
   "inworld",
   "polly",
 ] as const;
@@ -217,6 +236,13 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   minimax_ttsModel: "speech-2.6-turbo",
   minimax_ttsVoice: "English_expressive_narrator",
   minimax_useChinaEndpoint: false,
+
+  // fish
+  fish_apiKey: "",
+  fish_model: "s2-pro",
+  fish_voiceSource: "custom",
+  fish_voiceId: "",
+  fish_sentencePause: "none",
 
   // inworld
   inworld_apiKey: "",

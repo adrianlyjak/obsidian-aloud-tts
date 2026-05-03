@@ -23,6 +23,7 @@ import { OpenAICompatibleSettings } from "./settings/providers/provider-openai-l
 import { MinimaxSettings } from "./settings/providers/provider-minimax";
 import { InworldSettings } from "./settings/providers/provider-inworld";
 import { PollySettings } from "./settings/providers/provider-polly";
+import { FishSettings } from "./settings/providers/provider-fish";
 
 export const TTSSettingsTabComponent: React.FC<{
   store: TTSPluginSettingsStore;
@@ -65,6 +66,9 @@ export const TTSSettingsTabComponent: React.FC<{
         )}
         {store.settings.modelProvider === "minimax" && (
           <MinimaxSettings store={store} />
+        )}
+        {store.settings.modelProvider === "fish" && (
+          <FishSettings store={store} />
         )}
         {store.settings.modelProvider === "inworld" && (
           <InworldSettings store={store} />
@@ -149,6 +153,7 @@ const labels: Record<ModelProvider, string> = {
   gemini: "Google Gemini",
   hume: "Hume",
   minimax: "MiniMax",
+  fish: "Fish Audio",
   inworld: "Inworld",
   polly: "AWS Polly",
 };
