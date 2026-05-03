@@ -132,9 +132,8 @@ function removeFrontMatter(md: string): string {
   return md;
 }
 
-/** Maps of LaTeX commands to speakable text */
+/** LaTeX command → speakable text. Looked up with word-boundary matching. */
 const LATEX_COMMANDS: Record<string, string> = {
-  // Relations
   "\\leq": "less than or equal to",
   "\\le": "less than or equal to",
   "\\geq": "greater than or equal to",
@@ -147,17 +146,14 @@ const LATEX_COMMANDS: Record<string, string> = {
   "\\propto": "proportional to",
   "\\ll": "much less than",
   "\\gg": "much greater than",
-  // Operators
   "\\times": "times",
   "\\cdot": "times",
   "\\div": "divided by",
   "\\pm": "plus or minus",
   "\\mp": "minus or plus",
-  // Structures
   "\\infty": "infinity",
   "\\partial": "partial",
   "\\nabla": "del",
-  // Set/logic
   "\\in": "in",
   "\\notin": "not in",
   "\\subset": "subset of",
@@ -171,7 +167,6 @@ const LATEX_COMMANDS: Record<string, string> = {
   "\\neg": "not",
   "\\land": "and",
   "\\lor": "or",
-  // Arrows
   "\\to": "to",
   "\\rightarrow": "to",
   "\\leftarrow": "from",
@@ -179,7 +174,15 @@ const LATEX_COMMANDS: Record<string, string> = {
   "\\Leftarrow": "is implied by",
   "\\iff": "if and only if",
   "\\leftrightarrow": "if and only if",
-  // Misc
+  "\\sum": "sum of",
+  "\\prod": "product of",
+  "\\int": "integral of",
+  "\\lim": "limit of",
+  "\\log": "log",
+  "\\ln": "ln",
+  "\\sin": "sin",
+  "\\cos": "cos",
+  "\\tan": "tan",
   "\\ldots": "...",
   "\\cdots": "...",
   "\\dots": "...",
@@ -191,17 +194,13 @@ const LATEX_COMMANDS: Record<string, string> = {
   "\\\\": " ",
 };
 
-/**
- * Convert LaTeX math content to speakable text.
- * Handles fractions, roots, subscripts, superscripts, Greek letters,
- * and common commands. Unknown commands are dropped.
- */
+/** Convert LaTeX math content to speakable text. Unknown commands are dropped. */
 function cleanMath(math: string): string {
   let out = math;
 
+  // Structural commands that consume brace-delimited arguments
   // \frac{a}{b} → "a over b"
   out = out.replace(/\\frac\s*\{([^}]*)\}\s*\{([^}]*)\}/g, "$1 over $2");
-
   // \sqrt[n]{x} → "nth root of x", \sqrt{x} → "square root of x"
   out = out.replace(
     /\\sqrt\s*\[([^\]]*)\]\s*\{([^}]*)\}/g,
@@ -209,48 +208,29 @@ function cleanMath(math: string): string {
   );
   out = out.replace(/\\sqrt\s*\{([^}]*)\}/g, "square root of $1");
 
-  // \sum, \prod, \int with optional limits
-  out = out.replace(/\\sum/g, "sum of");
-  out = out.replace(/\\prod/g, "product of");
-  out = out.replace(/\\int/g, "integral of");
-  out = out.replace(/\\lim/g, "limit of");
-  out = out.replace(/\\log/g, "log");
-  out = out.replace(/\\ln/g, "ln");
-  out = out.replace(/\\sin/g, "sin");
-  out = out.replace(/\\cos/g, "cos");
-  out = out.replace(/\\tan/g, "tan");
-
-  // Replace known commands from the map (longest match first via iteration)
+  // Named commands from the map
   for (const [cmd, speech] of Object.entries(LATEX_COMMANDS)) {
-    // Escape backslash for regex, match the command not followed by a letter
     const escaped = cmd.replace(/\\/g, "\\\\");
     out = out.replace(new RegExp(escaped + "(?![a-zA-Z])", "g"), speech);
   }
 
-  // Greek letters: strip backslash, TTS handles the word
-  // (alpha, beta, gamma, delta, epsilon, theta, lambda, mu, sigma, omega, pi, phi, etc.)
+  // Greek letters: strip backslash, TTS pronounces the word
   out = out.replace(
     /\\(alpha|beta|gamma|delta|epsilon|varepsilon|zeta|eta|theta|vartheta|iota|kappa|lambda|mu|nu|xi|pi|rho|sigma|tau|upsilon|phi|varphi|chi|psi|omega|Gamma|Delta|Theta|Lambda|Xi|Pi|Sigma|Upsilon|Phi|Psi|Omega)\b/g,
     "$1",
   );
 
-  // Drop remaining \commands (unknown ones)
+  // Drop remaining \commands and stray backslashes
   out = out.replace(/\\[a-zA-Z]+/g, "");
-  // Drop remaining backslashes
   out = out.replace(/\\/g, "");
 
-  // Superscript: x^{2} → "x to the 2", x^2 → "x to the 2"
+  // x^{2} → "x to the 2", x_i → "x sub i"
   out = out.replace(/\^\{([^}]*)\}/g, " to the $1");
   out = out.replace(/\^(\S)/g, " to the $1");
-
-  // Subscript: x_{i} → "x sub i", x_i → "x sub i"
   out = out.replace(/_\{([^}]*)\}/g, " sub $1");
   out = out.replace(/_(\S)/g, " sub $1");
 
-  // Remove remaining braces
   out = out.replace(/[{}]/g, "");
-
-  // Collapse whitespace
   out = out.replace(/\s+/g, " ").trim();
 
   return out;
