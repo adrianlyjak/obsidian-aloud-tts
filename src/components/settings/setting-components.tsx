@@ -223,7 +223,15 @@ export const SliderSetting: React.FC<SliderSettingProps> = observer(
             value={value}
             onChange={onChange}
           />
-          <span>{formatValue ? formatValue(value) : value}</span>
+          <span
+            style={{
+              display: "inline-block",
+              minWidth: "4em",
+              textAlign: "right",
+            }}
+          >
+            {formatValue ? formatValue(value) : value}
+          </span>
         </div>
       </div>
     );

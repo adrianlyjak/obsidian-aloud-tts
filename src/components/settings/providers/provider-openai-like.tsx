@@ -43,15 +43,15 @@ export const OpenAICompatibleSettings = observer(
         />
         <SliderSetting
           name="Generation Speed"
-          description="Speed sent to the OpenAI-compatible TTS API when generating audio. This is different from the local playback speed control. Useful for providers that support a TTS speed parameter."
+          description="Generation speed sent to the TTS API when creating audio. This is different from the local playback speed control. Support depends on the provider/model; it works with some OpenRouter TTS models such as Kokoro."
           store={store}
           provider="openaicompat"
           fieldName="openaicompat_generationSpeed"
           min={0.5}
           max={4}
-          step={0.5}
+          step={0.05}
           defaultValue={1}
-          formatValue={(value) => `${value}x`}
+          formatValue={(value) => `${value.toFixed(2)}x`}
         />
         <OptionSelectSetting
           name="Audio Format"
