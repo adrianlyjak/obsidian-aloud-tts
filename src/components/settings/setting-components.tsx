@@ -162,6 +162,82 @@ export const TextInputSetting: React.FC<TextInputSettingProps> = observer(
   },
 );
 
+export interface SliderSettingProps extends BaseSettingProps {
+  store: TTSPluginSettingsStore;
+  provider: ModelProvider;
+  fieldName: keyof TTSPluginSettingsStore["settings"];
+  min: number;
+  max: number;
+  step?: number;
+  defaultValue: number;
+  formatValue?: (value: number) => string;
+}
+
+export const SliderSetting: React.FC<SliderSettingProps> = observer(
+  ({
+    name,
+    description,
+    store,
+    provider,
+    fieldName,
+    min,
+    max,
+    step = 1,
+    defaultValue,
+    formatValue,
+  }) => {
+    const rawValue = store.settings[fieldName];
+    const value =
+      typeof rawValue === "number" && Number.isFinite(rawValue)
+        ? rawValue
+        : defaultValue;
+
+    const onChange: React.ChangeEventHandler<HTMLInputElement> =
+      React.useCallback(
+        (evt) => {
+          const nextValue = Number(evt.target.value);
+
+          if (!Number.isFinite(nextValue)) {
+            return;
+          }
+
+          store.updateModelSpecificSettings(provider, {
+            [fieldName]: nextValue,
+          });
+        },
+        [store, provider, fieldName],
+      );
+
+    return (
+      <div className="setting-item">
+        <div className="setting-item-info">
+          <div className="setting-item-name">{name}</div>
+          <div className="setting-item-description">{description}</div>
+        </div>
+        <div className="setting-item-control">
+          <input
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            value={value}
+            onChange={onChange}
+          />
+          <span
+            style={{
+              display: "inline-block",
+              minWidth: "4em",
+              textAlign: "right",
+            }}
+          >
+            {formatValue ? formatValue(value) : value}
+          </span>
+        </div>
+      </div>
+    );
+  },
+);
+
 // Textarea setting for instructions
 export interface TextareaSettingProps extends BaseSettingProps {
   store: TTSPluginSettingsStore;

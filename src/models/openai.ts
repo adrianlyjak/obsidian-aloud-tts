@@ -115,7 +115,7 @@ export async function openAICompatCallTextToSpeech(
         model: options.model,
         voice: options.voice ? options.voice : "",
         input: text,
-        speed: 1.0,
+        speed: options.generationSpeed ?? 1,
         response_format: responseFormat,
       }),
     },

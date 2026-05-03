@@ -3,7 +3,11 @@ import React from "react";
 import { OPENAI_API_URL } from "../../../models/openai";
 import { TTSPluginSettingsStore } from "../../../player/TTSPluginSettings";
 import { ApiKeyComponent } from "../api-key-component";
-import { OptionSelectSetting, TextInputSetting } from "../setting-components";
+import {
+  OptionSelectSetting,
+  TextInputSetting,
+  SliderSetting,
+} from "../setting-components";
 
 const AUDIO_FORMAT_OPTIONS = [
   { label: "MP3", value: "mp3" },
@@ -36,6 +40,18 @@ export const OpenAICompatibleSettings = observer(
           store={store}
           provider="openaicompat"
           fieldName="openaicompat_ttsVoice"
+        />
+        <SliderSetting
+          name="Generation Speed"
+          description="Generation speed sent to the TTS API when creating audio. This is different from the local playback speed control. Support depends on the provider/model; it works with some OpenRouter TTS models such as Kokoro."
+          store={store}
+          provider="openaicompat"
+          fieldName="openaicompat_generationSpeed"
+          min={0.5}
+          max={4}
+          step={0.05}
+          defaultValue={1}
+          formatValue={(value) => `${value.toFixed(2)}x`}
         />
         <OptionSelectSetting
           name="Audio Format"

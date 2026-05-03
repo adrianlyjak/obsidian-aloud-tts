@@ -21,6 +21,7 @@ describe("OpenAI-Like Model", () => {
         model: "tts-1-hd",
         voice: "nova",
         responseFormat: "mp3",
+        generationSpeed: 1,
       });
     });
 
@@ -41,6 +42,7 @@ describe("OpenAI-Like Model", () => {
         model: "",
         voice: "",
         responseFormat: "mp3",
+        generationSpeed: 1,
       });
     });
 
@@ -62,6 +64,7 @@ describe("OpenAI-Like Model", () => {
         model: "tts-1",
         voice: "alloy",
         responseFormat: "wav",
+        generationSpeed: 1,
       });
     });
 
@@ -83,7 +86,41 @@ describe("OpenAI-Like Model", () => {
         model: "tts-1",
         voice: "alloy",
         responseFormat: "pcm",
+        generationSpeed: 1,
       });
+    });
+
+    it("should pass through generation speed", () => {
+      const testSettings = {
+        ...DEFAULT_SETTINGS,
+        openaicompat_generationSpeed: 1.5,
+      };
+
+      const options = openAILikeTextToSpeech.convertToOptions(testSettings);
+
+      expect(options.generationSpeed).toBe(1.5);
+    });
+
+    it("should fall back to generation speed 1 for invalid values", () => {
+      const testSettings = {
+        ...DEFAULT_SETTINGS,
+        openaicompat_generationSpeed: Number.NaN,
+      };
+
+      const options = openAILikeTextToSpeech.convertToOptions(testSettings);
+
+      expect(options.generationSpeed).toBe(1);
+    });
+
+    it("should fall back to generation speed 1 for out-of-range values", () => {
+      const testSettings = {
+        ...DEFAULT_SETTINGS,
+        openaicompat_generationSpeed: 5,
+      };
+
+      const options = openAILikeTextToSpeech.convertToOptions(testSettings);
+
+      expect(options.generationSpeed).toBe(1);
     });
   });
 });

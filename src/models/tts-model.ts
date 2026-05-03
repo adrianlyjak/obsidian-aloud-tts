@@ -66,6 +66,8 @@ export interface TTSModelOptions {
   apiKey?: string;
   /** The response format to request from the API. Only applicable to some models */
   responseFormat?: string;
+  /** The generation speed to request from compatible TTS APIs. */
+  generationSpeed?: number;
 }
 
 export class TTSErrorInfo extends Error {
