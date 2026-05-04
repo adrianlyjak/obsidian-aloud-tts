@@ -12,14 +12,22 @@ import {
 // Platform-specific widget factory interface
 export interface LoadingWidgetFactory {
   createWidget(filename: string): HTMLElement;
+  destroyWidget?(element: HTMLElement): void;
 }
 
 // Obsidian widget factory using existing createDOM
 export class ObsidianLoadingWidgetFactory implements LoadingWidgetFactory {
-  constructor(private createDOM: (props: { file: string }) => HTMLElement) {}
+  constructor(
+    private createDOM: (props: { file: string }) => HTMLElement,
+    private _destroyWidget?: (element: HTMLElement) => void,
+  ) {}
 
   createWidget(filename: string): HTMLElement {
     return this.createDOM({ file: filename });
+  }
+
+  destroyWidget(element: HTMLElement): void {
+    this._destroyWidget?.(element);
   }
 }
 
@@ -69,6 +77,8 @@ export class WebLoadingWidgetFactory implements LoadingWidgetFactory {
 }
 
 class LoadingSpinnerWidget extends WidgetType {
+  private element: HTMLElement | undefined;
+
   constructor(
     private filename: string,
     private widgetFactory: LoadingWidgetFactory,
@@ -77,7 +87,15 @@ class LoadingSpinnerWidget extends WidgetType {
   }
 
   toDOM() {
-    return this.widgetFactory.createWidget(this.filename);
+    this.element = this.widgetFactory.createWidget(this.filename);
+    return this.element;
+  }
+
+  destroy() {
+    if (this.element) {
+      this.widgetFactory.destroyWidget?.(this.element);
+      this.element = undefined;
+    }
   }
 
   ignoreEvent() {

@@ -1,12 +1,23 @@
 import * as React from "react";
-import { createRoot } from "react-dom/client";
+import { createRoot, type Root } from "react-dom/client";
 import { Spinner } from "./IconButton";
+
+const roots = new WeakMap<HTMLElement, Root>();
 
 export const createDOM = ({ file }: { file: string }) => {
   const container = document.createElement("span");
   const root = createRoot(container);
+  roots.set(container, root);
   root.render(<DownloadProgress file={file} />);
   return container;
+};
+
+export const destroyDOM = (element: HTMLElement) => {
+  const root = roots.get(element);
+  if (root) {
+    root.unmount();
+    roots.delete(element);
+  }
 };
 
 export const DownloadProgress: React.FC<{ file: string }> = ({ file }) => {

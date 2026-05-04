@@ -5,6 +5,7 @@ import { createRoot } from "react-dom/client";
 import { AudioSink, AudioStore, TTSPluginSettingsStore } from "open-tts";
 import {
   createDOM,
+  destroyDOM,
   createLoadingSpinnerExtension,
   createTTSHighlightExtension,
   ObsidianLoadingWidgetFactory,
@@ -59,8 +60,9 @@ function playerPanel(
         player,
         settings,
         sink,
-        shouldShow: shouldShowPlayerView(editor, player, settings, obsidian),
-        isMobilePhone: isMobilePhone(obsidian),
+        shouldShow: () =>
+          shouldShowPlayerView(editor, player, settings, obsidian),
+        isMobilePhone: () => isMobilePhone(obsidian),
         audioElement: (sink as SinkWithElement).audioElement,
         onOpenSettings: () => obsidian.openSettings(),
         onPlaySelection: () => obsidian.playSelection(),
@@ -92,7 +94,10 @@ export function TTSCodeMirror(
   sink: AudioSink,
   obsidian: ObsidianBridge,
 ): Extension {
-  const loadingWidgetFactory = new ObsidianLoadingWidgetFactory(createDOM);
+  const loadingWidgetFactory = new ObsidianLoadingWidgetFactory(
+    createDOM,
+    destroyDOM,
+  );
 
   return [
     createTTSHighlightExtension(
