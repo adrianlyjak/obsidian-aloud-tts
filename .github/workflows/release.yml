@@ -29,7 +29,6 @@ jobs:
       - name: Enable Corepack
         run: |
           corepack enable
-          corepack prepare pnpm@latest-8 --activate
 
       - name: Build plugin
         run: |
@@ -58,11 +57,11 @@ jobs:
               --title="$tag" \
               --prerelease \
               --generate-notes \
-              main.js manifest.json styles.css
+              packages/obsidian/main.js packages/obsidian/manifest.json packages/obsidian/styles.css
           else
             # Full release version
             gh release create "$tag" \
               --title="$tag" \
               --generate-notes \
-              main.js manifest.json styles.css
+              packages/obsidian/main.js packages/obsidian/manifest.json packages/obsidian/styles.css
           fi

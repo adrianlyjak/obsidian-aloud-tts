@@ -1,20 +1,22 @@
 {
-  "name": "obsidian-aloud-tts",
-  "version": "0.15.1",
-  "description": "Highlight and speak text from your obsidian notes",
-  "main": "main.js",
+  "name": "obsidian-aloud-tts-workspace",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Workspace for Aloud TTS",
   "scripts": {
-    "all": "pnpm run lint; pnpm run format:check; pnpm run test run; pnpm run build",
-    "dev": "node esbuild.config.mjs",
-    "typecheck": "tsc -noEmit -skipLibCheck",
-    "build": "pnpm run typecheck && node esbuild.config.mjs production",
+    "all": "pnpm lint && pnpm format:check && pnpm test && pnpm build",
+    "dev": "pnpm --filter obsidian-aloud-tts dev",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "pnpm --filter open-tts build && pnpm --filter @open-tts/ui build && pnpm --filter obsidian-aloud-tts build && pnpm --filter @open-tts/web build && pnpm --filter ./docs build",
+    "obsidian:build": "pnpm --filter obsidian-aloud-tts build",
     "version": "./version-bump.sh",
-    "lint": "eslint src",
+    "lint": "eslint packages test-setup.ts playwright.config.ts vitest.config.ts",
     "test": "vitest run",
-    "format:check": "prettier --check src",
-    "format": "prettier --write src",
-    "web:dev": "vite",
-    "web:build": "vite build",
+    "format:check": "prettier --check packages test-setup.ts playwright.config.ts vitest.config.ts",
+    "format": "prettier --write packages test-setup.ts playwright.config.ts vitest.config.ts",
+    "web:dev": "pnpm --filter @open-tts/web dev",
+    "web:build": "pnpm --filter @open-tts/web build",
+    "docs:build": "pnpm --filter ./docs build",
     "e2e:install": "playwright install --with-deps chromium",
     "e2e": "playwright test",
     "prepare": "husky"
@@ -35,6 +37,8 @@
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
     "@types/node": "^20.16.10",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.0",
     "@typescript-eslint/eslint-plugin": "6.13.2",
     "@typescript-eslint/parser": "6.13.2",
     "@vitest/coverage-v8": "3.2.4",
@@ -52,25 +56,9 @@
     "vite-plugin-node-polyfills": "^0.23.0",
     "vitest": "^3.1.3"
   },
-  "dependencies": {
-    "@breezystack/lamejs": "^1.2.7",
-    "@codemirror/language": "^6.10.3",
-    "@codemirror/state": "^6.4.1",
-    "@codemirror/view": "^6.34.1",
-    "@google/genai": "^1.5.1",
-    "@types/react": "^18.3.11",
-    "@types/react-dom": "^18.3.0",
-    "fft.js": "^4.0.4",
-    "idb": "^8.0.0",
-    "lucide-react": "^0.526.0",
-    "mobx": "^6.13.3",
-    "mobx-react-lite": "^4.0.7",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
-  },
   "packageManager": "pnpm@9.0.2+sha1.2a34aeb80bf8e8435815d14f620ec4ba0eff1604",
   "lint-staged": {
-    "src/**/*.{ts,tsx}": [
+    "packages/**/*.{ts,tsx}": [
       "prettier --check",
       "eslint"
     ]

@@ -16,8 +16,8 @@ commands
 fi
 
 node version-bump.mjs $1 $2
-git add manifest.json versions.json package.json
-VERSION="$(cat package.json | jq .version -r)"
+git add packages/*/package.json packages/obsidian/manifest.json packages/obsidian/versions.json
+VERSION="$(cat packages/obsidian/package.json | jq .version -r)"
 git commit -m "update version to $VERSION"
 git tag -a $VERSION -m "Version $VERSION"
 git push
