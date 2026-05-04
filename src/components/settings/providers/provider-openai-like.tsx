@@ -47,8 +47,8 @@ export const OpenAICompatibleSettings = observer(
           store={store}
           provider="openaicompat"
           fieldName="openaicompat_generationSpeed"
-          min={0.5}
-          max={4}
+          min={0.3}
+          max={2.5}
           step={0.05}
           defaultValue={1}
           formatValue={(value) => `${value.toFixed(2)}x`}

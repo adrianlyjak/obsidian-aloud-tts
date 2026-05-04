@@ -15,8 +15,8 @@ export const openAILikeTextToSpeech: TTSModel = {
       responseFormat: settings.openaicompat_responseFormat,
       generationSpeed:
         Number.isFinite(generationSpeed) &&
-        generationSpeed >= 0.5 &&
-        generationSpeed <= 4
+        generationSpeed >= 0.3 &&
+        generationSpeed <= 2.5
           ? generationSpeed
           : 1,
     };
