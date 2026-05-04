@@ -24,16 +24,19 @@ export const PlayerView = observer(
     player: AudioStore;
     settings: TTSPluginSettingsStore;
     sink: AudioSink;
-    shouldShow: boolean;
-    isMobilePhone: boolean;
+    shouldShow: boolean | (() => boolean);
+    isMobilePhone: boolean | (() => boolean);
     audioElement?: HTMLAudioElement;
     onOpenSettings: () => void;
     onPlaySelection: () => void;
   }): React.ReactNode => {
-    if (isMobilePhone) {
-      return null;
-    }
+    // Evaluate getters inside observer body so MobX tracks dependencies
+    const isMobile =
+      typeof isMobilePhone === "function" ? isMobilePhone() : isMobilePhone;
+    const visible =
+      typeof shouldShow === "function" ? shouldShow() : shouldShow;
 
+    // All hooks must be called unconditionally (Rules of Hooks)
     const actions = React.useMemo(
       () =>
         createTTSActions(player, settings, {
@@ -42,7 +45,7 @@ export const PlayerView = observer(
       [player, settings, onPlaySelection],
     );
 
-    if (!shouldShow) {
+    if (isMobile || !visible) {
       return null;
     }
     return (

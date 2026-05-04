@@ -19,6 +19,7 @@ vi.mock("react-dom/client", () => ({
 vi.mock("@open-tts/ui", () => ({
   PlayerView: () => null,
   createDOM: vi.fn(() => document.createElement("div")),
+  destroyDOM: vi.fn(),
   createLoadingSpinnerExtension: vi.fn(() => []),
   createTTSHighlightExtension: vi.fn(() => []),
   ObsidianLoadingWidgetFactory: vi.fn(),
