@@ -48,22 +48,13 @@ for (const packagePath of packagePaths) {
 // Detect prerelease by inspecting the computed target version (handles specified versions like 1.2.3-rc1)
 const isPreRelease = /-(?:rc|alpha|beta)/i.test(targetVersion);
 if (!isPreRelease) {
-  // The Obsidian community plugin browser fetches manifest.json/versions.json from
-  // the repository root, while the build/release pipeline reads them from
-  // packages/obsidian/. Keep both copies in sync.
-  const manifestPaths = ["packages/obsidian/manifest.json", "manifest.json"];
-  const versionsPaths = ["packages/obsidian/versions.json", "versions.json"];
-
-  const manifest = JSON.parse(readFileSync(manifestPaths[0], "utf8"));
+  // manifest.json must live at the repo root so the Obsidian community plugin
+  // browser can fetch it from raw.githubusercontent.com/<repo>/HEAD/manifest.json.
+  const manifest = JSON.parse(readFileSync("manifest.json", "utf8"));
   manifest.version = targetVersion;
-  for (const manifestPath of manifestPaths) {
-    writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
-  }
+  writeFileSync("manifest.json", JSON.stringify(manifest, null, 2));
 
-  // update versions.json with target version and minAppVersion from manifest.json
-  const versions = JSON.parse(readFileSync(versionsPaths[0], "utf8"));
+  const versions = JSON.parse(readFileSync("versions.json", "utf8"));
   versions[targetVersion] = manifest.minAppVersion;
-  for (const versionsPath of versionsPaths) {
-    writeFileSync(versionsPath, JSON.stringify(versions, null, 2));
-  }
+  writeFileSync("versions.json", JSON.stringify(versions, null, 2));
 }

@@ -57,11 +57,11 @@ jobs:
               --title="$tag" \
               --prerelease \
               --generate-notes \
-              packages/obsidian/main.js packages/obsidian/manifest.json packages/obsidian/styles.css
+              packages/obsidian/main.js manifest.json packages/obsidian/styles.css
           else
             # Full release version
             gh release create "$tag" \
               --title="$tag" \
               --generate-notes \
-              packages/obsidian/main.js packages/obsidian/manifest.json packages/obsidian/styles.css
+              packages/obsidian/main.js manifest.json packages/obsidian/styles.css
           fi
