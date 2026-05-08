@@ -73,6 +73,17 @@ export interface OpenAIModelConfig {
 /** Response formats supported by OpenAI-compatible TTS APIs */
 export type OpenAICompatResponseFormat = "mp3" | "wav" | "pcm";
 
+export interface OpenAICompatProfile {
+  id: string;
+  name: string;
+  apiKey: string;
+  apiBase: string;
+  ttsModel: string;
+  ttsVoice: string;
+  responseFormat: OpenAICompatResponseFormat;
+  generationSpeed: number;
+}
+
 export interface OpenAICompatModelConfig {
   /** the API key to use. Not required */
   openaicompat_apiKey: string;
@@ -86,6 +97,10 @@ export interface OpenAICompatModelConfig {
   openaicompat_responseFormat: OpenAICompatResponseFormat;
   /** the generation speed to request from compatible TTS APIs. Defaults to 1. */
   openaicompat_generationSpeed: number;
+  /** the active OpenAI-compatible profile id */
+  openaicompat_activeProfileId: string;
+  /** saved OpenAI-compatible endpoint profiles */
+  openaicompat_profiles: OpenAICompatProfile[];
 }
 
 export interface ElevenLabsModelConfig {
@@ -225,6 +240,8 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   openaicompat_ttsVoice: "",
   openaicompat_responseFormat: "mp3",
   openaicompat_generationSpeed: 1,
+  openaicompat_activeProfileId: "",
+  openaicompat_profiles: [],
   // elevenlabs
   elevenlabs_apiKey: "",
   elevenlabs_model: "eleven_multilingual_v2",
