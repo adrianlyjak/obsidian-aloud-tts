@@ -14,6 +14,7 @@ export type TTSPluginSettings = {
   cacheDurationMillis: number;
   showPlayerView: PlayerViewMode;
   showEditorActionButton: boolean;
+  insertExportedAudioBelowSelection: boolean;
   autoScrollPlayerView: boolean;
   version: number;
   audioFolder: string;
@@ -202,6 +203,7 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   cacheType: "local",
   showPlayerView: "always-mobile",
   showEditorActionButton: true,
+  insertExportedAudioBelowSelection: false,
   autoScrollPlayerView: true,
   // gemini
   gemini_apiKey: "",

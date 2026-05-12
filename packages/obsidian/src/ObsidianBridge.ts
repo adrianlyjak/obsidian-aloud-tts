@@ -106,6 +106,25 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
       if (editor) {
         if (replaceSelection) {
           editor.replaceSelection(loadingReplacement);
+        } else if (this.settings.settings.insertExportedAudioBelowSelection) {
+          const from = editor.getCursor("from");
+          const to = editor.getCursor("to");
+          const selectionEndsAtStartOfNextLine =
+            to.ch === 0 && to.line > from.line;
+
+          const insertPos = selectionEndsAtStartOfNextLine
+            ? to
+            : {
+                line: to.line,
+                ch: editor.getLine(to.line).length,
+              };
+
+          const replacement = selectionEndsAtStartOfNextLine
+            ? loadingReplacement
+            : "\n" + loadingReplacement;
+
+          // insert below the line where the selection ends
+          editor.replaceRange(replacement, insertPos, insertPos);
         } else {
           // insert at the start of the selection
           editor.replaceRange(

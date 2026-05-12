@@ -69,6 +69,7 @@ export const TTSSettingsTabComponent: React.FC<{
       <SettingSection title="User Interface">
         <PlayerDisplayMode store={store} />
         <EditorActionButtonToggle store={store} />
+        <ExportAudioPlacementToggle store={store} />
       </SettingSection>
 
       <SettingSection title="Storage">
@@ -237,6 +238,37 @@ const EditorActionButtonToggle: React.FC<{
           onClick={() =>
             store.updateSettings({
               showEditorActionButton: !store.settings.showEditorActionButton,
+            })
+          }
+        >
+          <input type="checkbox" tabIndex={0} />
+        </div>
+      </div>
+    </div>
+  );
+});
+
+const ExportAudioPlacementToggle: React.FC<{
+  store: TTSPluginSettingsStore;
+}> = observer(({ store }) => {
+  return (
+    <div className="setting-item">
+      <div className="setting-item-info">
+        <div className="setting-item-name">
+          Insert Exported Audio Below Selection
+        </div>
+        <div className="setting-item-description">
+          When exporting selected text to audio, insert the audio embed below
+          the selected text instead of above it.
+        </div>
+      </div>
+      <div className="setting-item-control">
+        <div
+          className={`checkbox-container${store.settings.insertExportedAudioBelowSelection ? " is-enabled" : ""}`}
+          onClick={() =>
+            store.updateSettings({
+              insertExportedAudioBelowSelection:
+                !store.settings.insertExportedAudioBelowSelection,
             })
           }
         >
