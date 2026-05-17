@@ -20,6 +20,7 @@ export const PlayerView = observer(
     audioElement,
     onOpenSettings,
     onPlaySelection,
+    onSaveDocumentAudio,
   }: {
     player: AudioStore;
     settings: TTSPluginSettingsStore;
@@ -29,6 +30,7 @@ export const PlayerView = observer(
     audioElement?: HTMLAudioElement;
     onOpenSettings: () => void;
     onPlaySelection: () => void;
+    onSaveDocumentAudio?: () => void;
   }): React.ReactNode => {
     // Evaluate getters inside observer body so MobX tracks dependencies
     const isMobile =
@@ -56,6 +58,21 @@ export const PlayerView = observer(
             tooltip="Play selection"
             onClick={() => actions.playSelection()}
           />
+          {onSaveDocumentAudio &&
+            (player.exportProgress ? (
+              <IconButton
+                icon="square"
+                tooltip={formatExportTooltip(player.exportProgress)}
+                onClick={() => player.cancelExport()}
+                highlight
+              />
+            ) : (
+              <IconButton
+                icon="download"
+                tooltip="Save document as audio"
+                onClick={() => onSaveDocumentAudio()}
+              />
+            ))}
         </div>
         <div className="tts-toolbar-player-button-group">
           <IconButton
@@ -204,12 +221,52 @@ const EditPlaybackSpeedButton: React.FC<{
   );
 });
 
+function formatExportTooltip(progress: {
+  completed: number;
+  total: number;
+}): string {
+  if (!progress.total) {
+    return "Stop saving audio";
+  }
+  return `Stop saving audio (${progress.completed}/${progress.total} chunks)`;
+}
+
+const ExportProgressBar: React.FC<{
+  progress: { completed: number; total: number };
+}> = ({ progress }) => {
+  const pct = progress.total
+    ? Math.round((progress.completed / progress.total) * 100)
+    : 0;
+  return (
+    <span
+      className="tts-export-progress"
+      role="progressbar"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={pct}
+    >
+      <span className="tts-export-progress-label">
+        Saving audio… {progress.completed}/{progress.total}
+      </span>
+      <span className="tts-export-progress-track">
+        <span
+          className="tts-export-progress-fill"
+          style={{ width: `${pct}%` }}
+        />
+      </span>
+    </span>
+  );
+};
+
 const AudioStatusInfoContents: React.FC<{
   audioElement?: HTMLAudioElement;
   player: AudioStore;
   settings: TTSPluginSettingsStore;
   onOpenSettings: () => void;
 }> = observer(({ audioElement, player, settings, onOpenSettings }) => {
+  if (player.exportProgress) {
+    return <ExportProgressBar progress={player.exportProgress} />;
+  }
   if (settings.apiKeyValid === false) {
     return (
       // Extra span container to absorb the align-items: stretch from the container

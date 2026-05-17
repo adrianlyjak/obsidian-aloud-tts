@@ -36,6 +36,7 @@ export async function humeCallTextToSpeech(
   options: TTSModelOptions,
   settings: TTSPluginSettings,
   context: AudioTextContext = {},
+  signal?: AbortSignal,
 ): Promise<AudioData> {
   // Construct the utterances array for the Hume API request
   const utterance: {
@@ -80,6 +81,7 @@ export async function humeCallTextToSpeech(
       num_generations: 1,
       split_utterances: true,
     }),
+    signal,
   });
   await validate200Hume(headers);
   const res = await headers.json();

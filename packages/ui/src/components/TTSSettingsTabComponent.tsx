@@ -2,9 +2,12 @@ import { observer } from "mobx-react-lite";
 import * as React from "react";
 import { AudioStore } from "open-tts";
 import {
+  AudioExportDestination,
   ModelProvider,
   PlayerViewMode,
   TTSPluginSettingsStore,
+  audioExportDestinations,
+  isAudioExportDestination,
   isPlayerViewMode,
   modelProviders,
   playViewModes,
@@ -74,6 +77,7 @@ export const TTSSettingsTabComponent: React.FC<{
       <SettingSection title="Storage">
         <CacheDuration store={store} player={player} />
         <AudioFolderComponent store={store} />
+        <AudioExportDestinationComponent store={store} />
       </SettingSection>
 
       <SettingSection title="Audio">
@@ -383,6 +387,52 @@ const CacheDuration: React.FC<{
         </div>
       </div>
     </>
+  );
+});
+
+function describeExportDestination(d: AudioExportDestination): string {
+  switch (d) {
+    case "vault":
+      return "Save to vault folder";
+    case "download":
+      return "Save to system download folder";
+    case "prompt":
+      return "Ask each time";
+  }
+}
+
+const AudioExportDestinationComponent: React.FC<{
+  store: TTSPluginSettingsStore;
+}> = observer(({ store }) => {
+  return (
+    <div className="setting-item">
+      <div className="setting-item-info">
+        <div className="setting-item-name">Document Audio Destination</div>
+        <div className="setting-item-description">
+          Where to save audio generated from the "Save document as audio"
+          toolbar action.
+        </div>
+      </div>
+      <div className="setting-item-control">
+        <select
+          value={store.settings.audioExportDestination}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (isAudioExportDestination(value)) {
+              store.updateSettings({ audioExportDestination: value });
+            } else {
+              console.error("invalid audio export destination", value);
+            }
+          }}
+        >
+          {audioExportDestinations.map((d) => (
+            <option key={d} value={d}>
+              {describeExportDestination(d)}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
   );
 });
 

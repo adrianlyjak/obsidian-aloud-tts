@@ -87,6 +87,41 @@ export class WebBridgeImpl implements WebObsidianBridge {
     return window.innerWidth <= 768; // Simple mobile detection
   };
 
+  saveDocumentAudio = async () => {
+    if (!this.activeEditor) {
+      alert("Open or focus an editor first.");
+      return;
+    }
+    const text = this.activeEditor.state.doc.toString();
+    if (!text.trim()) {
+      alert("No text in the editor to convert.");
+      return;
+    }
+    try {
+      const audioData = await this.store.exportAudio(text);
+      const hash = this.hashString(text).toString(16).slice(0, 8);
+      this.downloadBlob(audioData, `aloud-document-${hash}.mp3`);
+    } catch (ex) {
+      if (ex instanceof DOMException && ex.name === "AbortError") {
+        return;
+      }
+      console.error("Couldn't save document audio!", ex);
+      alert("Failed to save audio");
+    }
+  };
+
+  private downloadBlob(bytes: ArrayBuffer, filename: string): void {
+    const blob = new Blob([bytes], { type: "audio/mpeg" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   exportAudio = async (text: string, replaceSelection?: boolean) => {
     if (!text.trim()) {
       alert("No text to export");

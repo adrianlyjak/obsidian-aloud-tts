@@ -5,7 +5,9 @@ import {
   Editor,
   MarkdownFileInfo,
   MarkdownView,
+  Modal,
   Notice,
+  Setting,
   TFile,
 } from "obsidian";
 import * as React from "react";
@@ -82,6 +84,63 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     // docs show this... types do not https://docs.obsidian.md/Plugins/Getting+started/Mobile+development
     // @ts-expect-error
     return this.app.isMobile;
+  };
+
+  saveDocumentAudio: () => Promise<void> = async () => {
+    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+    if (!view) {
+      new Notice("Open a note first to save its audio.");
+      return;
+    }
+    const text = view.editor.getValue();
+    if (!text.trim()) {
+      new Notice("No text in the current note to convert.");
+      return;
+    }
+    const baseName =
+      view.file?.basename?.replace(/[^a-zA-Z0-9_-]+/g, "-").slice(0, 60) ||
+      "aloud-document";
+    const hash = hashString(text, 32).toString(16).slice(0, 8);
+    const filename = `${baseName}-${hash}.mp3`;
+
+    const destination = this.settings.settings.audioExportDestination;
+    let mode: "vault" | "download" =
+      destination === "vault" ? "vault" : "download";
+    if (destination === "prompt") {
+      const choice = await openExportDestinationModal(this.app);
+      if (!choice) return;
+      mode = choice;
+    }
+
+    new Notice("Generating audio, this may take some time…");
+    let bytes: ArrayBuffer;
+    try {
+      bytes = await this.audio.exportAudio(text);
+    } catch (ex) {
+      if (ex instanceof DOMException && ex.name === "AbortError") {
+        new Notice("Audio export cancelled");
+        return;
+      }
+      console.error("Couldn't generate audio for document!", ex);
+      new Notice("Failed to generate audio");
+      return;
+    }
+
+    try {
+      if (mode === "vault") {
+        const folder = this.settings.settings.audioFolder;
+        const vaultPath = `${folder}/${filename}`;
+        await this.app.vault.adapter.mkdir(folder);
+        await this.app.vault.adapter.writeBinary(vaultPath, bytes);
+        new Notice(`Saved ${vaultPath}`);
+      } else {
+        triggerBrowserDownload(bytes, filename);
+        new Notice(`Downloaded ${filename}`);
+      }
+    } catch (ex) {
+      console.error("Couldn't save audio!", ex);
+      new Notice("Failed to save audio file");
+    }
   };
 
   exportAudio: (text: string, replaceSelection: boolean) => Promise<void> =
@@ -312,4 +371,69 @@ export function isObsidianBridgeSpecifics(
   bridge: TTSEditorBridge,
 ): bridge is TTSEditorBridge & ObsidianBridgeSpecifics {
   return (bridge as any).activeObsidianEditor !== undefined;
+}
+
+function triggerBrowserDownload(bytes: ArrayBuffer, filename: string): void {
+  const blob = new Blob([bytes], { type: "audio/mpeg" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  // Defer revocation to give the browser time to start the download.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function openExportDestinationModal(
+  app: App,
+): Promise<"vault" | "download" | null> {
+  return new Promise((resolve) => {
+    const modal = new ExportDestinationModal(app, resolve);
+    modal.open();
+  });
+}
+
+class ExportDestinationModal extends Modal {
+  private resolved = false;
+  constructor(
+    app: App,
+    private onChoice: (choice: "vault" | "download" | null) => void,
+  ) {
+    super(app);
+  }
+
+  onOpen(): void {
+    this.titleEl.setText("Save audio file");
+    this.contentEl.createEl("p", {
+      text: "Where would you like to save the generated audio?",
+    });
+    new Setting(this.contentEl)
+      .addButton((btn) =>
+        btn.setButtonText("Vault folder").onClick(() => this.choose("vault")),
+      )
+      .addButton((btn) =>
+        btn
+          .setButtonText("Download")
+          .setCta()
+          .onClick(() => this.choose("download")),
+      )
+      .addButton((btn) =>
+        btn.setButtonText("Cancel").onClick(() => this.choose(null)),
+      );
+  }
+
+  onClose(): void {
+    if (!this.resolved) {
+      this.onChoice(null);
+    }
+    this.contentEl.empty();
+  }
+
+  private choose(choice: "vault" | "download" | null): void {
+    this.resolved = true;
+    this.onChoice(choice);
+    this.close();
+  }
 }

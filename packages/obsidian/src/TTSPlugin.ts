@@ -94,6 +94,20 @@ export default class TTSPlugin extends Plugin {
       },
     });
     this.addCommand({
+      id: "save-document-audio",
+      name: "Save document as audio",
+      checkCallback: (checking) => {
+        const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+        const busy = !!this.player.exportProgress;
+        if (checking) {
+          return !!view && !busy;
+        }
+        this.bridge.saveDocumentAudio().catch((ex) => {
+          console.error("Couldn't save document audio!", ex);
+        });
+      },
+    });
+    this.addCommand({
       id: "play-clipboard",
       name: "Play from clipboard",
       editorCheckCallback: (checking, editor: Editor, view: MarkdownView) => {
@@ -288,8 +302,9 @@ function ProxiedTTSModel(settings: TTSPluginSettings): TTSModel {
       options: TTSModelOptions,
       settings: TTSPluginSettings,
       context?: AudioTextContext,
+      signal?: AbortSignal,
     ) => {
-      return getModel().call(text, options, settings, context);
+      return getModel().call(text, options, settings, context, signal);
     },
     validateConnection: (settings: TTSPluginSettings) => {
       return getModel().validateConnection(settings);

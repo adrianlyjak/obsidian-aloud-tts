@@ -65,6 +65,7 @@ export async function fishCallTextToSpeech(
   options: TTSModelOptions,
   _settings: TTSPluginSettings,
   _context: AudioTextContext = {},
+  signal?: AbortSignal,
 ): Promise<AudioData> {
   if (!options.voice) {
     throw new TTSErrorInfo("Voice model ID is required for Fish Audio TTS", {
@@ -92,6 +93,7 @@ export async function fishCallTextToSpeech(
       mp3_bitrate: 128,
       normalize: sentencePause === "none",
     }),
+    signal,
   });
 
   await validate200Fish(response);

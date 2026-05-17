@@ -35,6 +35,7 @@ export interface TTSModel {
     options: TTSModelOptions,
     settings: TTSPluginSettings,
     context?: AudioTextContext,
+    signal?: AbortSignal,
   ): Promise<AudioData>;
 
   /** Returns an error message if the connection is not valid, otherwise undefined */

@@ -66,6 +66,11 @@ function playerPanel(
         audioElement: (sink as SinkWithElement).audioElement,
         onOpenSettings: () => obsidian.openSettings(),
         onPlaySelection: () => obsidian.playSelection(),
+        onSaveDocumentAudio: () => {
+          obsidian.saveDocumentAudio().catch((ex) => {
+            console.error("Couldn't save document audio!", ex);
+          });
+        },
       }),
     }),
   );

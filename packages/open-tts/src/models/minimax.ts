@@ -123,6 +123,7 @@ export async function minimaxCallTextToSpeech(
   options: TTSModelOptions,
   settings: TTSPluginSettings,
   _context: AudioTextContext = {},
+  signal?: AbortSignal,
 ): Promise<AudioData> {
   const groupId = settings.minimax_groupId;
   const apiUrl = getMinimaxApiUrl(settings);
@@ -152,6 +153,7 @@ export async function minimaxCallTextToSpeech(
       },
       output_format: "hex",
     }),
+    signal,
   });
 
   const responseText = await response.text();
