@@ -19,6 +19,8 @@ vi.mock("obsidian", () => ({
   Notice: vi.fn(),
   MarkdownView: vi.fn(),
   TFile: vi.fn(),
+  Modal: vi.fn(),
+  Setting: vi.fn(),
 }));
 
 describe("ObsidianBridge", () => {

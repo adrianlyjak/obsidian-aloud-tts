@@ -139,11 +139,15 @@ export async function geminiCallTextToSpeech(
   options: TTSModelOptions,
   settings: TTSPluginSettings,
   context: AudioTextContext = {},
+  signal?: AbortSignal,
 ): Promise<AudioData> {
   const ai = new GoogleGenAI({ apiKey: options.apiKey });
   let response: GenerateContentResponse;
   try {
-    response = await ai.models.generateContent({
+    // The @google/genai SDK does not currently expose AbortSignal, so we race
+    // the SDK promise against the signal to free the caller on cancel. The
+    // underlying HTTPS request may continue in the background.
+    const generate = ai.models.generateContent({
       model: options.model,
       contents: formatMessages(options.instructions, context, text),
       config: {
@@ -155,7 +159,11 @@ export async function geminiCallTextToSpeech(
         },
       },
     });
+    response = signal ? await raceAbort(generate, signal) : await generate;
   } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw error;
+    }
     throw mapGenAIError(error);
   }
   const res = response.candidates?.[0]?.content?.parts?.[0];
@@ -175,6 +183,29 @@ export async function geminiCallTextToSpeech(
       bitDepth: 16,
     },
   };
+}
+
+function raceAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) {
+    return Promise.reject(new DOMException("Aborted", "AbortError"));
+  }
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      signal.removeEventListener("abort", onAbort);
+      reject(new DOMException("Aborted", "AbortError"));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    promise.then(
+      (value) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(value);
+      },
+      (error) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(error);
+      },
+    );
+  });
 }
 
 function formatMessages(

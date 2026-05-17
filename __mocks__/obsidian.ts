@@ -13,6 +13,36 @@ export class Notice {
   constructor(message: string, timeout?: number) {}
 }
 
+// Mock Modal class
+export class Modal {
+  app: any;
+  titleEl: any = { setText: noop };
+  contentEl: any = {
+    empty: noop,
+    createEl: () => ({ setText: noop }),
+  };
+  constructor(app: any) {
+    this.app = app;
+  }
+  open() {}
+  close() {}
+  onOpen() {}
+  onClose() {}
+}
+
+// Mock Setting class
+export class Setting {
+  constructor(containerEl: any) {}
+  addButton(cb: (btn: any) => void) {
+    cb({
+      setButtonText: () => ({ onClick: () => ({ setCta: () => ({}) }) }),
+      setCta: () => ({ onClick: () => ({}) }),
+      onClick: () => ({}),
+    });
+    return this;
+  }
+}
+
 // Mock Editor class
 export class Editor {
   getCursor() {

@@ -17,6 +17,7 @@ export type TTSPluginSettings = {
   autoScrollPlayerView: boolean;
   version: number;
   audioFolder: string;
+  audioExportDestination: AudioExportDestination;
 } & (GeminiModelConfig &
   HumeModelConfig &
   OpenAIModelConfig &
@@ -168,6 +169,16 @@ export function isPlayerViewMode(value: unknown): value is PlayerViewMode {
   return playViewModes.includes(value as PlayerViewMode);
 }
 
+export const audioExportDestinations = ["vault", "download", "prompt"] as const;
+
+export type AudioExportDestination = (typeof audioExportDestinations)[number];
+
+export function isAudioExportDestination(
+  value: unknown,
+): value is AudioExportDestination {
+  return audioExportDestinations.includes(value as AudioExportDestination);
+}
+
 export function voiceHash(options: TTSModelOptions): string {
   return hashStrings([
     [
@@ -265,6 +276,7 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
 
   version: 2,
   audioFolder: "aloud",
+  audioExportDestination: "download",
 } as const;
 
 export interface TTSPluginSettingsStore {

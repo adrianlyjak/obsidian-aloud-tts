@@ -53,6 +53,7 @@ export async function elevenLabsCallTextToSpeech(
   options: TTSModelOptions,
   settings: TTSPluginSettings,
   context: AudioTextContext = {},
+  signal?: AbortSignal,
 ): Promise<AudioData> {
   if (!options.voice) {
     throw new TTSErrorInfo("Voice is required for ElevenLabs TTS", {
@@ -109,6 +110,7 @@ export async function elevenLabsCallTextToSpeech(
         "Content-Type": "application/json",
       },
       body: JSON.stringify(requestBody),
+      signal,
     },
   );
 

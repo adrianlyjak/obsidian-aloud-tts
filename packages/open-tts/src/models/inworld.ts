@@ -53,6 +53,7 @@ export async function inworldCallTextToSpeech(
   options: TTSModelOptions,
   settings: TTSPluginSettings,
   context: AudioTextContext = {},
+  signal?: AbortSignal,
 ): Promise<AudioData> {
   const response = await fetch(`${INWORLD_API_URL}/tts/v1/voice`, {
     method: "POST",
@@ -68,6 +69,7 @@ export async function inworldCallTextToSpeech(
         audioEncoding: "MP3",
       },
     }),
+    signal,
   });
 
   await validate200Inworld(response);

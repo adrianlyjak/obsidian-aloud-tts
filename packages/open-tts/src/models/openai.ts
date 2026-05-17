@@ -55,6 +55,7 @@ export async function openAICallTextToSpeech(
   options: TTSModelOptions,
   settings: TTSPluginSettings,
   context: AudioTextContext = {},
+  signal?: AbortSignal,
 ): Promise<AudioData> {
   const canInstruct = supportsInstructions(options.model);
   let instructions = options.instructions;
@@ -82,6 +83,7 @@ export async function openAICallTextToSpeech(
         speed: 1.0,
         response_format: "mp3",
       }),
+      signal,
     },
   );
   await validate200OpenAI(headers);
@@ -98,6 +100,7 @@ export async function openAICompatCallTextToSpeech(
   options: TTSModelOptions,
   settings: TTSPluginSettings,
   context: AudioTextContext = {},
+  signal?: AbortSignal,
 ): Promise<AudioData> {
   const responseFormat = String(
     options.responseFormat || "mp3",
@@ -118,6 +121,7 @@ export async function openAICompatCallTextToSpeech(
         speed: options.generationSpeed ?? 1,
         response_format: responseFormat,
       }),
+      signal,
     },
   );
   await validate200OpenAI(response);

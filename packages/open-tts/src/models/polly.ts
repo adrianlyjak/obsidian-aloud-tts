@@ -96,6 +96,7 @@ export async function pollyCallTextToSpeech(
   options: TTSModelOptions,
   settings: TTSPluginSettings,
   _context: AudioTextContext = {},
+  signal?: AbortSignal,
 ): Promise<AudioData> {
   if (!settings.polly_voiceId) {
     throw new TTSErrorInfo("Voice is required for AWS Polly", {
@@ -135,6 +136,7 @@ export async function pollyCallTextToSpeech(
     method: "POST",
     headers: signed.headers,
     body: requestBody,
+    signal,
   });
 
   await validate200Polly(response);

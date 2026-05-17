@@ -34,6 +34,10 @@ export interface TTSEditorBridge {
   destroy: () => void;
   isMobile: () => boolean;
   exportAudio: (text: string, replaceSelection?: boolean) => Promise<void>;
+  /** Export the entire active document as an audio file. Destination is
+   * controlled by the `audioExportDestination` setting (vault folder, OS
+   * download, or prompt). Does not modify the editor contents. */
+  saveDocumentAudio: () => Promise<void>;
 }
 
 export interface TTSAutoscrollRange {

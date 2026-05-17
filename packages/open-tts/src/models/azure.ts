@@ -59,6 +59,7 @@ export async function azureCallTextToSpeech(
   options: TTSModelOptions,
   settings: TTSPluginSettings,
   context: AudioTextContext = {},
+  signal?: AbortSignal,
 ): Promise<AudioData> {
   if (!options.voice) {
     throw new Error("Voice is required for Azure TTS");
@@ -80,6 +81,7 @@ export async function azureCallTextToSpeech(
       "User-Agent": "obsidian-aloud-tts",
     },
     body: ssmlBody,
+    signal,
   });
 
   await validate200Azure(response);

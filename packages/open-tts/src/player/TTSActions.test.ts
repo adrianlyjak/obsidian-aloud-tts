@@ -11,9 +11,11 @@ function createMockPlayer(): AudioStore {
   return {
     activeText: null,
     autoScrollEnabled: true,
+    exportProgress: null,
     startPlayer: vi.fn(),
     closePlayer: vi.fn(),
     exportAudio: vi.fn(),
+    cancelExport: vi.fn(),
     destroy: vi.fn(),
     clearStorage: vi.fn(),
     getStorageSize: vi.fn(),
