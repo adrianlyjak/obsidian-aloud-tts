@@ -21,6 +21,8 @@ const iconMap: Record<string, LucideIcon> = {
   "rotate-cw": Icons.RotateCw,
   trash: Icons.Trash2,
   download: Icons.Download,
+  "more-horizontal": Icons.MoreHorizontal,
+  "more-vertical": Icons.MoreVertical,
   "external-link": Icons.ExternalLink,
   x: Icons.X,
   "step-forward": Icons.StepForward,

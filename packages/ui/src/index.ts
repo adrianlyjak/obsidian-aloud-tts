@@ -5,5 +5,6 @@ export * from "./components/DownloadProgress";
 export * from "./components/EditorActionIcon";
 export * from "./components/IconButton";
 export * from "./components/PlayerView";
+export * from "./components/ToolbarOverflowMenu";
 export * from "./components/TTSSettingsTabComponent";
 export * from "./util/TooltipContext";

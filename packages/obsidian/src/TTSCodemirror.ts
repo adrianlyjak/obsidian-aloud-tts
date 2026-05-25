@@ -44,6 +44,14 @@ function shouldShowPlayerView(
   }
 }
 
+function getSelectedText(editor: EditorView): string {
+  const selection = editor.state.selection.main;
+  if (selection.from === selection.to) {
+    return "";
+  }
+  return editor.state.doc.sliceString(selection.from, selection.to);
+}
+
 function playerPanel(
   editor: EditorView,
   player: AudioStore,
@@ -66,6 +74,16 @@ function playerPanel(
         audioElement: (sink as SinkWithElement).audioElement,
         onOpenSettings: () => obsidian.openSettings(),
         onPlaySelection: () => obsidian.playSelection(),
+        onExportSelectionAudio: () => {
+          const text = getSelectedText(editor);
+          if (!text.trim()) {
+            return;
+          }
+          obsidian.exportAudio(text, false).catch((ex) => {
+            console.error("Couldn't export selection audio!", ex);
+          });
+        },
+        canExportSelectionAudio: () => !!getSelectedText(editor).trim(),
         onSaveDocumentAudio: () => {
           obsidian.saveDocumentAudio().catch((ex) => {
             console.error("Couldn't save document audio!", ex);

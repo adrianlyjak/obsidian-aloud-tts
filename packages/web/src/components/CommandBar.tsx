@@ -7,7 +7,22 @@ import { TTSPluginSettingsStore } from "open-tts";
 import { WebAudioSink } from "open-tts/browser";
 import { IconButton } from "@open-tts/ui";
 import { PlayerView } from "@open-tts/ui";
+import { ToolbarOverflowMenu } from "@open-tts/ui";
 import { WebObsidianBridge } from "./WebBridge";
+
+function getSelectedText(editor: EditorView | undefined): string {
+  if (!editor) {
+    return "";
+  }
+
+  const state = editor.state;
+  const selection = state.selection.main;
+  if (selection.from === selection.to) {
+    return "";
+  }
+
+  return state.doc.sliceString(selection.from, selection.to);
+}
 
 export const CommandBar: React.FC<{
   settingsStore: TTSPluginSettingsStore;
@@ -49,20 +64,18 @@ export const CommandBar: React.FC<{
     const handleExportSelection = useCallback(() => {
       if (!editor || !obsidian) return;
 
-      const state = editor.state;
-      const selection = state.selection.main;
-      const doc = state.doc;
-
-      // Get selected text or all text if nothing selected
-      const text =
-        selection.from !== selection.to
-          ? doc.sliceString(selection.from, selection.to)
-          : doc.toString();
+      const text = getSelectedText(editor);
 
       if (text.trim()) {
         obsidian.exportAudio(text, false);
       }
     }, [editor, obsidian]);
+
+    const handleSaveDocumentAudio = useCallback(() => {
+      obsidian?.saveDocumentAudio().catch((ex) => {
+        console.error("Couldn't save document audio!", ex);
+      });
+    }, [obsidian]);
 
     const _handleExportFromClipboard = useCallback(async () => {
       if (!obsidian) return;
@@ -94,12 +107,6 @@ export const CommandBar: React.FC<{
           disabled={!editor}
         />
 
-        <IconButton
-          icon="download"
-          tooltip="Export Selection to Audio"
-          onClick={handleExportSelection}
-          disabled={!editor}
-        />
         {/* Separator */}
         <div className="web-tts-command-bar-separator" />
 
@@ -115,14 +122,29 @@ export const CommandBar: React.FC<{
               audioElement={sink.audioElement}
               onOpenSettings={onOpenSettings}
               onPlaySelection={() => obsidian.playSelection()}
-              onSaveDocumentAudio={() => {
-                obsidian.saveDocumentAudio().catch((ex) => {
-                  console.error("Couldn't save document audio!", ex);
-                });
-              }}
             />
           </div>
         )}
+
+        <ToolbarOverflowMenu
+          items={[
+            {
+              id: "export-selection-audio",
+              label: "Export selection as audio...",
+              disabled: () =>
+                !editor ||
+                !getSelectedText(editor).trim() ||
+                !!store.exportProgress,
+              onSelect: handleExportSelection,
+            },
+            {
+              id: "save-document-audio",
+              label: "Save document as audio...",
+              disabled: () => !editor || !obsidian || !!store.exportProgress,
+              onSelect: handleSaveDocumentAudio,
+            },
+          ]}
+        />
       </div>
     );
   },
