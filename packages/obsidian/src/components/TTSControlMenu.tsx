@@ -10,6 +10,8 @@ export interface TTSControlMenuProps {
   player: AudioStore;
   settings: TTSPluginSettingsStore;
   onClose: () => void;
+  showRestartFromCursor?: boolean;
+  showAutoscroll?: boolean;
 }
 
 const MIN_SPEED = 0.5;
@@ -27,6 +29,8 @@ export const TTSControlMenuContent = observer(
     player,
     settings,
     onClose,
+    showRestartFromCursor = true,
+    showAutoscroll = true,
   }: TTSControlMenuProps): React.ReactElement => {
     const active = player.activeText;
     const isPlaying = active?.isPlaying ?? false;
@@ -88,30 +92,35 @@ export const TTSControlMenuContent = observer(
             </div>
           </div>
 
-          <div className="menu-separator" />
+          {showRestartFromCursor && (
+            <>
+              <div className="menu-separator" />
 
-          {/* Settings group: restart from cursor */}
-          <div className="menu-group">
-            <div
-              className="menu-item tappable"
-              onClick={() => {
-                actions.stop();
-                actions.playSelection();
-                onClose();
-              }}
-            >
-              <div className="menu-item-icon">
-                <ObsidianIcon icon="play" />
+              <div className="menu-group">
+                <div
+                  className="menu-item tappable"
+                  onClick={() => {
+                    actions.stop();
+                    actions.playSelection();
+                    onClose();
+                  }}
+                >
+                  <div className="menu-item-icon">
+                    <ObsidianIcon icon="play" />
+                  </div>
+                  <div className="menu-item-title">
+                    Restart playing from cursor
+                  </div>
+                </div>
               </div>
-              <div className="menu-item-title">Restart playing from cursor</div>
-            </div>
-          </div>
+            </>
+          )}
 
-          <div className="menu-separator" />
+          {(showRestartFromCursor || showAutoscroll) && (
+            <div className="menu-separator" />
+          )}
 
-          {/* Settings group: speed, auto scroll */}
           <div className="menu-group">
-            {/* Speed slider */}
             <div className="menu-item tts-menu-speed">
               <div className="menu-item-icon">
                 <ObsidianIcon icon="gauge" />
@@ -119,6 +128,7 @@ export const TTSControlMenuContent = observer(
               <input
                 type="range"
                 className="tts-menu-slider"
+                aria-label="Playback speed"
                 min={MIN_SPEED}
                 max={MAX_SPEED}
                 step={SPEED_STEP}
@@ -128,20 +138,21 @@ export const TTSControlMenuContent = observer(
               <span className="tts-menu-speed-value">{speed.toFixed(1)}x</span>
             </div>
 
-            {/* Auto scroll toggle */}
-            <div
-              className="menu-item tappable"
-              onClick={() => actions.toggleAutoscroll()}
-            >
-              <div className="menu-item-icon">
-                <ObsidianIcon
-                  icon={actions.autoscrollEnabled() ? "eye" : "eye-off"}
-                />
+            {showAutoscroll && (
+              <div
+                className="menu-item tappable"
+                onClick={() => actions.toggleAutoscroll()}
+              >
+                <div className="menu-item-icon">
+                  <ObsidianIcon
+                    icon={actions.autoscrollEnabled() ? "eye" : "eye-off"}
+                  />
+                </div>
+                <div className="menu-item-title">
+                  Auto scroll: {actions.autoscrollEnabled() ? "ON" : "OFF"}
+                </div>
               </div>
-              <div className="menu-item-title">
-                Auto scroll: {actions.autoscrollEnabled() ? "ON" : "OFF"}
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </>

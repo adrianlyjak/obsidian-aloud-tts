@@ -11,6 +11,7 @@ import type { ToolbarOverflowMenuItem } from "./ToolbarOverflowMenu";
 import { TTSErrorInfo } from "open-tts";
 import { useTooltip } from "../util/TooltipContext";
 import { AlertCircle } from "lucide-react";
+import { TTSActions } from "open-tts";
 
 type Availability = boolean | (() => boolean);
 type ExportProgress = { completed: number; total: number };
@@ -84,34 +85,12 @@ export const PlayerView = observer(
         )}
         {visible && (
           <div className="tts-toolbar-player-button-group">
-            <IconButton
-              icon="skip-back"
-              tooltip="Previous"
-              onClick={() => actions.previous()}
-              disabled={!player.activeText}
-            />
-
-            {sink.trackStatus === "playing" ? (
-              <IconButton
-                key="pause"
-                icon="pause"
-                tooltip="Pause"
-                onClick={() => actions.playPause()}
-              />
-            ) : (
-              <IconButton
-                key="play"
-                icon="step-forward"
-                tooltip="Resume"
-                onClick={() => actions.playPause()}
-                disabled={!player.activeText}
-              />
-            )}
-            <IconButton
-              icon="skip-forward"
-              tooltip="Next"
-              onClick={() => actions.next()}
-              disabled={!player.activeText}
+            <PlaybackTransportControls
+              actions={actions}
+              player={player}
+              sink={sink}
+              showPreviousNext
+              showStop={false}
             />
             <IconButton
               icon={player.autoScrollEnabled ? "eye" : "eye-off"}
@@ -314,7 +293,67 @@ function formatExportProgressLabel(progress: ExportProgress): string {
   return `Saving document audio... ${currentSection} of ${progress.total}`;
 }
 
-const AudioStatusInfoContents: React.FC<{
+export const PlaybackTransportControls = observer(
+  ({
+    actions,
+    player,
+    sink,
+    showPreviousNext = false,
+    showStop = true,
+  }: {
+    actions: TTSActions;
+    player: AudioStore;
+    sink: AudioSink;
+    showPreviousNext?: boolean;
+    showStop?: boolean;
+  }): React.ReactNode => {
+    return (
+      <>
+        {showPreviousNext && (
+          <IconButton
+            icon="skip-back"
+            tooltip="Previous"
+            onClick={() => actions.previous()}
+            disabled={!player.activeText}
+          />
+        )}
+        {sink.trackStatus === "playing" ? (
+          <IconButton
+            key="pause"
+            icon="pause"
+            tooltip="Pause"
+            onClick={() => actions.playPause()}
+          />
+        ) : (
+          <IconButton
+            key="play"
+            icon="step-forward"
+            tooltip="Resume"
+            onClick={() => actions.playPause()}
+            disabled={!player.activeText}
+          />
+        )}
+        {showPreviousNext && (
+          <IconButton
+            icon="skip-forward"
+            tooltip="Next"
+            onClick={() => actions.next()}
+            disabled={!player.activeText}
+          />
+        )}
+        {showStop && player.activeText && (
+          <IconButton
+            tooltip="Cancel playback"
+            icon="x"
+            onClick={() => actions.stop()}
+          />
+        )}
+      </>
+    );
+  },
+);
+
+export const AudioStatusInfoContents: React.FC<{
   audioElement?: HTMLAudioElement;
   player: AudioStore;
   settings: TTSPluginSettingsStore;

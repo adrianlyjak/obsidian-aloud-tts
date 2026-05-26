@@ -240,6 +240,66 @@
   align-items: center;
 }
 
+.tts-detached-player-host {
+  position: relative;
+}
+
+.tts-detached-status-content {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2-1);
+  height: 100%;
+  max-width: 280px;
+}
+
+.tts-detached-status-button {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2-1);
+  height: 100%;
+  max-width: 280px;
+  padding: 0 var(--size-2-1);
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: var(--cursor);
+  font: inherit;
+}
+
+.tts-detached-status-button:hover,
+.tts-detached-status-button[aria-expanded="true"] {
+  color: var(--text-normal);
+}
+
+.tts-detached-status-button .svg-icon {
+  --icon-size: var(--icon-xs);
+  flex: 0 0 auto;
+}
+
+.tts-detached-status-title {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tts-detached-status-info {
+  display: flex;
+  align-items: center;
+  max-width: 96px;
+  overflow: hidden;
+}
+
+.tts-detached-player-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + var(--size-2-2));
+  width: min(360px, calc(100vw - 32px));
+  max-height: min(420px, calc(100vh - 96px));
+  overflow: auto;
+  z-index: var(--layer-popover, 1000);
+}
+
 .tts-tab-playing-icon {
   --icon-size: var(--icon-xs);
   display: inline-flex;

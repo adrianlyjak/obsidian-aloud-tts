@@ -41,6 +41,7 @@ vi.mock("./ObsidianBridge", () => ({
     triggerSelection: vi.fn(),
     exportAudio: vi.fn(),
     playSelection: vi.fn(),
+    playClipboard: vi.fn(),
     destroy: vi.fn(),
   })),
 }));

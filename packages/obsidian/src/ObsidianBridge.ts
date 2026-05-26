@@ -9,6 +9,7 @@ import {
   Notice,
   Setting,
   TFile,
+  loadPdfJs,
 } from "obsidian";
 import * as React from "react";
 import { createRoot, Root } from "react-dom/client";
@@ -25,13 +26,51 @@ export interface ObsidianBridgeSpecifics {
 export interface ObsidianBridge
   extends TTSEditorBridge,
     ObsidianBridgeSpecifics {
+  canPlayDetachedAudio: boolean;
   // Obsidian-specific methods beyond the shared interface
   triggerSelection: (
     file: TFile | null,
     editor: Editor,
     options?: { extendShort?: boolean },
   ) => void;
+  playDetached: (text: string, filename?: string) => void;
+  playSelection: () => void;
+  playClipboard: () => Promise<void>;
 }
+
+interface PdfTextItem {
+  str: string;
+  hasEOL?: boolean;
+}
+
+interface PdfTextContent {
+  items: unknown[];
+}
+
+interface PdfPage {
+  getTextContent: () => Promise<PdfTextContent>;
+}
+
+interface PdfDocument {
+  numPages: number;
+  getPage: (pageNumber: number) => Promise<PdfPage>;
+  destroy?: () => Promise<void> | void;
+}
+
+interface PdfDocumentLoadingTask {
+  promise: Promise<PdfDocument>;
+}
+
+interface PdfJs {
+  getDocument: (source: { data: Uint8Array }) => PdfDocumentLoadingTask;
+}
+
+type PdfFileView = {
+  file: TFile | null;
+  getViewType: () => string;
+  containerEl?: HTMLElement;
+  contentEl?: HTMLElement;
+};
 
 /** observable class for obsidian related implementation to activate audio */
 export class ObsidianBridgeImpl implements ObsidianBridge {
@@ -44,9 +83,13 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
   focusedEditorView: MarkdownView | null = null;
 
   isDetachedAudio: boolean = false;
+  activeViewType: string | null = null;
   private _playingIconRoot: Root | null = null;
   get detachedAudio(): boolean {
     return this.isDetachedAudio;
+  }
+  get canPlayDetachedAudio(): boolean {
+    return this.activeViewType === "pdf";
   }
 
   get focusedEditor(): EditorView | undefined {
@@ -69,11 +112,17 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
       active: mobx.observable.ref,
       activeEditor: mobx.computed,
       activeObsidianEditor: mobx.observable.ref,
+      activeViewType: mobx.observable,
+      canPlayDetachedAudio: mobx.computed,
+      detachedAudio: mobx.computed,
       focusedEditorView: mobx.observable.ref,
+      isDetachedAudio: mobx.observable,
       _setFocusedEditor: mobx.action,
       _setActiveEditor: mobx.action,
+      _syncActiveViewType: mobx.action,
       _onLayoutChange: mobx.action,
       _onFileOpen: mobx.action,
+      playDetached: mobx.action,
     });
     this.app.workspace!.on("active-leaf-change", this._setFocusedEditor);
     this._setFocusedEditor();
@@ -227,6 +276,7 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     };
 
   _setActiveEditor = () => {
+    this._syncActiveViewType();
     this.isDetachedAudio = false;
     this.active = this.app.workspace?.activeEditor || null;
     this.activeEditorView =
@@ -269,6 +319,7 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
   }
 
   _onFileOpen = () => {
+    this._syncActiveViewType();
     const f = this.activeEditorView?.file;
     if (f && f.name !== this.activeFilename) {
       // if current window was replaced
@@ -279,6 +330,7 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
   };
 
   _onLayoutChange = () => {
+    this._syncActiveViewType();
     // pause the current editor when its window closes
     const didMatch = this.app.workspace
       .getLeavesOfType("markdown")
@@ -292,9 +344,15 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
   };
 
   _setFocusedEditor = () => {
+    this._syncActiveViewType();
     this.focusedEditorView =
       this.app.workspace.getActiveViewOfType(MarkdownView) ||
       this.focusedEditorView; // is sticky
+  };
+
+  _syncActiveViewType = () => {
+    this.activeViewType =
+      this.app.workspace.activeLeaf?.view.getViewType() || null;
   };
 
   destroy: () => void = () => {
@@ -307,22 +365,134 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     }
   };
 
+  async playClipboard(): Promise<void> {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text.trim()) {
+        new Notice("No text found in clipboard");
+        return;
+      }
+      this.playDetached(text);
+    } catch (ex) {
+      console.error("Failed to play clipboard audio", ex);
+      new Notice("Failed to get data from clipboard");
+    }
+  }
+
   playDetached(text: string, filename?: string): void {
+    if (!text.trim()) {
+      new Notice("No text selected to speak");
+      return;
+    }
     this.isDetachedAudio = true;
-    this.audio.startPlayer({
-      filename: filename || text.slice(0, 20),
-      text,
-      start: 0,
-      end: text.length,
-    });
+    void this.audio
+      .startPlayer({
+        filename: filename || text.slice(0, 20),
+        text,
+        start: 0,
+        end: text.length,
+      })
+      .catch((ex) => {
+        console.error("Couldn't start player!", ex);
+        mobx.runInAction(() => {
+          this.isDetachedAudio = false;
+        });
+        new Notice("Failed to start audio");
+      });
   }
 
   playSelection(): void {
+    const pdfView = this.getActivePdfView();
+    if (pdfView) {
+      void this.playPdfSelectionOrDocument(pdfView);
+      return;
+    }
+
     const focused = this.focusedEditorView;
     if (focused?.editor) {
       this.triggerSelection(focused.file, focused.editor);
     } else {
       new Notice("Focus a file or select some text first to play");
+    }
+  }
+
+  private getActivePdfView(): PdfFileView | null {
+    const view = this.app.workspace.activeLeaf?.view;
+    return isPdfFileView(view) ? view : null;
+  }
+
+  private async playPdfSelectionOrDocument(view: PdfFileView): Promise<void> {
+    const file = view.file;
+    if (!file) {
+      new Notice("No PDF file to play");
+      return;
+    }
+    const selection = this.getPdfSelection(view);
+    if (selection) {
+      this.playDetached(selection, file.path);
+      return;
+    }
+
+    try {
+      new Notice("Loading PDF text");
+      const text = await this.readPdfText(file);
+      this.playDetached(text, file.path);
+    } catch (ex) {
+      console.error("Failed to load PDF text", ex);
+      new Notice("Failed to load PDF text");
+    }
+  }
+
+  private getPdfSelection(view: PdfFileView): string {
+    const selection = (
+      typeof activeWindow !== "undefined" ? activeWindow : window
+    ).getSelection();
+    const text = selection?.toString().trim();
+    if (!selection || !text || selection.rangeCount === 0) {
+      return "";
+    }
+
+    const root = view.contentEl || view.containerEl;
+    if (!root) {
+      return "";
+    }
+
+    for (let index = 0; index < selection.rangeCount; index++) {
+      const range = selection.getRangeAt(index);
+      if (
+        nodeIsInside(root, range.commonAncestorContainer) ||
+        nodeIsInside(root, selection.anchorNode) ||
+        nodeIsInside(root, selection.focusNode)
+      ) {
+        return text;
+      }
+    }
+    return "";
+  }
+
+  private async readPdfText(file: TFile): Promise<string> {
+    const pdfjs = (await loadPdfJs()) as PdfJs;
+    const data = new Uint8Array(await this.app.vault.readBinary(file));
+    const document = await pdfjs.getDocument({ data }).promise;
+    try {
+      const pages: string[] = [];
+      for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber++) {
+        const page = await document.getPage(pageNumber);
+        const content = await page.getTextContent();
+        const text = content.items
+          .filter(isPdfTextItem)
+          .map((item) => (item.hasEOL ? `${item.str}\n` : item.str))
+          .join(" ")
+          .replace(/[ \t]+\n/g, "\n")
+          .replace(/\n[ \t]+/g, "\n")
+          .trim();
+        if (text) {
+          pages.push(text);
+        }
+      }
+      return pages.join("\n\n");
+    } finally {
+      await document.destroy?.();
     }
   }
 
@@ -454,4 +624,28 @@ class ExportDestinationModal extends Modal {
     this.onChoice(choice);
     this.close();
   }
+}
+
+function isPdfTextItem(item: unknown): item is PdfTextItem {
+  return (
+    typeof item === "object" &&
+    item !== null &&
+    "str" in item &&
+    typeof item.str === "string"
+  );
+}
+
+function isPdfFileView(view: unknown): view is PdfFileView {
+  return (
+    typeof view === "object" &&
+    view !== null &&
+    "file" in view &&
+    "getViewType" in view &&
+    typeof view.getViewType === "function" &&
+    view.getViewType() === "pdf"
+  );
+}
+
+function nodeIsInside(root: HTMLElement, node: Node | null): boolean {
+  return !!node && (node === root || root.contains(node));
 }

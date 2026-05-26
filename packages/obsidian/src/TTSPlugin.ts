@@ -1,7 +1,7 @@
 import { TTSCodeMirror } from "./TTSCodemirror";
 import { createPlayerSynchronizer } from "@open-tts/ui";
 
-import { Editor, MarkdownView, Notice, Plugin, addIcon } from "obsidian";
+import { MarkdownView, Plugin, addIcon } from "obsidian";
 import { REGISTRY } from "open-tts";
 import { TTSSettingTab } from "./components/TTSPluginSettingsTab";
 import { AudioSink } from "open-tts";
@@ -19,6 +19,7 @@ import { ObsidianBridge, ObsidianBridgeImpl } from "./ObsidianBridge";
 import { configurableAudioCache } from "./ObsidianPlayer";
 import { AudioTextContext, TTSModel, TTSModelOptions } from "open-tts";
 import { TTSEditorAction } from "./TTSEditorAction";
+import { DetachedPlayerHost } from "./components/DetachedPlayer";
 
 // standard lucide.dev icon, but for some reason not working as a ribbon icon without registering it
 // https://lucide.dev/icons/audio-lines
@@ -34,6 +35,7 @@ export default class TTSPlugin extends Plugin {
   bridge: ObsidianBridge;
   cache: { destroy: () => void } | undefined;
   editorAction: TTSEditorAction | undefined;
+  detachedPlayerHost: DetachedPlayerHost | undefined;
   private _playerSyncDisposer: (() => void) | undefined;
 
   get player(): AudioStore {
@@ -81,16 +83,16 @@ export default class TTSPlugin extends Plugin {
       }),
     );
 
-    // Also add an editor command that can perform the same play selection
-    // This will always initiate a new audio
+    // Also add a command that can perform the same play selection.
+    // This will always initiate new audio.
     this.addCommand({
       id: "play-selection",
       name: "Play selection",
-      editorCheckCallback: (checking, editor: Editor, view: MarkdownView) => {
+      checkCallback: (checking) => {
         if (checking) {
           return true;
         }
-        this.bridge.triggerSelection(view.file, editor);
+        this.bridge.playSelection();
       },
     });
     this.addCommand({
@@ -110,19 +112,11 @@ export default class TTSPlugin extends Plugin {
     this.addCommand({
       id: "play-clipboard",
       name: "Play from clipboard",
-      editorCheckCallback: (checking, editor: Editor, view: MarkdownView) => {
+      checkCallback: (checking) => {
         if (checking) {
           return true;
         }
-        navigator.clipboard
-          .readText()
-          .then((text) => {
-            this.bridge.playDetached(text);
-          })
-          .catch((ex) => {
-            console.error("Failed to play clipboard audio", ex);
-            new Notice("Failed to get data from clipboard");
-          });
+        void this.bridge.playClipboard();
       },
     });
 
@@ -135,6 +129,13 @@ export default class TTSPlugin extends Plugin {
       this.audio,
     );
     this.editorAction.register();
+    this.detachedPlayerHost = new DetachedPlayerHost(
+      this.addStatusBarItem(),
+      this.player,
+      this.settings,
+      this.audio,
+      this.bridge,
+    );
 
     // this pause/resumes the current audio, or initiates a new audio if nothing is playing
     this.addCommand({
@@ -260,6 +261,7 @@ export default class TTSPlugin extends Plugin {
   }
 
   onunload() {
+    this.detachedPlayerHost?.destroy();
     this.editorAction?.destroy();
     this._playerSyncDisposer?.();
     this.player?.destroy();
