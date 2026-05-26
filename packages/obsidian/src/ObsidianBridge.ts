@@ -166,12 +166,30 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
         if (replaceSelection) {
           editor.replaceSelection(loadingReplacement);
         } else {
-          // insert at the start of the selection
-          editor.replaceRange(
-            loadingReplacement,
-            editor.getCursor("from"),
-            editor.getCursor("from"),
-          );
+          // Insert the exported audio on a new line below the selected line
+          const selectionEnd = editor.getCursor("to");
+          const lineBelowSelection = selectionEnd.line + 1;
+
+          if (lineBelowSelection < editor.lineCount()) {
+            const insertPosition = { line: lineBelowSelection, ch: 0 };
+
+            editor.replaceRange(
+              loadingReplacement,
+              insertPosition,
+              insertPosition,
+            );
+          } else {
+            const endOfLine = {
+              line: selectionEnd.line,
+              ch: editor.getLine(selectionEnd.line).length,
+            };
+
+            editor.replaceRange(
+              `\n${loadingReplacement}`,
+              endOfLine,
+              endOfLine,
+            );
+          }
         }
       }
 
