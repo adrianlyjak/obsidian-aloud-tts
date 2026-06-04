@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { requestUrl } from "obsidian";
 import { DEFAULT_SETTINGS } from "../player/TTSPluginSettings";
 import { TTSModelOptions, TTSErrorInfo } from "./tts-model";
 import {
@@ -11,7 +12,9 @@ import {
   validateApiKeyFish,
 } from "./fish";
 
-global.fetch = vi.fn();
+vi.mock("obsidian", () => ({
+  requestUrl: vi.fn(),
+}));
 
 describe("Fish Audio Model", () => {
   beforeEach(() => {
@@ -54,32 +57,28 @@ describe("Fish Audio Model", () => {
     });
 
     it("should validate the API key by listing voices", async () => {
-      vi.mocked(fetch).mockResolvedValue(
-        fishResponse({
-          status: 200,
-          json: { total: 0, items: [] },
-        }) as Response,
+      vi.mocked(requestUrl).mockResolvedValue(
+        fishResponse({ status: 200, json: { total: 0, items: [] } }),
       );
 
       const result = await validateApiKeyFish("valid-key");
 
       expect(result).toBeUndefined();
-      expect(fetch).toHaveBeenCalledWith(
-        `${FISH_API_URL}/model?page_size=50&page_number=1&sort_by=created_at&self=true`,
-        {
-          headers: {
-            Authorization: "Bearer valid-key",
-          },
+      expect(requestUrl).toHaveBeenCalledWith({
+        url: `${FISH_API_URL}/model?page_size=50&page_number=1&sort_by=created_at&self=true`,
+        headers: {
+          Authorization: "Bearer valid-key",
         },
-      );
+        throw: false,
+      });
     });
 
     it("should report invalid API keys", async () => {
-      vi.mocked(fetch).mockResolvedValue(
+      vi.mocked(requestUrl).mockResolvedValue(
         fishResponse({
           status: 401,
           json: { status: 401, message: "Unauthorized" },
-        }) as Response,
+        }),
       );
 
       const result = await validateApiKeyFish("bad-key");
@@ -97,8 +96,8 @@ describe("Fish Audio Model", () => {
 
     it("should make a Fish Audio TTS request and return mp3 audio", async () => {
       const audio = new Uint8Array([1, 2, 3, 4]).buffer;
-      vi.mocked(fetch).mockResolvedValue(
-        fishResponse({ status: 200, arrayBuffer: audio }) as Response,
+      vi.mocked(requestUrl).mockResolvedValue(
+        fishResponse({ status: 200, arrayBuffer: audio }),
       );
 
       const result = await fishCallTextToSpeech(
@@ -108,7 +107,8 @@ describe("Fish Audio Model", () => {
         {},
       );
 
-      expect(fetch).toHaveBeenCalledWith(`${FISH_API_URL}/v1/tts`, {
+      expect(requestUrl).toHaveBeenCalledWith({
+        url: `${FISH_API_URL}/v1/tts`,
         method: "POST",
         headers: {
           Authorization: "Bearer test-api-key",
@@ -122,6 +122,7 @@ describe("Fish Audio Model", () => {
           mp3_bitrate: 128,
           normalize: true,
         }),
+        throw: false,
       });
       expect(new Uint8Array(result.data)).toEqual(new Uint8Array(audio));
       expect(result.format).toBe("mp3");
@@ -129,8 +130,8 @@ describe("Fish Audio Model", () => {
 
     it("should add Fish Audio sentence pause controls", async () => {
       const audio = new Uint8Array([1, 2, 3, 4]).buffer;
-      vi.mocked(fetch).mockResolvedValue(
-        fishResponse({ status: 200, arrayBuffer: audio }) as Response,
+      vi.mocked(requestUrl).mockResolvedValue(
+        fishResponse({ status: 200, arrayBuffer: audio }),
       );
 
       await fishCallTextToSpeech(
@@ -140,8 +141,7 @@ describe("Fish Audio Model", () => {
         {},
       );
 
-      expect(fetch).toHaveBeenCalledWith(
-        `${FISH_API_URL}/v1/tts`,
+      expect(requestUrl).toHaveBeenCalledWith(
         expect.objectContaining({
           body: JSON.stringify({
             text: "Hello world. (break) Next sentence? (break)",
@@ -166,11 +166,11 @@ describe("Fish Audio Model", () => {
     });
 
     it("should map Fish Audio API errors", async () => {
-      vi.mocked(fetch).mockResolvedValue(
+      vi.mocked(requestUrl).mockResolvedValue(
         fishResponse({
           status: 422,
           json: { status: 422, message: "Invalid reference_id" },
-        }) as Response,
+        }),
       );
 
       try {
@@ -212,7 +212,7 @@ describe("Fish Audio Model", () => {
 
   describe("voice helpers", () => {
     it("should list Fish Audio voices", async () => {
-      vi.mocked(fetch).mockResolvedValue(
+      vi.mocked(requestUrl).mockResolvedValue(
         fishResponse({
           status: 200,
           json: {
@@ -227,7 +227,7 @@ describe("Fish Audio Model", () => {
               },
             ],
           },
-        }) as Response,
+        }),
       );
 
       const voices = await listFishVoices("test-key", true);
@@ -244,7 +244,7 @@ describe("Fish Audio Model", () => {
     });
 
     it("should get a Fish Audio voice by ID", async () => {
-      vi.mocked(fetch).mockResolvedValue(
+      vi.mocked(requestUrl).mockResolvedValue(
         fishResponse({
           status: 200,
           json: {
@@ -254,15 +254,17 @@ describe("Fish Audio Model", () => {
             state: "created",
             type: "tts",
           },
-        }) as Response,
+        }),
       );
 
       const voice = await getFishVoice("test-key", "voice-id");
 
-      expect(fetch).toHaveBeenCalledWith(`${FISH_API_URL}/model/voice-id`, {
+      expect(requestUrl).toHaveBeenCalledWith({
+        url: `${FISH_API_URL}/model/voice-id`,
         headers: {
           Authorization: "Bearer test-key",
         },
+        throw: false,
       });
       expect(voice.title).toBe("Calm Mystical Narrator");
     });
@@ -277,10 +279,12 @@ function fishResponse({
   status: number;
   json?: unknown;
   arrayBuffer?: ArrayBuffer;
-}): Partial<Response> {
+}) {
   return {
     status,
-    json: vi.fn().mockResolvedValue(json),
-    arrayBuffer: vi.fn().mockResolvedValue(arrayBuffer),
+    headers: {} as Record<string, string>,
+    text: "",
+    json,
+    arrayBuffer,
   };
 }

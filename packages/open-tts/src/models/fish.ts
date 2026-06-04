@@ -1,3 +1,4 @@
+import { requestUrl } from "obsidian";
 import type {
   FishSentencePause,
   TTSPluginSettings,
@@ -65,7 +66,7 @@ export async function fishCallTextToSpeech(
   options: TTSModelOptions,
   _settings: TTSPluginSettings,
   _context: AudioTextContext = {},
-  signal?: AbortSignal,
+  _signal?: AbortSignal,
 ): Promise<AudioData> {
   if (!options.voice) {
     throw new TTSErrorInfo("Voice model ID is required for Fish Audio TTS", {
@@ -79,7 +80,8 @@ export async function fishCallTextToSpeech(
   }
   const sentencePause = parseFishSentencePause(options.instructions);
 
-  const response = await fetch(`${FISH_API_URL}/v1/tts`, {
+  const response = await requestUrl({
+    url: `${FISH_API_URL}/v1/tts`,
     method: "POST",
     headers: {
       Authorization: `Bearer ${options.apiKey || ""}`,
@@ -93,12 +95,15 @@ export async function fishCallTextToSpeech(
       mp3_bitrate: 128,
       normalize: sentencePause === "none",
     }),
-    signal,
+    throw: false,
   });
 
-  await validate200Fish(response);
+  await validate200Fish({
+    status: response.status,
+    json: () => Promise.resolve(response.json),
+  });
   return {
-    data: await response.arrayBuffer(),
+    data: response.arrayBuffer,
     format: "mp3",
   };
 }
@@ -155,31 +160,38 @@ export async function listFishVoices(
     params.set("self", "true");
   }
 
-  const response = await fetch(`${FISH_API_URL}/model?${params.toString()}`, {
+  const response = await requestUrl({
+    url: `${FISH_API_URL}/model?${params.toString()}`,
     headers: {
       Authorization: `Bearer ${apiKey}`,
     },
+    throw: false,
   });
 
-  await validate200Fish(response);
-  return parseFishVoiceList(await response.json());
+  await validate200Fish({
+    status: response.status,
+    json: () => Promise.resolve(response.json),
+  });
+  return parseFishVoiceList(response.json);
 }
 
 export async function getFishVoice(
   apiKey: string,
   voiceId: string,
 ): Promise<FishVoice> {
-  const response = await fetch(
-    `${FISH_API_URL}/model/${encodeURIComponent(voiceId)}`,
-    {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
+  const response = await requestUrl({
+    url: `${FISH_API_URL}/model/${encodeURIComponent(voiceId)}`,
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
     },
-  );
+    throw: false,
+  });
 
-  await validate200Fish(response);
-  return parseFishVoice(await response.json());
+  await validate200Fish({
+    status: response.status,
+    json: () => Promise.resolve(response.json),
+  });
+  return parseFishVoice(response.json);
 }
 
 export async function validate200Fish(
