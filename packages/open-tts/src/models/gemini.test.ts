@@ -3,7 +3,9 @@ import {
   geminiTextToSpeech,
   validateApiKeyGemini,
   geminiCallTextToSpeech,
+  geminiRateLimiter,
 } from "./gemini";
+import { TTSErrorInfo } from "./tts-model";
 import { DEFAULT_SETTINGS } from "../player/TTSPluginSettings";
 
 // Create mock functions for Google GenAI
@@ -12,17 +14,19 @@ const mockGenerateContent = vi.fn();
 
 // Mock the Google GenAI module
 vi.mock("@google/genai", () => ({
-  GoogleGenAI: vi.fn(() => ({
-    models: {
+  GoogleGenAI: class {
+    models = {
       list: mockList,
       generateContent: mockGenerateContent,
-    },
-  })),
+    };
+  },
 }));
 
 describe("Gemini Model", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset rate limiter so 429 cooldown from one test doesn't block the next
+    geminiRateLimiter.resetCooldown();
   });
 
   describe("convertToOptions", () => {
@@ -30,7 +34,7 @@ describe("Gemini Model", () => {
       const testSettings = {
         ...DEFAULT_SETTINGS,
         gemini_apiKey: "test-api-key",
-        gemini_ttsModel: "gemini-2.5-flash",
+        gemini_ttsModel: "gemini-2.5-flash-preview-tts",
         gemini_ttsVoice: "Zephyr",
         gemini_ttsInstructions: "Speak naturally",
       };
@@ -39,7 +43,7 @@ describe("Gemini Model", () => {
 
       expect(options).toEqual({
         apiKey: "test-api-key",
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-preview-tts",
         voice: "Zephyr",
         instructions: "Speak naturally",
       });
@@ -103,7 +107,7 @@ describe("Gemini Model", () => {
       const testSettings = {
         ...DEFAULT_SETTINGS,
         gemini_apiKey: "test-key",
-        gemini_ttsModel: "gemini-2.5-flash",
+        gemini_ttsModel: "gemini-2.5-flash-preview-tts",
         gemini_ttsVoice: "Zephyr",
         gemini_ttsInstructions: "Speak with emotion",
       };
@@ -112,19 +116,17 @@ describe("Gemini Model", () => {
 
       expect(options.instructions).toBe("Speak with emotion");
       expect(options.voice).toBe("Zephyr");
-      expect(options.model).toBe("gemini-2.5-flash");
+      expect(options.model).toBe("gemini-2.5-flash-preview-tts");
     });
   });
 
   describe("Gemini Error Mapping", () => {
     it("should handle ClientError with JSON content", () => {
-      // Create a mock ClientError that mimics the actual error structure
       const error = new Error(
         'got status: 400 . {"error":{"message":"API_KEY_INVALID","status":"INVALID_ARGUMENT"}}',
       );
       error.name = "ClientError";
 
-      // The error should be processed by mapGenAIError in the actual call
       expect(error.message).toContain("got status: 400");
       expect(error.message).toContain("API_KEY_INVALID");
     });
@@ -260,7 +262,7 @@ describe("Gemini Model", () => {
 
       const options = {
         apiKey: "test-key",
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-preview-tts",
         voice: "Zephyr",
         instructions: "Test instructions",
       };
@@ -302,7 +304,7 @@ describe("Gemini Model", () => {
 
       const options = {
         apiKey: "test-key",
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-preview-tts",
         voice: "Zephyr",
         instructions: "Speak with emotion",
       };
@@ -342,7 +344,7 @@ describe("Gemini Model", () => {
 
       const options = {
         apiKey: "test-key",
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-preview-tts",
         voice: "Zephyr",
         instructions: "Read clearly",
       };
@@ -382,7 +384,7 @@ describe("Gemini Model", () => {
 
       const options = {
         apiKey: "test-key",
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-preview-tts",
         voice: "Zephyr",
         instructions: "",
       };
@@ -421,7 +423,7 @@ describe("Gemini Model", () => {
 
       const options = {
         apiKey: "test-key",
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-preview-tts",
         voice: "Echo",
         instructions: "Test",
       };
@@ -444,7 +446,7 @@ describe("Gemini Model", () => {
 
       const options = {
         apiKey: "test-key",
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-preview-tts",
         voice: "Zephyr",
         instructions: "Test",
       };
@@ -452,6 +454,65 @@ describe("Gemini Model", () => {
       await expect(
         geminiCallTextToSpeech("Test", options, DEFAULT_SETTINGS, {}),
       ).rejects.toThrow("Request failed 'INTERNAL'");
+    });
+
+    it("should map ApiError (SDK v2) 429 to RESOURCE_EXHAUSTED with httpErrorCode", async () => {
+      // @google/genai v2+ raises ApiError with .status instead of ClientError with message prefix
+      const error = Object.assign(new Error("Too many requests"), {
+        name: "ApiError",
+        status: 429,
+      });
+      mockGenerateContent.mockRejectedValue(error);
+
+      const options = {
+        apiKey: "k",
+        model: "gemini-2.5-flash-preview-tts",
+        voice: "Zephyr",
+      };
+      try {
+        await geminiCallTextToSpeech("Test", options, DEFAULT_SETTINGS, {});
+        expect.fail("should have thrown");
+      } catch (err) {
+        expect(err).toBeInstanceOf(TTSErrorInfo);
+        const ttsErr = err as TTSErrorInfo;
+        expect(ttsErr.httpErrorCode).toBe(429);
+        expect(ttsErr.isRetryable).toBe(true);
+        expect(ttsErr.status).toBe("RESOURCE_EXHAUSTED");
+      }
+    });
+
+    it("should map ApiError 500 to SERVER_ERROR as retryable", async () => {
+      const error = Object.assign(new Error("Internal"), {
+        name: "ApiError",
+        status: 500,
+      });
+      mockGenerateContent.mockRejectedValue(error);
+
+      const options = { apiKey: "k", model: "gemini-2.5-flash-preview-tts" };
+      try {
+        await geminiCallTextToSpeech("Test", options, DEFAULT_SETTINGS, {});
+      } catch (err) {
+        expect(err).toBeInstanceOf(TTSErrorInfo);
+        expect((err as TTSErrorInfo).httpErrorCode).toBe(500);
+        expect((err as TTSErrorInfo).isRetryable).toBe(true);
+      }
+    });
+
+    it("should map ApiError 403 as non-retryable", async () => {
+      const error = Object.assign(new Error("Forbidden"), {
+        name: "ApiError",
+        status: 403,
+      });
+      mockGenerateContent.mockRejectedValue(error);
+
+      const options = { apiKey: "k", model: "gemini-2.5-flash-preview-tts" };
+      try {
+        await geminiCallTextToSpeech("Test", options, DEFAULT_SETTINGS, {});
+      } catch (err) {
+        expect(err).toBeInstanceOf(TTSErrorInfo);
+        expect((err as TTSErrorInfo).httpErrorCode).toBe(403);
+        expect((err as TTSErrorInfo).isRetryable).toBe(false);
+      }
     });
   });
 });
