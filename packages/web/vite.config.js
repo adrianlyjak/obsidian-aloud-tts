@@ -6,6 +6,12 @@ const workspaceRoot = path.resolve(__dirname, "../..");
 
 export default defineConfig({
   plugins: [nodePolyfills()],
+  resolve: {
+    alias: {
+      // obsidian is only available in the desktop plugin; use the no-op shim for the web build
+      obsidian: path.resolve(workspaceRoot, "__mocks__/obsidian.ts"),
+    },
+  },
   root: "./src",
   server: {
     host: "127.0.0.1",
