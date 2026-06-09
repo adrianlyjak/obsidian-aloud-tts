@@ -221,12 +221,8 @@ function formatMessages(
     ${instructions}
 </instructions>`;
   }
-  if (context.textBefore) {
-    prompt += `\n\nRead the content continuing from this previously ready passage:
-<previous_context>
-    ${context.textBefore}
-</previous_context>`;
-  }
+  // previous_context is intentionally omitted: Gemini TTS treats extra prompt
+  // content as a text generation request and returns INVALID_ARGUMENT.
   prompt += `\n\nContent: ${text}`;
   return [{ role: "user", parts: [{ text: prompt }] }];
 }
