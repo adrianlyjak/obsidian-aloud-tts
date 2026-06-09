@@ -10,6 +10,15 @@ export default function cleanMarkup(md: string) {
   // First, remove frontmatter (must be done before other transformations)
   output = removeFrontMatter(output);
 
+  // Remove Readwise highlight metadata lines (e.g. "> **Tags:** #👻-ai-highlighted  — [View Highlight](url)")
+  // These lines have zero reading value and contain emoji tags + link artifacts
+  output = output.replace(/^.*\*\*Tags:\*\*.*$/gm, "");
+  // Remove "— [View Highlight](url)" suffix that appears inline after highlight text
+  output = output.replace(/\s*—\s*\[View Highlight\]\([^)]*\)/g, "");
+
+  // Remove fenced code blocks entirely — code content is not useful for TTS
+  output = output.replace(/^```[^\n]*\n[\s\S]*?^```[^\n]*$/gm, "");
+
   // Convert LaTeX math to speakable text (before other markdown processing
   // since $ can interfere with emphasis regexes)
   output = output.replace(/\$\$([\s\S]*?)\$\$/g, (_, m) => cleanMath(m));
@@ -35,18 +44,25 @@ export default function cleanMarkup(md: string) {
     .replace(/!\[(.*?)\][[(].*?[\])]\s*/g, "")
     // Remove inline links
     .replace(/\[([^\]]*?)\][[(].*?[\])]/g, "$1")
-    // remove obsidian links
+    // Remove Obsidian embeds ![[filename]]
     .replace(/!\[\[.*?\]\]/g, "")
+    // Obsidian wiki links: [[link|alias]] → alias, [[link]] → link
+    .replace(/\[\[([^\]|]*)\|([^\]]*)\]\]/g, "$2")
+    .replace(/\[\[([^\]]*)\]\]/g, "$1")
+    // Remove atx-style headers (must run before inline tag removal so ## isn't treated as a tag)
+    .replace(
+      /^(\n)?\s{0,}#{1,6}\s*( (.+))? +#+$|^(\n)?\s{0,}#{1,6}\s*( (.+))?$/gm,
+      "$1$3$4$6",
+    )
+    // Strip Obsidian inline tags (#tag, #nested/tag) — drop # prefix, keep the word
+    .replace(/#(\S+)/g, "$1")
+    // Strip Obsidian callout markers (> [!NOTE], > [!WARNING], etc.)
+    .replace(/^(>\s*)\[![^\]]*\]\s*/gm, "$1")
     // Remove blockquotes
     .replace(/^(\n)?\s{0,3}>\s?/gm, "$1")
     // .replace(/(^|\n)\s{0,3}>\s?/g, '\n\n')
     // Remove reference-style links?
     .replace(/^\s{1,2}\[(.*?)\]: (\S+)( ".*?")?\s*$/g, "")
-    // Remove atx-style headers
-    .replace(
-      /^(\n)?\s{0,}#{1,6}\s*( (.+))? +#+$|^(\n)?\s{0,}#{1,6}\s*( (.+))?$/gm,
-      "$1$3$4$6",
-    )
     // Remove * emphasis
     .replace(/([*]+)(\S)(.*?\S)??\1/g, "$2$3")
     // Remove _ emphasis. Unlike *, _ emphasis gets rendered only if
@@ -56,9 +72,7 @@ export default function cleanMarkup(md: string) {
     // Remove == highlight markup (e.g., ==highlight==), tolerating inner spaces/newlines
     // Allows leading/trailing whitespace inside the markers while preserving inner content
     .replace(/==\s*([\s\S]*?\S)\s*==/g, "$1")
-    // Remove code blocks
-    .replace(/^```\w*$\n?/gm, "")
-    // Remove inline code
+    // Remove inline code backticks (fenced blocks already removed above)
     .replace(/`(.+?)`/g, "$1")
     // Replace strike through
     .replace(/~(.*?)~/g, "$1")
@@ -66,6 +80,9 @@ export default function cleanMarkup(md: string) {
     .replace(/\[\s*@[\w,\s]+\s*\]/g, "")
     // remove criticmarkup comments
     .replace(/\{>>.*?<<\}/g, "");
+
+  // Simplify bare URLs to just the domain (e.g. https://github.com/user/repo → github.com)
+  output = output.replace(/https?:\/\/([^/\s]+)[^\s]*/g, "$1");
 
   // Handle tables after all other markdown processing
   // Remove markdown table separator lines (e.g., |---|---|---|)
@@ -86,6 +103,24 @@ export default function cleanMarkup(md: string) {
   output = processedLines.join("\n");
 
   return output;
+}
+
+/**
+ * Returns the number of characters occupied by the YAML frontmatter block
+ * (including both `---` delimiters and the trailing newline), or 0 if none.
+ * Use this to skip frontmatter before splitting a document into chunks.
+ */
+export function frontmatterLength(md: string): number {
+  if (!md) return 0;
+  const lines = md.split("\n");
+  if (lines.length < 3 || lines[0].trim() !== "---") return 0;
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trim() === "---") {
+      // Length = sum of all lines up to and including the closing --- plus their newlines
+      return lines.slice(0, i + 1).join("\n").length + 1; // +1 for the trailing newline
+    }
+  }
+  return 0;
 }
 
 /**
