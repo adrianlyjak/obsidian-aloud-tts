@@ -9,20 +9,16 @@ import {
   type TTSModelOptions,
 } from "./tts-model";
 
-export const POLLY_ENGINES = [
+export const POLLY_ENGINES: readonly {
+  label: string;
+  value: string;
+  disabled?: boolean;
+}[] = [
   { label: "Neural", value: "neural" },
   { label: "Standard", value: "standard" },
-  {
-    label: "Generative (coming soon)",
-    value: "generative",
-    disabled: true as any,
-  },
-  {
-    label: "Long-form (coming soon)",
-    value: "long-form",
-    disabled: true as any,
-  },
-] as const;
+  { label: "Generative (coming soon)", value: "generative", disabled: true },
+  { label: "Long-form (coming soon)", value: "long-form", disabled: true },
+];
 
 export const POLLY_REGIONS = [
   "us-east-1",

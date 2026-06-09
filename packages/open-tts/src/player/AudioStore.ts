@@ -26,6 +26,8 @@ export interface AudioStore {
   autoScrollEnabled: boolean;
   /** Non-null while `exportAudio` is running. */
   exportProgress: ExportProgress | null;
+  /** The underlying audio system */
+  readonly system: AudioSystem;
 
   // switches the active track
   // returns a track ID

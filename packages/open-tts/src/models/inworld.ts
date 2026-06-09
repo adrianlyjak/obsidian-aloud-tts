@@ -117,16 +117,21 @@ export async function listInworldVoices(
 }
 
 export async function validate200Inworld(response: Response) {
-  const getErrorMessage = (body: unknown) => {
+  const getErrorMessage = (body: unknown): ErrorMessage => {
     // Inworld error format: { code: number, message: string, details: [] }
-    const err = body as any;
+    const rec =
+      typeof body === "object" && body !== null
+        ? (body as Record<string, unknown>)
+        : {};
     return {
       error: {
-        message: err?.message || "Unknown error",
+        message:
+          typeof rec.message === "string" ? rec.message : "Unknown error",
         type: "inworld_error",
-        code: String(err?.code || response.status),
+        code: rec.code != null ? String(rec.code) : String(response.status),
+        param: null,
       },
-    } as ErrorMessage;
+    };
   };
   await validate200(response, getErrorMessage);
 }
