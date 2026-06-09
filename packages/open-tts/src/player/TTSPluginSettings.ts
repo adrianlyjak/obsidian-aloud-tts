@@ -15,7 +15,14 @@ export type TTSPluginSettings = {
   showPlayerView: PlayerViewMode;
   showEditorActionButton: boolean;
   autoScrollPlayerView: boolean;
+  /** What to do when the user switches to a different note while audio is playing */
+  docSwitchBehavior: DocSwitchBehavior;
   version: number;
+  /**
+   * Single vault folder for all generated audio: batch mode files (embedded as
+   * callouts) and exported selections. Configurable via Settings → Audio Folder.
+   * Default: "_audio"
+   */
   audioFolder: string;
   audioExportDestination: AudioExportDestination;
 } & (GeminiModelConfig &
@@ -27,7 +34,23 @@ export type TTSPluginSettings = {
   MinimaxModelConfig &
   FishModelConfig &
   InworldModelConfig &
-  PollyModelConfig);
+  PollyModelConfig &
+  ChatterboxModelConfig);
+
+export interface ChatterboxModelConfig {
+  /** the API base URL to use */
+  chatterbox_apiBase: string;
+  /** the voice to use */
+  chatterbox_ttsVoice: string;
+  /** exaggeration parameter (0-1) */
+  chatterbox_exaggeration: number;
+  /** CFG weight parameter */
+  chatterbox_cfgWeight: number;
+  /** temperature parameter */
+  chatterbox_temperature: number;
+  /** whether to use batch mode */
+  chatterbox_batchMode: boolean;
+}
 
 export interface InworldModelConfig {
   /** the API key to use */
@@ -124,6 +147,8 @@ export interface MinimaxModelConfig {
   minimax_ttsVoice: string;
   /** whether to use the China mainland endpoint (api.minimaxi.com) instead of international (api.minimax.io) */
   minimax_useChinaEndpoint: boolean;
+  /** generate full note, save mp3 to vault, embed — avoids repeat API charges */
+  minimax_batchMode: boolean;
 }
 
 export type FishModel = "s1" | "s2-pro";
@@ -141,6 +166,8 @@ export interface FishModelConfig {
   fish_voiceId: string;
   /** Fish Audio pause control to insert between sentences */
   fish_sentencePause: FishSentencePause;
+  /** generate full note, save mp3 to vault, embed — avoids repeat API calls */
+  fish_batchMode: boolean;
 }
 
 export interface PollyModelConfig {
@@ -169,6 +196,14 @@ export function isPlayerViewMode(value: unknown): value is PlayerViewMode {
   return playViewModes.includes(value as PlayerViewMode);
 }
 
+export const docSwitchBehaviors = ["stop", "continue", "auto-play"] as const;
+export type DocSwitchBehavior = (typeof docSwitchBehaviors)[number];
+export function isDocSwitchBehavior(
+  value: unknown,
+): value is DocSwitchBehavior {
+  return docSwitchBehaviors.includes(value as DocSwitchBehavior);
+}
+
 export const audioExportDestinations = ["vault", "download", "prompt"] as const;
 
 export type AudioExportDestination = (typeof audioExportDestinations)[number];
@@ -194,6 +229,7 @@ export function voiceHash(options: TTSModelOptions): string {
 export const modelProviders = [
   "openai",
   "openaicompat",
+  "chatterbox",
   "azure",
   "elevenlabs",
   "gemini",
@@ -211,9 +247,17 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   playbackSpeed: 1.0,
   cacheDurationMillis: 1000 * 60 * 60 * 24 * 7, // 7 days
   cacheType: "local",
-  showPlayerView: "always-mobile",
+  showPlayerView: "always",
   showEditorActionButton: true,
   autoScrollPlayerView: true,
+  docSwitchBehavior: "continue",
+  // chatterbox
+  chatterbox_apiBase: "http://localhost:4123",
+  chatterbox_ttsVoice: "alloy",
+  chatterbox_exaggeration: 0.45,
+  chatterbox_cfgWeight: 0.65,
+  chatterbox_temperature: 1.0,
+  chatterbox_batchMode: true,
   // gemini
   gemini_apiKey: "",
   gemini_ttsModel: "gemini-2.5-flash-preview-tts",
@@ -251,9 +295,10 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   // minimax
   minimax_apiKey: "",
   minimax_groupId: "",
-  minimax_ttsModel: "speech-2.6-turbo",
+  minimax_ttsModel: "speech-02-turbo",
   minimax_ttsVoice: "English_expressive_narrator",
   minimax_useChinaEndpoint: false,
+  minimax_batchMode: true,
 
   // fish
   fish_apiKey: "",
@@ -261,6 +306,7 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   fish_voiceSource: "custom",
   fish_voiceId: "",
   fish_sentencePause: "none",
+  fish_batchMode: true,
 
   // inworld
   inworld_apiKey: "",
@@ -274,8 +320,8 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   polly_voiceId: "Joanna",
   polly_engine: "neural",
 
-  version: 2,
-  audioFolder: "aloud",
+  version: 3,
+  audioFolder: "_audio",
   audioExportDestination: "download",
 } as const;
 
@@ -376,6 +422,13 @@ const parsePluginSettings = (toParse: unknown): TTSPluginSettings => {
   if (data.version < 2) {
     data = migrateToVersion2(data);
   }
+  if (data.version < 3) {
+    data = migrateToVersion3(data);
+  }
+  // Guard against removed providers surviving in persisted settings
+  if (!modelProviders.includes(data.modelProvider)) {
+    data = { ...data, modelProvider: "chatterbox" };
+  }
   return data;
 };
 
@@ -400,6 +453,27 @@ function migrateToVersion1(data: any): any {
       : DEFAULT_SETTINGS.openai_ttsVoice,
 
     version: 1,
+  };
+}
+
+// Consolidates per-provider audioFolder fields into a single audioFolder setting.
+// Preserves any non-default custom value a user may have set on a provider folder.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function migrateToVersion3(data: any): any {
+  const {
+    chatterbox_audioFolder,
+    fish_audioFolder,
+    minimax_audioFolder,
+    ...rest
+  } = data;
+  const customFolder =
+    [chatterbox_audioFolder, fish_audioFolder, minimax_audioFolder].find(
+      (f) => f && f !== "_audio",
+    ) ?? data.audioFolder;
+  return {
+    ...rest,
+    audioFolder: customFolder || "_audio",
+    version: 3,
   };
 }
 
