@@ -22,29 +22,70 @@ export interface FishVoice {
   type: "svc" | "tts";
 }
 
-export const fishTextToSpeech: TTSModel = {
-  call: fishCallTextToSpeech,
-  validateConnection: async (settings) => {
-    if (!settings.fish_apiKey) {
-      return REQUIRE_API_KEY;
-    }
-    return await validateApiKeyFish(settings.fish_apiKey);
-  },
-  convertToOptions: (settings): TTSModelOptions => {
-    return {
+/**
+ * Minimal HTTP interface for Fish Audio requests. Allows the Obsidian layer
+ * to inject `requestUrl` (which bypasses Electron's CORS restrictions) without
+ * importing Obsidian APIs into this cross-platform package.
+ */
+export type FishHttpFetch = (request: {
+  url: string;
+  method?: string;
+  headers?: Record<string, string>;
+  body?: string;
+  signal?: AbortSignal;
+}) => Promise<{ status: number; arrayBuffer: ArrayBuffer; json: unknown }>;
+
+const defaultFetch: FishHttpFetch = async ({
+  url,
+  method = "GET",
+  headers,
+  body,
+  signal,
+}) => {
+  const res = await fetch(url, { method, headers, body, signal });
+  const arrayBuffer = await res.arrayBuffer();
+  let json: unknown = null;
+  try {
+    json = JSON.parse(new TextDecoder().decode(new Uint8Array(arrayBuffer)));
+  } catch {
+    // binary body (audio) — expected for 200 TTS responses
+  }
+  return { status: res.status, arrayBuffer, json };
+};
+
+/**
+ * Creates a Fish Audio TTSModel with a custom HTTP fetch implementation.
+ * Use this in environments where the default `fetch` is blocked by CORS
+ * (e.g. Obsidian's Electron renderer). Pass a wrapper around `requestUrl`
+ * from the `obsidian` package.
+ */
+export function createFishModel(
+  fetchFn: FishHttpFetch = defaultFetch,
+): TTSModel {
+  return {
+    call: (text, options, settings, context, signal) =>
+      fishCallTextToSpeech(text, options, settings, context, signal, fetchFn),
+    validateConnection: async (settings) => {
+      if (!settings.fish_apiKey) return REQUIRE_API_KEY;
+      return validateApiKeyFish(settings.fish_apiKey, fetchFn);
+    },
+    convertToOptions: (settings): TTSModelOptions => ({
       apiKey: settings.fish_apiKey,
       model: settings.fish_model,
       voice: settings.fish_voiceId,
       instructions: settings.fish_sentencePause,
-    };
-  },
-};
+    }),
+  };
+}
+
+export const fishTextToSpeech: TTSModel = createFishModel();
 
 export async function validateApiKeyFish(
   apiKey: string,
+  fetchFn: FishHttpFetch = defaultFetch,
 ): Promise<string | undefined> {
   try {
-    await listFishVoices(apiKey, true);
+    await listFishVoices(apiKey, true, fetchFn);
     return undefined;
   } catch (error) {
     if (error instanceof TTSErrorInfo) {
@@ -66,6 +107,7 @@ export async function fishCallTextToSpeech(
   _settings: TTSPluginSettings,
   _context: AudioTextContext = {},
   signal?: AbortSignal,
+  fetchFn: FishHttpFetch = defaultFetch,
 ): Promise<AudioData> {
   if (!options.voice) {
     throw new TTSErrorInfo("Voice model ID is required for Fish Audio TTS", {
@@ -79,7 +121,8 @@ export async function fishCallTextToSpeech(
   }
   const sentencePause = parseFishSentencePause(options.instructions);
 
-  const response = await fetch(`${FISH_API_URL}/v1/tts`, {
+  const raw = await fetchFn({
+    url: `${FISH_API_URL}/v1/tts`,
     method: "POST",
     headers: {
       Authorization: `Bearer ${options.apiKey || ""}`,
@@ -96,9 +139,12 @@ export async function fishCallTextToSpeech(
     signal,
   });
 
-  await validate200Fish(response);
+  await validate200Fish({
+    status: raw.status,
+    json: () => Promise.resolve(raw.json),
+  });
   return {
-    data: await response.arrayBuffer(),
+    data: raw.arrayBuffer,
     format: "mp3",
   };
 }
@@ -141,6 +187,7 @@ function fishPauseTag(sentencePause: FishSentencePause): string | undefined {
 export async function listFishVoices(
   apiKey: string,
   self: boolean,
+  fetchFn: FishHttpFetch = defaultFetch,
 ): Promise<FishVoice[]> {
   if (!apiKey) {
     return [];
@@ -155,31 +202,33 @@ export async function listFishVoices(
     params.set("self", "true");
   }
 
-  const response = await fetch(`${FISH_API_URL}/model?${params.toString()}`, {
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-    },
+  const raw = await fetchFn({
+    url: `${FISH_API_URL}/model?${params.toString()}`,
+    headers: { Authorization: `Bearer ${apiKey}` },
   });
 
-  await validate200Fish(response);
-  return parseFishVoiceList(await response.json());
+  await validate200Fish({
+    status: raw.status,
+    json: () => Promise.resolve(raw.json),
+  });
+  return parseFishVoiceList(raw.json);
 }
 
 export async function getFishVoice(
   apiKey: string,
   voiceId: string,
+  fetchFn: FishHttpFetch = defaultFetch,
 ): Promise<FishVoice> {
-  const response = await fetch(
-    `${FISH_API_URL}/model/${encodeURIComponent(voiceId)}`,
-    {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
-    },
-  );
+  const raw = await fetchFn({
+    url: `${FISH_API_URL}/model/${encodeURIComponent(voiceId)}`,
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
 
-  await validate200Fish(response);
-  return parseFishVoice(await response.json());
+  await validate200Fish({
+    status: raw.status,
+    json: () => Promise.resolve(raw.json),
+  });
+  return parseFishVoice(raw.json);
 }
 
 export async function validate200Fish(
