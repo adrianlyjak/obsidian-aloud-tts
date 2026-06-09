@@ -104,11 +104,11 @@ export function parseWavHeader(wavBuffer: ArrayBuffer): WavInfo {
     const chunkSize = view.getUint32(offset + 4, true);
 
     if (chunkId === "fmt ") {
-      // Audio format (1 = PCM)
+      // Audio format (1 = PCM, 3 = IEEE Float)
       const audioFormat = view.getUint16(offset + 8, true);
-      if (audioFormat !== 1) {
+      if (audioFormat !== 1 && audioFormat !== 3) {
         throw new Error(
-          `Unsupported WAV audio format: ${audioFormat}. Only PCM (1) is supported.`,
+          `Unsupported WAV audio format: ${audioFormat}. Only PCM (1) and IEEE Float (3) are supported.`,
         );
       }
       channels = view.getUint16(offset + 10, true);
@@ -156,13 +156,23 @@ export async function wavBufferToMp3Buffer(
 ): Promise<ArrayBuffer> {
   const wavInfo = parseWavHeader(wavBuffer);
 
-  if (wavInfo.bitDepth !== 16) {
+  let pcmData = wavInfo.pcmData;
+  if (wavInfo.bitDepth === 32) {
+    // Assume 32-bit float (format 3)
+    const floatData = new Float32Array(wavInfo.pcmData);
+    const int16Data = new Int16Array(floatData.length);
+    for (let i = 0; i < floatData.length; i++) {
+      const s = Math.max(-1, Math.min(1, floatData[i]));
+      int16Data[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+    }
+    pcmData = int16Data.buffer;
+  } else if (wavInfo.bitDepth !== 16) {
     throw new Error(
-      `Unsupported WAV bit depth: ${wavInfo.bitDepth}. Only 16-bit is supported.`,
+      `Unsupported WAV bit depth: ${wavInfo.bitDepth}. Only 16-bit and 32-bit float are supported.`,
     );
   }
 
-  return pcmBufferToMp3Buffer(wavInfo.pcmData, {
+  return pcmBufferToMp3Buffer(pcmData, {
     sampleRate: wavInfo.sampleRate,
     channels: wavInfo.channels,
     bitDepth: 16,
