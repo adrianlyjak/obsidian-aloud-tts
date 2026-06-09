@@ -102,13 +102,6 @@ export function onMultiTextChanged(
               };
             }
             const { updateType: _, rawText, ...updates } = update;
-            // const { updateType, rawText, ...updates } = update;
-            // console.info(
-            //   `Type: ${updateType} ${rawText ? `'${track.rawText}' -> '${rawText}'` : "[no text change]"}`,
-            //   Object.keys(updates).map((x) => {
-            //     return `${x}: '${(track as any)[x]}' -> '${(updates as any)[x]}'`;
-            //   }),
-            // );
             if (rawText !== undefined) {
               const cleanedText = cleanMarkup(rawText);
 

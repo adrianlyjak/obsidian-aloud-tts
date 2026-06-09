@@ -225,7 +225,15 @@ export class WebAudioSink implements AudioSink {
   }
 
   play(): void {
-    this._audio.play();
+    const promise = this._audio.play();
+    if (promise !== undefined) {
+      promise.catch((err: unknown) => {
+        // Chrome throws AbortError when pause() is called before play() resolves.
+        // This is expected during rapid play/pause transitions and safe to ignore.
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        console.error("Audio play failed:", err);
+      });
+    }
   }
 
   private loopCheckCompletion(): void {

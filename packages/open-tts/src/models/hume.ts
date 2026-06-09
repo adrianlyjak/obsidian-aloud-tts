@@ -138,28 +138,36 @@ const validate200Hume = async (response: Response) => {
 
 const mapHumeError = (body: unknown): ErrorMessage | undefined => {
   try {
-    const response = body as any;
+    if (!isRecord(body)) return undefined;
 
     // Handle fault-based error format
-    if (response.fault) {
+    const fault = isRecord(body.fault) ? body.fault : null;
+    if (fault) {
       return {
         error: {
-          message: response.fault.faultstring || "Unknown error",
+          message:
+            typeof fault.faultstring === "string"
+              ? fault.faultstring
+              : "Unknown error",
           type: "fault",
-          code: response.fault.detail?.errorcode || "unknown",
+          code:
+            isRecord(fault.detail) && typeof fault.detail.errorcode === "string"
+              ? fault.detail.errorcode
+              : "unknown",
           param: null,
         },
       };
     }
 
     // Handle standard error format
-    if (response.status || response.error || response.message) {
+    if (body.status || body.error || body.message) {
       return {
         error: {
-          message: response.message || "Unknown error",
-          type: response.error || "unknown",
-          code: String(response.status || "unknown"),
-          param: response.path || null,
+          message:
+            typeof body.message === "string" ? body.message : "Unknown error",
+          type: typeof body.error === "string" ? body.error : "unknown",
+          code: body.status != null ? String(body.status) : "unknown",
+          param: typeof body.path === "string" ? body.path : null,
         },
       };
     }
@@ -170,3 +178,7 @@ const mapHumeError = (body: unknown): ErrorMessage | undefined => {
     return undefined;
   }
 };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
