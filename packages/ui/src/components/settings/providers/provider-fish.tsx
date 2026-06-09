@@ -8,7 +8,11 @@ import {
 } from "open-tts";
 import { ApiKeyComponent } from "../api-key-component";
 import { OptionSelect } from "../option-select";
-import { OptionSelectSetting, TextInputSetting } from "../setting-components";
+import {
+  CheckboxSetting,
+  OptionSelectSetting,
+  TextInputSetting,
+} from "../setting-components";
 
 export const FishSettings = observer(
   ({ store }: { store: TTSPluginSettingsStore }) => {
@@ -30,6 +34,7 @@ export const FishSettings = observer(
           <FishCustomVoiceComponent store={store} />
         )}
         <FishSentencePauseComponent store={store} />
+        <FishBatchModeComponent store={store} />
       </>
     );
   },
@@ -176,6 +181,20 @@ const FishCustomVoiceComponent: React.FC<{
       provider="fish"
       fieldName="fish_voiceId"
       placeholder="e.g. 7f92f8afb8ec43bf81429cc1c9199cb1"
+    />
+  );
+});
+
+const FishBatchModeComponent: React.FC<{
+  store: TTSPluginSettingsStore;
+}> = observer(({ store }) => {
+  return (
+    <CheckboxSetting
+      name="Batch Mode"
+      description="Generate full note audio, save to vault, and embed. Cached by content hash — the same text and voice never costs twice."
+      store={store}
+      provider="fish"
+      fieldName="fish_batchMode"
     />
   );
 });

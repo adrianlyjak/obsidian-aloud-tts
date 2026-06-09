@@ -6,11 +6,12 @@ import {
 } from "./TTSPluginSettings";
 import { OPENAI_API_URL } from "../models/openai";
 
+vi.mock("obsidian", () => ({
+  requestUrl: vi.fn(),
+  debounce: () => vi.fn(),
+}));
+
 describe("pluginSettingsStore", () => {
-  vi.mock("obsidian", () => ({
-    requestUrl: vi.fn(),
-    debounce: () => vi.fn(),
-  }));
   it("should load default settings when data is undefined", async () => {
     const loadData = async () => undefined;
     const saveData = async (data: unknown) => {};
@@ -38,7 +39,7 @@ describe("pluginSettingsStore", () => {
       openai_apiKey: "test-key",
       openai_ttsModel: "test-model",
       openai_ttsVoice: "test-voice",
-      version: 2,
+      version: 3,
     };
 
     expect(store.settings).toMatchObject(expectedSettings);
@@ -62,7 +63,7 @@ describe("pluginSettingsStore", () => {
       openai_apiKey: baseData.OPENAI_API_KEY,
       openai_ttsModel: baseData.model,
       openai_ttsVoice: baseData.ttsVoice,
-      version: 2,
+      version: 3,
     };
 
     expect(store.settings).toMatchObject(expectedSettings);
@@ -86,7 +87,7 @@ describe("pluginSettingsStore", () => {
       openaicompat_apiBase: baseData.OPENAI_API_URL,
       openaicompat_ttsModel: baseData.model,
       openaicompat_ttsVoice: baseData.ttsVoice,
-      version: 2,
+      version: 3,
     };
 
     expect(store.settings).toMatchObject(expectedSettings);
@@ -117,8 +118,8 @@ describe("pluginSettingsStore", () => {
 
     const store = await pluginSettingsStore(loadData, saveData);
 
-    // Should have v2 structure without legacy shared fields
-    expect(store.settings.version).toBe(2);
+    // Should have v3 structure without legacy shared fields
+    expect(store.settings.version).toBe(3);
     expect(store.settings).not.toHaveProperty("OPENAI_API_KEY");
     expect(store.settings).not.toHaveProperty("OPENAI_API_URL");
     expect(store.settings).not.toHaveProperty("model");
@@ -163,6 +164,87 @@ describe("pluginSettingsStore", () => {
     expect(store.settings.gemini_apiKey).toEqual("new-key");
     expect(store.settings.gemini_ttsModel).toEqual("new-model");
     expect(store.settings.gemini_ttsVoice).toEqual("new-voice");
+  });
+
+  it("backfills docSwitchBehavior when upgrading from v2 settings that predate the field", async () => {
+    // Simulate an older v2 save that had no docSwitchBehavior key at all
+    const { docSwitchBehavior: _omit, ...oldFields } = DEFAULT_SETTINGS;
+    const v2DataWithoutDocSwitch = { ...oldFields, version: 2 };
+    const loadData = async () => v2DataWithoutDocSwitch;
+    const store = await pluginSettingsStore(loadData, async () => {});
+
+    expect(store.settings.docSwitchBehavior).toBe("continue");
+  });
+
+  it("backfills Chatterbox fields with defaults when upgrading from pre-chatterbox v2 settings", async () => {
+    const oldV2 = {
+      version: 2,
+      modelProvider: "openai",
+      openai_apiKey: "key",
+    };
+    const loadData = async () => oldV2;
+    const store = await pluginSettingsStore(loadData, async () => {});
+
+    expect(store.settings.chatterbox_apiBase).toBe("http://localhost:4123");
+    expect(store.settings.chatterbox_exaggeration).toBe(0.45);
+    expect(store.settings.chatterbox_cfgWeight).toBe(0.65);
+    expect(store.settings.chatterbox_temperature).toBe(1.0);
+    expect(store.settings.chatterbox_batchMode).toBe(true);
+    expect(store.settings.audioFolder).toBe("_audio");
+  });
+
+  it("backfills Fish batch-mode fields with defaults when upgrading", async () => {
+    const oldV2 = { version: 2, modelProvider: "fish", fish_apiKey: "key" };
+    const loadData = async () => oldV2;
+    const store = await pluginSettingsStore(loadData, async () => {});
+
+    expect(store.settings.fish_batchMode).toBe(true);
+    expect(store.settings.audioFolder).toBe("_audio");
+  });
+
+  it("backfills MiniMax batch-mode fields with defaults when upgrading", async () => {
+    const oldV2 = {
+      version: 2,
+      modelProvider: "minimax",
+      minimax_apiKey: "key",
+    };
+    const loadData = async () => oldV2;
+    const store = await pluginSettingsStore(loadData, async () => {});
+
+    expect(store.settings.minimax_batchMode).toBe(true);
+    expect(store.settings.audioFolder).toBe("_audio");
+  });
+
+  it("migrates custom per-provider audioFolder to unified audioFolder on upgrade to v3", async () => {
+    const oldV2 = {
+      version: 2,
+      modelProvider: "fish",
+      fish_apiKey: "key",
+      fish_audioFolder: "my-custom-audio",
+    };
+    const loadData = async () => oldV2;
+    const store = await pluginSettingsStore(loadData, async () => {});
+
+    expect(store.settings.audioFolder).toBe("my-custom-audio");
+  });
+
+  it("falls back to chatterbox when a removed provider appears in persisted settings", async () => {
+    const dataWithRemovedProvider = {
+      version: 2,
+      modelProvider: "xtts", // removed provider
+    };
+    const loadData = async () => dataWithRemovedProvider;
+    const store = await pluginSettingsStore(loadData, async () => {});
+
+    expect(store.settings.modelProvider).toBe("chatterbox");
+  });
+
+  it("preserves docSwitchBehavior when already set", async () => {
+    const data = { ...DEFAULT_SETTINGS, docSwitchBehavior: "stop" as const };
+    const loadData = async () => data;
+    const store = await pluginSettingsStore(loadData, async () => {});
+
+    expect(store.settings.docSwitchBehavior).toBe("stop");
   });
 
   it("should save data when updateSettings is called", async () => {

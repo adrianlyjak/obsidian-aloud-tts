@@ -64,6 +64,13 @@ export const MinimaxSettings = observer(
         />
         <MinimaxModelComponent store={store} />
         <MinimaxVoiceComponent store={store} />
+        <CheckboxSetting
+          name="Batch Mode"
+          description="Generate full note audio, save to vault, and embed. Cached by content hash — the same text and voice never costs twice."
+          store={store}
+          provider="minimax"
+          fieldName="minimax_batchMode"
+        />
       </>
     );
   },

@@ -144,11 +144,12 @@ const GeminiVoiceComponent: React.FC<{
 
   const voices = React.useMemo(() => {
     return DEFAULT_GEMINI_VOICES.filter((v) =>
-      v.models.includes(store.settings.gemini_ttsModel as any),
+      (v.models as readonly string[]).includes(store.settings.gemini_ttsModel),
     );
   }, [store.settings.gemini_ttsModel]);
 
   React.useEffect(() => {
+    if (!voices.length) return;
     if (voices.find((v) => v.value === store.settings.gemini_ttsVoice)) {
       return;
     }

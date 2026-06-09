@@ -29,9 +29,12 @@
   min-width: 0;
   width: 100%;
   padding: 0 var(--size-4-3);
-  height: 32px;
+  height: 36px;
   gap: var(--size-4-2);
   align-items: center;
+  background: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+  border-radius: 0;
 }
 
 .tts-toolbar-player-button-group {
@@ -60,6 +63,78 @@
   display: flex;
   overflow: hidden;
   align-items: center;
+  min-width: 0;
+}
+
+/* Wrapper used when visualiser + progress sit side by side */
+.tts-audio-status-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* "X / Y  snippet…" inline progress */
+.tts-track-progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+.tts-track-counter {
+  font-size: var(--font-ui-smaller);
+  color: var(--interactive-accent);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  background: rgba(var(--interactive-accent-rgb, 124, 58, 237), 0.12);
+  padding: 1px 6px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.tts-track-snippet {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  font-style: italic;
+}
+
+.tts-track-paused-icon {
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+.tts-audio-status-paused .tts-track-counter {
+  background: rgba(var(--text-muted-rgb, 100, 100, 100), 0.15);
+  color: var(--text-muted);
+}
+
+/* Divider between button groups */
+.tts-toolbar-player-button-group + .tts-toolbar-player-button-group {
+  padding-left: 6px;
+  border-left: 1px solid var(--background-modifier-border);
+  margin-left: 4px;
+}
+
+/* Make transport buttons slightly larger/bolder */
+.tts-toolbar-player .tts-toolbar-player-button-group .clickable-icon {
+  height: 26px;
+  width: 26px;
+}
+
+/* Active/playing state accent on play-pause icon */
+.tts-toolbar-player .tts-toolbar-button-active {
+  color: var(--interactive-accent) !important;
+  background: rgba(var(--interactive-accent-rgb, 124, 58, 237), 0.12);
+  border-radius: 50%;
 }
 
 .tts-audio-visualizer {
@@ -480,4 +555,170 @@ details[open] .tts-error-details {
   font-size: var(--font-ui-medium);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
+}
+
+/* ─── Cost Estimate Table ────────────────────────────────── */
+
+.tts-cost-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0 8px;
+}
+
+.tts-cost-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 2px 4px;
+  flex-wrap: wrap;
+}
+
+.tts-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.72em;
+  padding: 1px 6px;
+  border-radius: 10px;
+  white-space: nowrap;
+  line-height: 1.6;
+}
+
+.tts-chip-clone {
+  background: color-mix(in srgb, var(--color-purple) 15%, transparent);
+  color: var(--color-purple);
+}
+
+.tts-chip-batch {
+  background: color-mix(in srgb, var(--color-yellow) 20%, transparent);
+  color: color-mix(in srgb, var(--color-yellow) 80%, var(--text-normal));
+}
+
+.tts-cost-charcount {
+  margin-left: auto;
+  font-size: 0.78em;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Individual row */
+.tts-cost-row {
+  display: grid;
+  grid-template-columns: 180px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 80ms ease;
+  border: 1px solid transparent;
+}
+
+.tts-cost-row:hover {
+  background: var(--background-modifier-hover);
+}
+
+.tts-cost-row--active {
+  background: color-mix(in srgb, var(--interactive-accent) 8%, transparent);
+  border-color: color-mix(in srgb, var(--interactive-accent) 30%, transparent);
+}
+
+/* Provider name cell */
+.tts-cost-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.tts-cost-check {
+  width: 14px;
+  font-size: 0.8em;
+  color: var(--interactive-accent);
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.tts-cost-label {
+  font-size: 0.88em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Cost bar cell */
+.tts-cost-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.tts-cost-bar-track {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--background-modifier-border);
+  overflow: hidden;
+  min-width: 40px;
+}
+
+.tts-cost-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 200ms ease;
+}
+
+/* Tier colours for bar fill */
+.tts-tier-free .tts-cost-bar-fill {
+  background: var(--color-green);
+}
+.tts-tier-cheap .tts-cost-bar-fill {
+  background: color-mix(in srgb, var(--color-green) 50%, var(--color-yellow));
+}
+.tts-tier-mid .tts-cost-bar-fill {
+  background: var(--color-yellow);
+}
+.tts-tier-premium .tts-cost-bar-fill {
+  background: var(--color-red);
+}
+
+.tts-cost-price {
+  font-size: 0.82em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  min-width: 52px;
+  text-align: right;
+  color: var(--text-normal);
+}
+
+.tts-cost-unit {
+  font-size: 0.8em;
+  color: var(--text-muted);
+}
+
+.tts-cost-text-cost {
+  font-size: 0.78em;
+  font-variant-numeric: tabular-nums;
+  color: var(--interactive-accent);
+  white-space: nowrap;
+  min-width: 50px;
+  text-align: right;
+}
+
+/* Note cell */
+.tts-cost-note {
+  font-size: 0.75em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.tts-cost-disclaimer {
+  font-size: 0.72em;
+  color: var(--text-faint);
+  padding: 2px 8px 0;
 }

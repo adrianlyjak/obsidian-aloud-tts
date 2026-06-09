@@ -3,13 +3,15 @@ import * as React from "react";
 import { AudioStore } from "open-tts";
 import {
   AudioExportDestination,
+  DocSwitchBehavior,
   ModelProvider,
   PlayerViewMode,
   TTSPluginSettingsStore,
   audioExportDestinations,
+  docSwitchBehaviors,
   isAudioExportDestination,
+  isDocSwitchBehavior,
   isPlayerViewMode,
-  modelProviders,
   playViewModes,
 } from "open-tts";
 import { IconButton, Spinner } from "./IconButton";
@@ -17,6 +19,7 @@ import { Play, Pause } from "lucide-react";
 import { TTSErrorInfoDetails, TTSErrorInfoView } from "./PlayerView";
 import { OptionSelect } from "./settings/option-select";
 import { SettingSection } from "./settings/setting-components";
+import { CostEstimateComponent } from "./settings/CostEstimateComponent";
 import { AzureSettings } from "./settings/providers/provider-azure";
 import { ElevenLabsSettings } from "./settings/providers/provider-elevenlabs";
 import { GeminiSettings } from "./settings/providers/provider-gemini";
@@ -27,6 +30,7 @@ import { MinimaxSettings } from "./settings/providers/provider-minimax";
 import { InworldSettings } from "./settings/providers/provider-inworld";
 import { PollySettings } from "./settings/providers/provider-polly";
 import { FishSettings } from "./settings/providers/provider-fish";
+import { ChatterboxSettings } from "./settings/providers/provider-chatterbox";
 
 const providerSettingsViews: Record<
   ModelProvider,
@@ -42,6 +46,7 @@ const providerSettingsViews: Record<
   openai: OpenAISettings,
   openaicompat: OpenAICompatibleSettings,
   polly: PollySettings,
+  chatterbox: ChatterboxSettings,
 };
 
 export const TTSSettingsTabComponent: React.FC<{
@@ -49,7 +54,12 @@ export const TTSSettingsTabComponent: React.FC<{
   player: AudioStore;
 }> = observer(({ store, player }) => {
   const [isActive, setActive] = React.useState(false);
-  const ProviderSettings = providerSettingsViews[store.settings.modelProvider];
+  const [testText, setTestText] = React.useState(
+    "When the sunlight strikes raindrops in the air, they act as a prism and form a rainbow. The rainbow is a division of white light into many beautiful colors. These take the shape of a long round arch, with its path high above, and its two ends apparently beyond the horizon. There is , according to legend, a boiling pot of gold at one end. People look, but no one ever finds it.",
+  );
+  const ProviderSettings =
+    providerSettingsViews[store.settings.modelProvider] ??
+    providerSettingsViews["openai"];
   return (
     <>
       <ErrorInfoView player={player} />
@@ -59,6 +69,8 @@ export const TTSSettingsTabComponent: React.FC<{
           player={player}
           isActive={isActive}
           setActive={setActive}
+          testText={testText}
+          onTestTextChange={setTestText}
         />
       </SettingSection>
 
@@ -69,9 +81,14 @@ export const TTSSettingsTabComponent: React.FC<{
         <ProviderSettings store={store} />
       </SettingSection>
 
+      <SettingSection title="Cost Comparison">
+        <CostEstimateComponent store={store} testText={testText} />
+      </SettingSection>
+
       <SettingSection title="User Interface">
         <PlayerDisplayMode store={store} />
         <EditorActionButtonToggle store={store} />
+        <DocSwitchBehaviorSetting store={store} />
       </SettingSection>
 
       <SettingSection title="Storage">
@@ -137,15 +154,43 @@ const ErrorInfoView: React.FC<{
   );
 });
 
+const providerGroups = [
+  {
+    label: "Local",
+    providers: ["chatterbox"] as ModelProvider[],
+  },
+  {
+    label: "Cloud",
+    providers: [
+      "openai",
+      "elevenlabs",
+      "fish",
+      "gemini",
+      "hume",
+      "minimax",
+      "inworld",
+    ] as ModelProvider[],
+  },
+  {
+    label: "Enterprise",
+    providers: ["azure", "polly"] as ModelProvider[],
+  },
+  {
+    label: "Custom",
+    providers: ["openaicompat"] as ModelProvider[],
+  },
+];
+
 const labels: Record<ModelProvider, string> = {
   openai: "OpenAI",
-  openaicompat: "OpenAI Compatible (Advanced)",
+  openaicompat: "OpenAI Compatible",
+  chatterbox: "Chatterbox · voice clone (local)",
   azure: "Azure Speech Services",
-  elevenlabs: "ElevenLabs",
+  elevenlabs: "ElevenLabs · voice clone",
   gemini: "Google Gemini",
   hume: "Hume",
   minimax: "MiniMax",
-  fish: "Fish Audio",
+  fish: "Fish Audio · voice clone",
   inworld: "Inworld",
   polly: "AWS Polly",
 };
@@ -155,7 +200,10 @@ const ModelSwitcher: React.FC<{
 }> = observer(({ store }) => {
   return (
     <OptionSelect
-      options={modelProviders.map((v) => ({ label: labels[v], value: v }))}
+      groups={providerGroups.map((g) => ({
+        label: g.label,
+        options: g.providers.map((v) => ({ label: labels[v], value: v })),
+      }))}
       value={store.settings.modelProvider}
       onChange={(v) =>
         store.updateModelSpecificSettings(v as ModelProvider, {})
@@ -246,6 +294,49 @@ const EditorActionButtonToggle: React.FC<{
         >
           <input type="checkbox" tabIndex={0} />
         </div>
+      </div>
+    </div>
+  );
+});
+
+function describeDocSwitchBehavior(b: DocSwitchBehavior): string {
+  switch (b) {
+    case "stop":
+      return "Stop — pause and clear when switching notes";
+    case "continue":
+      return "Continue — keep playing in background";
+    case "auto-play":
+      return "Auto-play — stop and start new note automatically";
+  }
+}
+
+const DocSwitchBehaviorSetting: React.FC<{
+  store: TTSPluginSettingsStore;
+}> = observer(({ store }) => {
+  return (
+    <div className="setting-item">
+      <div className="setting-item-info">
+        <div className="setting-item-name">When Switching Notes</div>
+        <div className="setting-item-description">
+          What to do with audio when you open a different note.
+        </div>
+      </div>
+      <div className="setting-item-control">
+        <select
+          value={store.settings.docSwitchBehavior}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (isDocSwitchBehavior(value)) {
+              store.updateSettings({ docSwitchBehavior: value });
+            }
+          }}
+        >
+          {docSwitchBehaviors.map((b) => (
+            <option key={b} value={b}>
+              {describeDocSwitchBehavior(b)}
+            </option>
+          ))}
+        </select>
       </div>
     </div>
   );
@@ -490,77 +581,78 @@ const TestVoiceComponent: React.FC<{
   player: AudioStore;
   isActive: boolean;
   setActive: React.Dispatch<React.SetStateAction<boolean>>;
-}> = observer(({ store, player, isActive, setActive }) => {
-  const isPlaying = player.activeText?.isPlaying && isActive;
-  const isLoading = player.activeText?.isLoading;
+  testText: string;
+  onTestTextChange: (text: string) => void;
+}> = observer(
+  ({ store, player, isActive, setActive, testText, onTestTextChange }) => {
+    const isPlaying = player.activeText?.isPlaying && isActive;
+    const isLoading = player.activeText?.isLoading;
 
-  const [testText, setTestText] = React.useState(
-    "When the sunlight strikes raindrops in the air, they act as a prism and form a rainbow. The rainbow is a division of white light into many beautiful colors. These take the shape of a long round arch, with its path high above, and its two ends apparently beyond the horizon. There is , according to legend, a boiling pot of gold at one end. People look, but no one ever finds it.",
-  );
-
-  const playSample = React.useCallback(() => {
-    if (!isPlaying) {
-      const text = testText;
-      if (!text.trim()) {
-        return;
+    const playSample = React.useCallback(() => {
+      if (!isPlaying) {
+        const text = testText;
+        if (!text.trim()) {
+          return;
+        }
+        const filename = "sample";
+        player.startPlayer({
+          text,
+          filename,
+          start: 0,
+          end: text.length,
+        });
+        if (!isActive) {
+          setActive(true);
+        }
+      } else {
+        player.activeText?.pause();
       }
-      const filename = "sample";
-      player.startPlayer({
-        text,
-        filename,
-        start: 0,
-        end: text.length,
-      });
-      if (!isActive) {
-        setActive(true);
-      }
-    } else {
-      player.activeText?.pause();
-    }
-  }, [testText, isPlaying, isActive, player, setActive]);
+    }, [testText, isPlaying, isActive, player, setActive]);
 
-  const onTextChange: React.ChangeEventHandler<HTMLTextAreaElement> =
-    React.useCallback((e) => {
-      setTestText(e.target.value);
-    }, []);
+    const onTextChange: React.ChangeEventHandler<HTMLTextAreaElement> =
+      React.useCallback(
+        (e) => onTestTextChange(e.target.value),
+        [onTestTextChange],
+      );
 
-  const canPlay = !!testText.trim();
+    const canPlay = !!testText.trim();
 
-  return (
-    <>
-      <div className="setting-item">
-        <div className="setting-item-info">
-          <div className="setting-item-name">Test Voice</div>
-          <div className="setting-item-description">
-            Test the voice with a custom phrase to see how it sounds.
+    return (
+      <>
+        <div className="setting-item">
+          <div className="setting-item-info">
+            <div className="setting-item-name">Test Voice</div>
+            <div className="setting-item-description">
+              Test the voice with a custom phrase to see how it sounds.
+            </div>
+          </div>
+          <div className="setting-item-control">
+            <button
+              onClick={playSample}
+              disabled={!canPlay && !isPlaying}
+              className="mod-cta"
+            >
+              {isLoading ? (
+                <Spinner style={{ marginRight: "0.5em" }} delay={250} />
+              ) : (
+                <span style={{ marginRight: "0.5em" }}>
+                  {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+                </span>
+              )}
+              {isPlaying ? "Stop" : "Play"}
+            </button>
           </div>
         </div>
-        <div className="setting-item-control">
-          <button
-            onClick={playSample}
-            disabled={!canPlay && !isPlaying}
-            className="mod-cta"
-          >
-            {isLoading ? (
-              <Spinner style={{ marginRight: "0.5em" }} delay={250} />
-            ) : (
-              <span style={{ marginRight: "0.5em" }}>
-                {isPlaying ? <Pause size={16} /> : <Play size={16} />}
-              </span>
-            )}
-            {isPlaying ? "Stop" : "Play"}
-          </button>
+        <div>
+          <textarea
+            className="tts-settings-textarea tts-test-voice-textarea"
+            rows={3}
+            value={testText}
+            onChange={onTextChange}
+            placeholder="Enter text to test..."
+          />
         </div>
-      </div>
-      <div>
-        <textarea
-          className="tts-settings-textarea tts-test-voice-textarea"
-          rows={3}
-          value={testText}
-          onChange={onTextChange}
-          placeholder="Enter text to test..."
-        />
-      </div>
-    </>
-  );
-});
+      </>
+    );
+  },
+);
