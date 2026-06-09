@@ -85,6 +85,14 @@ describe("Fish Audio Model", () => {
 
       expect(result).toBe("Invalid API key");
     });
+
+    it("should report connection failure when the API is unreachable", async () => {
+      vi.mocked(requestUrl).mockRejectedValue(new Error("net::ERR_FAILED"));
+
+      const result = await validateApiKeyFish("any-key");
+
+      expect(result).toBe("Cannot connect to Fish Audio API");
+    });
   });
 
   describe("fishCallTextToSpeech", () => {
@@ -187,6 +195,51 @@ describe("Fish Audio Model", () => {
           httpErrorCode: 422,
         });
       }
+    });
+
+    it("should not call window.fetch for any requests", async () => {
+      // Fish Audio's /v1/tts endpoint returns 401 on CORS preflight, blocking
+      // fetch() in Obsidian's Electron renderer. requestUrl routes through
+      // Obsidian's native layer and bypasses CORS entirely.
+      const fetchSpy = vi.spyOn(global, "fetch");
+      vi.mocked(requestUrl).mockResolvedValue(
+        fishResponse({
+          status: 200,
+          arrayBuffer: new Uint8Array([1, 2, 3]).buffer,
+        }),
+      );
+
+      await fishCallTextToSpeech("Hello world", options, DEFAULT_SETTINGS, {});
+
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it("should proceed normally when an AbortSignal is passed", async () => {
+      // requestUrl does not support AbortSignal; the signal parameter is
+      // accepted for API compatibility but intentionally unused.
+      const audio = new Uint8Array([1, 2, 3]).buffer;
+      vi.mocked(requestUrl).mockResolvedValue(
+        fishResponse({ status: 200, arrayBuffer: audio }),
+      );
+      const controller = new AbortController();
+
+      const result = await fishCallTextToSpeech(
+        "Hello world",
+        options,
+        DEFAULT_SETTINGS,
+        {},
+        controller.signal,
+      );
+
+      expect(new Uint8Array(result.data)).toEqual(new Uint8Array(audio));
+    });
+
+    it("should propagate network errors from requestUrl", async () => {
+      vi.mocked(requestUrl).mockRejectedValue(new Error("net::ERR_FAILED"));
+
+      await expect(
+        fishCallTextToSpeech("Hello world", options, DEFAULT_SETTINGS, {}),
+      ).rejects.toThrow("net::ERR_FAILED");
     });
   });
 
