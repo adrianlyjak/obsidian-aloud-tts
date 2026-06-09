@@ -96,15 +96,44 @@ describe("cleanMarkdown", () => {
   });
 
   it("should remove empty code blocks", () => {
-    const md = "```\n\n```";
-    const cleaned = cleanMarkup(md);
-    expect(cleaned).toEqual("\n");
+    expect(cleanMarkup("```\n\n```")).toEqual("");
   });
 
-  it("should retain just the code content", () => {
+  it("should remove fenced code blocks with content", () => {
+    expect(cleanMarkup("```python\nprint('hello')\n```")).toEqual("");
+  });
+
+  it("should remove fenced code block but keep surrounding text", () => {
+    const md =
+      "Here is some code:\n```js\nconsole.log(1);\n```\nAnd here is more text.";
+    expect(cleanMarkup(md)).toEqual(
+      "Here is some code:\n\nAnd here is more text.",
+    );
+  });
+
+  it("should retain just the code content when not in a fenced block", () => {
     const md = `alert("hello");\n`;
     const cleaned = cleanMarkup(md);
     expect(cleaned).toEqual('alert("hello");\n');
+  });
+
+  it("should simplify bare URLs to domain only", () => {
+    expect(
+      cleanMarkup("See https://github.com/user/package/extra for details"),
+    ).toEqual("See github.com for details");
+  });
+
+  it("should simplify http URLs too", () => {
+    expect(cleanMarkup("Visit http://example.com/path?q=1")).toEqual(
+      "Visit example.com",
+    );
+  });
+
+  it("should not affect already-stripped link text", () => {
+    // markdown link [text](url) → just "text" (url is dropped before URL rule runs)
+    expect(
+      cleanMarkup("visit my [site](https://example.com/path) here"),
+    ).toEqual("visit my site here");
   });
 
   it("should skip Better Bibtex Citekeys", () => {
@@ -284,6 +313,37 @@ Just some text with dashes`;
     ])("%s: preserved", (_label, md, expected) => {
       expect(cleanMarkup(md)).toEqual(expected);
     });
+  });
+
+  it("should resolve Obsidian wiki links [[link]] to link text", () => {
+    expect(cleanMarkup("See [[My Note]] for details")).toEqual(
+      "See My Note for details",
+    );
+  });
+
+  it("should resolve Obsidian wiki links with alias [[link|alias]] to alias", () => {
+    expect(cleanMarkup("See [[My Note|this note]] for details")).toEqual(
+      "See this note for details",
+    );
+  });
+
+  it("should remove Obsidian embeds ![[filename]]", () => {
+    expect(cleanMarkup("Before\n![[image.png]]\nAfter")).toEqual(
+      "Before\n\nAfter",
+    );
+  });
+
+  it("should strip Obsidian inline tags keeping the word", () => {
+    expect(cleanMarkup("A note about #programming and #ai/ml topics")).toEqual(
+      "A note about programming and ai/ml topics",
+    );
+  });
+
+  it("should strip Obsidian callout markers", () => {
+    const md = "> [!NOTE]\n> This is the callout content.";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).not.toContain("[!NOTE]");
+    expect(cleaned).toContain("This is the callout content.");
   });
 
   it("should handle tables by removing markup and preserving content", () => {
