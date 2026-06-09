@@ -27,4 +27,9 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  // Restore real timers if a test used fake timers, then clear any pending
+  // macrotasks so they don't bleed into the next test or surface as unhandled
+  // rejections in vitest 4+.
+  vi.useRealTimers();
+  vi.clearAllTimers();
 });
