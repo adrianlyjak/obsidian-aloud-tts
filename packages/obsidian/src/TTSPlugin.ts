@@ -1,8 +1,15 @@
 import { TTSCodeMirror } from "./TTSCodemirror";
 import { createPlayerSynchronizer } from "@open-tts/ui";
 
-import { Editor, MarkdownView, Notice, Plugin, addIcon } from "obsidian";
-import { REGISTRY } from "open-tts";
+import {
+  Editor,
+  MarkdownView,
+  Notice,
+  Plugin,
+  addIcon,
+  requestUrl,
+} from "obsidian";
+import { REGISTRY, createFishModel, type FishHttpFetch } from "open-tts";
 import { TTSSettingTab } from "./components/TTSPluginSettingsTab";
 import { AudioSink } from "open-tts";
 import { WebAudioSink } from "open-tts/browser";
@@ -292,9 +299,28 @@ export default class TTSPlugin extends Plugin {
   }
 }
 
+// requestUrl bypasses Electron's CORS restrictions in Obsidian's renderer.
+// Fish Audio's /v1/tts endpoint lacks CORS headers, blocking the default fetch.
+const obsidianFishFetch: FishHttpFetch = ({
+  url,
+  method = "GET",
+  headers,
+  body,
+}) =>
+  requestUrl({ url, method, headers, body, throw: false }).then((r) => ({
+    status: r.status,
+    arrayBuffer: r.arrayBuffer,
+    json: r.json as unknown,
+  }));
+
+const OBSIDIAN_REGISTRY = {
+  ...REGISTRY,
+  fish: createFishModel(obsidianFishFetch),
+};
+
 function ProxiedTTSModel(settings: TTSPluginSettings): TTSModel {
   const getModel = () => {
-    return REGISTRY[settings.modelProvider];
+    return OBSIDIAN_REGISTRY[settings.modelProvider];
   };
   return {
     call: (
