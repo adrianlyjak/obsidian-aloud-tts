@@ -147,6 +147,72 @@ describe("audioProcessing", () => {
     });
   });
 
+  describe("parseWavHeader", () => {
+    const createWavBuffer = (format: number, bitDepth: number): ArrayBuffer => {
+      const buffer = new ArrayBuffer(44 + 8); // Header + some dummy data
+      const view = new DataView(buffer);
+
+      // RIFF
+      view.setUint8(0, "R".charCodeAt(0));
+      view.setUint8(1, "I".charCodeAt(0));
+      view.setUint8(2, "F".charCodeAt(0));
+      view.setUint8(3, "F".charCodeAt(0));
+      view.setUint32(4, 36 + 8, true);
+
+      // WAVE
+      view.setUint8(8, "W".charCodeAt(0));
+      view.setUint8(9, "A".charCodeAt(0));
+      view.setUint8(10, "V".charCodeAt(0));
+      view.setUint8(11, "E".charCodeAt(0));
+
+      // fmt
+      view.setUint8(12, "f".charCodeAt(0));
+      view.setUint8(13, "m".charCodeAt(0));
+      view.setUint8(14, "t".charCodeAt(0));
+      view.setUint8(15, " ".charCodeAt(0));
+      view.setUint32(16, 16, true);
+      view.setUint16(20, format, true); // audioFormat
+      view.setUint16(22, 1, true); // channels
+      view.setUint32(24, 44100, true); // sampleRate
+      view.setUint32(28, 44100 * 2, true); // byteRate
+      view.setUint16(32, 2, true); // blockAlign
+      view.setUint16(34, bitDepth, true); // bitDepth
+
+      // data
+      view.setUint8(36, "d".charCodeAt(0));
+      view.setUint8(37, "a".charCodeAt(0));
+      view.setUint8(38, "t".charCodeAt(0));
+      view.setUint8(39, "a".charCodeAt(0));
+      view.setUint32(40, 8, true);
+
+      return buffer;
+    };
+
+    it("should accept format 1 (PCM)", async () => {
+      const { parseWavHeader } = await import("./audioProcessing");
+      const buffer = createWavBuffer(1, 16);
+      const info = parseWavHeader(buffer);
+      expect(info.sampleRate).toBe(44100);
+      expect(info.bitDepth).toBe(16);
+    });
+
+    it("should reject unsupported format (e.g. 2)", async () => {
+      const { parseWavHeader } = await import("./audioProcessing");
+      const buffer = createWavBuffer(2, 16);
+      expect(() => parseWavHeader(buffer)).toThrow(
+        "Unsupported WAV audio format: 2",
+      );
+    });
+
+    it("should accept format 3 (IEEE Float)", async () => {
+      const { parseWavHeader } = await import("./audioProcessing");
+      const buffer = createWavBuffer(3, 32);
+      const info = parseWavHeader(buffer);
+      expect(info.sampleRate).toBe(44100);
+      expect(info.bitDepth).toBe(32);
+    });
+  });
+
   describe("concatenateMp3Buffers", () => {
     const createMockDecodedAudioData = (
       length: number,
