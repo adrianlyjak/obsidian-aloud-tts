@@ -67,9 +67,12 @@ describe("Fish Audio Model", () => {
       expect(fetch).toHaveBeenCalledWith(
         `${FISH_API_URL}/model?page_size=50&page_number=1&sort_by=created_at&self=true`,
         {
+          method: "GET",
           headers: {
             Authorization: "Bearer valid-key",
           },
+          body: undefined,
+          signal: undefined,
         },
       );
     });
@@ -122,6 +125,7 @@ describe("Fish Audio Model", () => {
           mp3_bitrate: 128,
           normalize: true,
         }),
+        signal: undefined,
       });
       expect(new Uint8Array(result.data)).toEqual(new Uint8Array(audio));
       expect(result.format).toBe("mp3");
@@ -260,9 +264,12 @@ describe("Fish Audio Model", () => {
       const voice = await getFishVoice("test-key", "voice-id");
 
       expect(fetch).toHaveBeenCalledWith(`${FISH_API_URL}/model/voice-id`, {
+        method: "GET",
         headers: {
           Authorization: "Bearer test-key",
         },
+        body: undefined,
+        signal: undefined,
       });
       expect(voice.title).toBe("Calm Mystical Narrator");
     });
@@ -271,16 +278,23 @@ describe("Fish Audio Model", () => {
 
 function fishResponse({
   status,
-  json = {},
-  arrayBuffer = new ArrayBuffer(0),
+  json,
+  arrayBuffer,
 }: {
   status: number;
   json?: unknown;
   arrayBuffer?: ArrayBuffer;
 }): Partial<Response> {
+  // defaultFetch reads arrayBuffer and parses JSON from it — encode json when no binary body provided
+  const resolvedBuffer =
+    arrayBuffer !== undefined
+      ? arrayBuffer
+      : json !== undefined
+        ? new TextEncoder().encode(JSON.stringify(json)).buffer
+        : new ArrayBuffer(0);
   return {
     status,
-    json: vi.fn().mockResolvedValue(json),
-    arrayBuffer: vi.fn().mockResolvedValue(arrayBuffer),
+    json: vi.fn().mockResolvedValue(json ?? {}),
+    arrayBuffer: vi.fn().mockResolvedValue(resolvedBuffer),
   };
 }

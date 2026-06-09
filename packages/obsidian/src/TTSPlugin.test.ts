@@ -28,6 +28,7 @@ vi.mock("open-tts", () => ({
   REGISTRY: {
     openai: {},
   },
+  createFishModel: vi.fn(() => ({})),
 }));
 
 vi.mock("open-tts/browser", () => ({

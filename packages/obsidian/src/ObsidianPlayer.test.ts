@@ -4,11 +4,11 @@ import { createTestSettingsStore } from "./test-utils";
 
 // Mock dependencies
 vi.mock("open-tts/browser", () => ({
-  IndexedDBAudioStorage: vi.fn(() => ({
-    getAudio: vi.fn(),
-    saveAudio: vi.fn(),
-    ready: vi.fn(() => Promise.resolve()),
-  })),
+  IndexedDBAudioStorage: class {
+    getAudio = vi.fn();
+    saveAudio = vi.fn();
+    ready = vi.fn(() => Promise.resolve());
+  },
 }));
 
 vi.mock("obsidian", () => ({
