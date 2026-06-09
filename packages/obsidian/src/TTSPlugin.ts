@@ -17,7 +17,13 @@ import {
 } from "open-tts";
 import { ObsidianBridge, ObsidianBridgeImpl } from "./ObsidianBridge";
 import { configurableAudioCache } from "./ObsidianPlayer";
-import { AudioTextContext, TTSModel, TTSModelOptions } from "open-tts";
+import {
+  AudioTextContext,
+  TTSErrorInfo,
+  TTSModel,
+  TTSModelOptions,
+} from "open-tts";
+import * as mobx from "mobx";
 import { TTSEditorAction } from "./TTSEditorAction";
 
 // standard lucide.dev icon, but for some reason not working as a ribbon icon without registering it
@@ -35,6 +41,7 @@ export default class TTSPlugin extends Plugin {
   cache: { destroy: () => void } | undefined;
   editorAction: TTSEditorAction | undefined;
   private _playerSyncDisposer: (() => void) | undefined;
+  private _errorNoticeDisposer: (() => void) | undefined;
 
   get player(): AudioStore {
     return this.system.audioStore;
@@ -57,6 +64,7 @@ export default class TTSPlugin extends Plugin {
             .onClick(async () => {
               await this.bridge.triggerSelection(view.file, editor, {
                 extendShort: true,
+                forceRestart: true,
               });
             });
         });
@@ -249,6 +257,21 @@ export default class TTSPlugin extends Plugin {
       this.player,
       this.bridge,
     );
+
+    // Show a Notice whenever the active track enters an error state so the
+    // user gets a clear signal even if they're not looking at the toolbar.
+    let lastErrorNoticeTime = 0;
+    this._errorNoticeDisposer = mobx.reaction(
+      () => this.player.activeText?.error,
+      (error) => {
+        if (!error) return;
+        // Debounce to at most 1 notice every 5 s (multiple chunks can fail).
+        const now = Date.now();
+        if (now - lastErrorNoticeTime < 5_000) return;
+        lastErrorNoticeTime = now;
+        new Notice(formatTTSError(error), 8000);
+      },
+    );
     this.registerEditorExtension(
       TTSCodeMirror(this.player, this.settings, this.audio, this.bridge),
     );
@@ -257,11 +280,23 @@ export default class TTSPlugin extends Plugin {
     this.addSettingTab(
       new TTSSettingTab(this.app, this, this.settings, this.player),
     );
+
+    // Health check for Chatterbox
+    if (this.settings.settings.modelProvider === "chatterbox") {
+      REGISTRY.chatterbox
+        .validateConnection(this.settings.settings)
+        .then((error) => {
+          if (error) {
+            new Notice(error, 0); // Persistent notice
+          }
+        });
+    }
   }
 
   onunload() {
     this.editorAction?.destroy();
     this._playerSyncDisposer?.();
+    this._errorNoticeDisposer?.();
     this.player?.destroy();
     this.audio?.destroy();
     this.bridge?.destroy();
@@ -313,4 +348,21 @@ function ProxiedTTSModel(settings: TTSPluginSettings): TTSModel {
       return getModel().convertToOptions(settings);
     },
   };
+}
+
+function formatTTSError(error: TTSErrorInfo): string {
+  const detail = error.ttsJsonMessage() ?? error.message;
+  if (error.httpErrorCode === 429) {
+    return `Aloud: Rate limited — waiting before retrying. (${detail})`;
+  }
+  if (error.httpErrorCode === 401 || error.httpErrorCode === 403) {
+    return `Aloud: API key error — ${detail}. Check plugin settings.`;
+  }
+  if (error.httpErrorCode === 404) {
+    return `Aloud: Model not found — ${detail}. Check the model name in settings.`;
+  }
+  if (error.httpErrorCode && error.httpErrorCode >= 500) {
+    return `Aloud: Server error (${error.httpErrorCode}) — ${detail}`;
+  }
+  return `Aloud: Audio generation failed — ${detail}`;
 }

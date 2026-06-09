@@ -15,8 +15,14 @@ import { createRoot, Root } from "react-dom/client";
 import { IsPlaying } from "./components/ObsidianIsPlaying";
 import { AudioStore } from "open-tts";
 import { hashString } from "open-tts";
-import { TTSPluginSettingsStore } from "open-tts";
+import { TTSPluginSettingsStore, TTSPluginSettings } from "open-tts";
 import { TTSEditorBridge } from "@open-tts/ui";
+import { BatchPlayer } from "open-tts";
+import { permanentCacheKey } from "open-tts";
+import { cleanMarkup } from "open-tts";
+import { REGISTRY } from "open-tts";
+import { TTSModelOptions } from "open-tts";
+import { VaultWriter, EmbedMetadata } from "./VaultWriter";
 
 export interface ObsidianBridgeSpecifics {
   activeObsidianEditor: Editor | undefined;
@@ -29,7 +35,7 @@ export interface ObsidianBridge
   triggerSelection: (
     file: TFile | null,
     editor: Editor,
-    options?: { extendShort?: boolean },
+    options?: { extendShort?: boolean; forceRestart?: boolean },
   ) => void;
 }
 
@@ -270,11 +276,36 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
 
   _onFileOpen = () => {
     const f = this.activeEditorView?.file;
-    if (f && f.name !== this.activeFilename) {
-      // if current window was replaced
+    const didSwitchDoc = f != null && f.name !== this.activeFilename;
+
+    if (didSwitchDoc) {
+      // Clear active editor refs for the old note
       this.active = null;
       this.activeEditorView = null;
       this.activeFilename = null;
+
+      const behavior = this.settings.settings.docSwitchBehavior;
+
+      if (behavior === "stop") {
+        // Halt and clear immediately
+        this.audio.closePlayer();
+      } else if (behavior === "continue") {
+        // Keep playing the old note's audio in the background.
+        // Setting detachedAudio=true makes the toolbar float to any focused editor.
+        this.isDetachedAudio = true;
+      } else if (behavior === "auto-play") {
+        // Stop current audio, then auto-start on the newly opened note.
+        this.audio.closePlayer();
+        // Defer one tick so Obsidian finishes rendering the new editor
+        setTimeout(() => {
+          const newView = this.app.workspace.getActiveViewOfType(MarkdownView);
+          if (newView?.editor && newView.file) {
+            this.triggerSelection(newView.file, newView.editor, {
+              forceRestart: true,
+            });
+          }
+        }, 50);
+      }
     }
   };
 
@@ -317,10 +348,10 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     });
   }
 
-  playSelection(): void {
+  playSelection(forceRestart = false): void {
     const focused = this.focusedEditorView;
     if (focused?.editor) {
-      this.triggerSelection(focused.file, focused.editor);
+      this.triggerSelection(focused.file, focused.editor, { forceRestart });
     } else {
       new Notice("Focus a file or select some text first to play");
     }
@@ -330,13 +361,31 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     this.audio.activeText?.onTextChanged(position, type, text);
   }
 
-  triggerSelection(
+  async triggerSelection(
     file: TFile | null,
     editor: Editor,
-    { extendShort }: { extendShort?: boolean } = {},
+    {
+      extendShort,
+      forceRestart,
+    }: { extendShort?: boolean; forceRestart?: boolean } = {},
   ) {
     this._setActiveEditor();
     const player: AudioStore = this.audio;
+
+    // Toggle play/pause when audio is already active for the SAME note.
+    // If audio is detached (background-playing a different note) or forceRestart
+    // is set, fall through and start fresh on the current note.
+    if (!forceRestart && !this.isDetachedAudio && player.activeText) {
+      if (player.activeText.isPlaying) {
+        player.activeText.pause();
+      } else {
+        player.activeText.play();
+      }
+      return;
+    }
+    // Clear detached state so the new session is anchored to this editor
+    this.isDetachedAudio = false;
+    const settings = this.settings.settings;
     const from = editor.getCursor("from");
     let to = editor.getCursor("to");
     let isTooShort = false;
@@ -354,6 +403,133 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
 
     const selection = editor.getRange(from, to);
     if (selection) {
+      // Resolve batch config for providers that support vault caching
+      const batchConfig = resolveBatchConfig(settings);
+
+      // Apply per-note voice override from frontmatter (tts_voice key)
+      let voiceOverride: string | undefined;
+      if (file) {
+        const cache = this.app.metadataCache.getFileCache(file);
+        if (cache?.frontmatter?.tts_voice) {
+          voiceOverride = String(cache.frontmatter.tts_voice);
+        }
+      }
+
+      if (batchConfig && file) {
+        try {
+          const cleanedText = cleanMarkup(selection);
+          if (!cleanedText.trim()) {
+            new Notice("Voice Reader: no readable text found.");
+            return;
+          }
+
+          const options = resolveModelOptions(settings, voiceOverride);
+          const vaultWriter = new VaultWriter(
+            this.app,
+            batchConfig.audioFolder,
+          );
+          const hash = await permanentCacheKey(cleanedText, options);
+          const embedMeta: EmbedMetadata = {
+            provider: settings.modelProvider,
+            model: options.model || settings.modelProvider,
+            voice: options.voice || "default",
+            generatedAt: new Date(),
+            noteTitle: file.basename,
+          };
+
+          if (await vaultWriter.exists(hash)) {
+            await vaultWriter.appendEmbed(
+              file,
+              vaultWriter.getFilePath(hash),
+              embedMeta,
+            );
+            // Start the streaming player so controls work immediately.
+            // Session cache (IndexedDB) serves chunks for free on recent plays;
+            // cold session falls back to API but that's acceptable for replay.
+            player
+              .startPlayer({
+                text: cleanedText,
+                filename: file.path,
+                start: 0,
+                end: cleanedText.length,
+              })
+              .catch(console.error);
+            return;
+          }
+
+          const charCount = cleanedText.length.toLocaleString();
+          const batchPlayer = new BatchPlayer(this.audio.system);
+          const controller = new AbortController();
+
+          const progressNotice = new Notice(
+            `Voice Reader: generating ${charCount} chars…`,
+            0,
+          );
+          // Add a Stop button directly into the notice's DOM
+          const stopBtn = progressNotice.noticeEl.createEl("button", {
+            text: "Stop",
+            cls: "mod-warning",
+          });
+          stopBtn.style.cssText =
+            "display:block;margin-top:6px;width:100%;cursor:pointer;";
+          stopBtn.addEventListener("click", () => {
+            controller.abort();
+            progressNotice.hide();
+            new Notice("Voice Reader: generation stopped.");
+          });
+
+          let audio: Awaited<ReturnType<typeof batchPlayer.generate>>;
+          try {
+            audio = await batchPlayer.generate(
+              cleanedText,
+              options,
+              {
+                onProgress: (p) => {
+                  progressNotice.setMessage(
+                    `Voice Reader: chunk ${p.current} / ${p.total} (${charCount} chars)`,
+                  );
+                  // Re-attach stop button after setMessage replaces innerHTML
+                  if (!progressNotice.noticeEl.contains(stopBtn)) {
+                    progressNotice.noticeEl.appendChild(stopBtn);
+                  }
+                },
+                onError: (err) => {
+                  progressNotice.hide();
+                  new Notice(`Voice Reader error: ${err.message}`);
+                },
+              },
+              controller.signal,
+            );
+          } catch (ex) {
+            if (ex instanceof DOMException && ex.name === "AbortError") {
+              return; // user cancelled — notice already hidden
+            }
+            throw ex;
+          }
+
+          const path = await vaultWriter.save(hash, audio.data);
+          await vaultWriter.appendEmbed(file, path, embedMeta);
+          progressNotice.hide();
+          new Notice(`Voice Reader: ready — ${file.basename}`);
+          // Start streaming playback immediately after generation
+          player
+            .startPlayer({
+              text: cleanedText,
+              filename: file.path,
+              start: 0,
+              end: cleanedText.length,
+            })
+            .catch(console.error);
+        } catch (ex) {
+          if (ex instanceof DOMException && ex.name === "AbortError") return;
+          console.error("Batch generation failed", ex);
+          const msg = ex instanceof Error ? ex.message : String(ex);
+          new Notice(`Voice Reader: generation failed — ${msg}`, 8000);
+        }
+        return;
+      }
+
+      // Fallback to normal streaming player
       try {
         player
           .startPlayer({
@@ -389,6 +565,42 @@ export function isObsidianBridgeSpecifics(
   bridge: TTSEditorBridge,
 ): bridge is TTSEditorBridge & ObsidianBridgeSpecifics {
   return (bridge as any).activeObsidianEditor !== undefined;
+}
+
+interface BatchConfig {
+  audioFolder: string;
+}
+
+/** Returns batch config if the current provider has batch mode enabled, otherwise null. */
+function resolveBatchConfig(settings: TTSPluginSettings): BatchConfig | null {
+  if (
+    settings.modelProvider === "chatterbox" &&
+    settings.chatterbox_batchMode
+  ) {
+    return { audioFolder: settings.audioFolder };
+  }
+  if (settings.modelProvider === "fish" && settings.fish_batchMode) {
+    return { audioFolder: settings.audioFolder };
+  }
+  if (settings.modelProvider === "minimax" && settings.minimax_batchMode) {
+    return { audioFolder: settings.audioFolder };
+  }
+  return null;
+}
+
+/**
+ * Resolves TTSModelOptions for the current provider, applying an optional
+ * per-note voice override from frontmatter (tts_voice).
+ */
+function resolveModelOptions(
+  settings: TTSPluginSettings,
+  voiceOverride?: string,
+): TTSModelOptions {
+  const options = REGISTRY[settings.modelProvider].convertToOptions(settings);
+  if (voiceOverride) {
+    return { ...options, voice: voiceOverride };
+  }
+  return options;
 }
 
 function triggerBrowserDownload(bytes: ArrayBuffer, filename: string): void {

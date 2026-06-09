@@ -712,8 +712,9 @@ const loadCheckLoop = (
   const inner = (): Promise<void> => {
     // TODO - this process is not great between here and the loadCheck.
     // There's been some race conditions related to the current position.
-    const position = nextToLoad(system.audioStore.activeText!, maxBufferAhead);
-    chunkLoader.expireBefore(system.audioStore.activeText!.position);
+    if (!system.audioStore.activeText) return Promise.resolve();
+    const position = nextToLoad(system.audioStore.activeText, maxBufferAhead);
+    chunkLoader.expireBefore(system.audioStore.activeText.position);
     return loadCheck(
       system,
       chunkLoader,

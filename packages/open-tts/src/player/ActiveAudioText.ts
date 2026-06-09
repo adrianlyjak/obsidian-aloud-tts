@@ -6,6 +6,7 @@ import { ChunkPlayer } from "./ChunkPlayer";
 import { onMultiTextChanged } from "./onMultiTextChanged";
 import { TTSErrorInfo } from "../models/tts-model";
 import { AudioText, AudioTextChunk, AudioTextOptions } from "./AudioTextChunk";
+import { frontmatterLength } from "../util/cleanMarkdown";
 
 export interface TextEdit {
   position: number;
@@ -158,14 +159,20 @@ export function buildTrack(
   opts: AudioTextOptions,
   chunkType: "sentence" | "paragraph" = "sentence",
 ): AudioText {
+  // Strip frontmatter before splitting so YAML is never sent to TTS.
+  // Positions must still map to the original document, so advance start by
+  // the exact byte-length of the stripped block.
+  const fmLen = frontmatterLength(opts.text);
+  const textToSplit = fmLen > 0 ? opts.text.slice(fmLen) : opts.text;
+
   const splits =
     chunkType === "sentence"
-      ? splitSentences(opts.text, {
+      ? splitSentences(textToSplit, {
           minLength: opts.minChunkLength ?? 20,
         })
-      : splitParagraphs(opts.text, { maxChunkSize: 1000 });
+      : splitParagraphs(textToSplit, { maxChunkSize: 1000 });
 
-  let start = opts.start;
+  let start = opts.start + fmLen;
   const chunks = [];
   for (const s of splits) {
     const end = start + s.length;

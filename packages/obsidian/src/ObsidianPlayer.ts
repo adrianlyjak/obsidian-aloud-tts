@@ -54,6 +54,9 @@ export function configurableAudioCache(
 
 export function obsidianFileVault(app: App): AudioCache {
   const vault = app.vault;
+  // Ephemeral playback cache — audio is written here during live TTS sessions so
+  // sentences don't need to be re-generated on replay. Hidden from Obsidian's file
+  // explorer (leading dot). Never embedded in notes; separate from _audio/.
   const cachedir = ".tts";
   // Default format reserved for future use when upgrading existing entries
 
