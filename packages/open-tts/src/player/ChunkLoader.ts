@@ -171,13 +171,18 @@ export class ChunkLoader {
     } catch (ex) {
       console.warn("error loading track", ex);
       const errorInfo = ex instanceof TTSErrorInfo ? ex : undefined;
+      const isRateLimit = errorInfo?.httpErrorCode === 429;
+      // Rate-limit errors need fewer but much longer retries (30s, 60s).
+      // Other transient errors use the short exponential backoff (250ms, 500ms…).
+      const effectiveMax = isRateLimit ? Math.min(maxAttempts, 2) : maxAttempts;
       const canRetry =
-        attempt < maxAttempts && (errorInfo ? errorInfo.isRetryable : true);
+        attempt < effectiveMax && (errorInfo ? errorInfo.isRetryable : true);
       if (!canRetry) {
         throw ex;
       } else {
+        const baseMs = isRateLimit ? 30_000 : 250;
         await new Promise((resolve) =>
-          setTimeout(resolve, 250 * Math.pow(2, attempt)),
+          setTimeout(resolve, baseMs * Math.pow(2, attempt)),
         );
         return await this.tryLoadTrack(
           track,

@@ -28,6 +28,19 @@ vi.mock("open-tts", () => ({
   REGISTRY: {
     openai: {},
   },
+  modelProviders: [
+    "chatterbox",
+    "gemini",
+    "fish",
+    "minimax",
+    "inworld",
+    "polly",
+    "azure",
+    "openai",
+    "hume",
+    "elevenlabs",
+    "openaicompat",
+  ],
 }));
 
 vi.mock("open-tts/browser", () => ({

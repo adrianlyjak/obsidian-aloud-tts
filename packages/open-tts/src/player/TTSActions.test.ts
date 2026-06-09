@@ -5,6 +5,7 @@ import {
   TTSPlaybackActionBridge,
 } from "./TTSActions";
 import { AudioStore } from "./AudioStore";
+import { AudioSystem } from "./AudioSystem";
 import { TTSPluginSettingsStore } from "./TTSPluginSettings";
 
 function createMockPlayer(): AudioStore {
@@ -12,6 +13,7 @@ function createMockPlayer(): AudioStore {
     activeText: null,
     autoScrollEnabled: true,
     exportProgress: null,
+    system: {} as AudioSystem,
     startPlayer: vi.fn(),
     closePlayer: vi.fn(),
     exportAudio: vi.fn(),

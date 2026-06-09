@@ -165,7 +165,9 @@ export class TTSEditorAction {
     evt.stopPropagation();
     evt.preventDefault();
 
-    // Desktop/tablets: always just play selection (like old ribbon icon)
+    // Desktop/tablets: route through playSelection → triggerSelection so the
+    // isDetachedAudio check is respected (pressing on a new note starts fresh,
+    // pressing on the same note toggles play/pause).
     if (!this.isMobilePhone) {
       this.actions.playSelection();
       return;
@@ -177,7 +179,7 @@ export class TTSEditorAction {
       return;
     }
 
-    // If playing, show control menu
+    // If active (playing or paused), show control menu
     this.showMenu(evt);
   }
 
