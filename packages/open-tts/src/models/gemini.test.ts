@@ -12,12 +12,12 @@ const mockGenerateContent = vi.fn();
 
 // Mock the Google GenAI module
 vi.mock("@google/genai", () => ({
-  GoogleGenAI: vi.fn(() => ({
-    models: {
+  GoogleGenAI: class {
+    models = {
       list: mockList,
       generateContent: mockGenerateContent,
-    },
-  })),
+    };
+  },
 }));
 
 describe("Gemini Model", () => {
@@ -30,7 +30,7 @@ describe("Gemini Model", () => {
       const testSettings = {
         ...DEFAULT_SETTINGS,
         gemini_apiKey: "test-api-key",
-        gemini_ttsModel: "gemini-2.5-flash",
+        gemini_ttsModel: "gemini-2.5-flash-preview-tts",
         gemini_ttsVoice: "Zephyr",
         gemini_ttsInstructions: "Speak naturally",
       };
@@ -39,7 +39,7 @@ describe("Gemini Model", () => {
 
       expect(options).toEqual({
         apiKey: "test-api-key",
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-preview-tts",
         voice: "Zephyr",
         instructions: "Speak naturally",
       });
@@ -103,7 +103,7 @@ describe("Gemini Model", () => {
       const testSettings = {
         ...DEFAULT_SETTINGS,
         gemini_apiKey: "test-key",
-        gemini_ttsModel: "gemini-2.5-flash",
+        gemini_ttsModel: "gemini-2.5-flash-preview-tts",
         gemini_ttsVoice: "Zephyr",
         gemini_ttsInstructions: "Speak with emotion",
       };
@@ -112,19 +112,17 @@ describe("Gemini Model", () => {
 
       expect(options.instructions).toBe("Speak with emotion");
       expect(options.voice).toBe("Zephyr");
-      expect(options.model).toBe("gemini-2.5-flash");
+      expect(options.model).toBe("gemini-2.5-flash-preview-tts");
     });
   });
 
   describe("Gemini Error Mapping", () => {
     it("should handle ClientError with JSON content", () => {
-      // Create a mock ClientError that mimics the actual error structure
       const error = new Error(
         'got status: 400 . {"error":{"message":"API_KEY_INVALID","status":"INVALID_ARGUMENT"}}',
       );
       error.name = "ClientError";
 
-      // The error should be processed by mapGenAIError in the actual call
       expect(error.message).toContain("got status: 400");
       expect(error.message).toContain("API_KEY_INVALID");
     });
@@ -260,7 +258,7 @@ describe("Gemini Model", () => {
 
       const options = {
         apiKey: "test-key",
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-preview-tts",
         voice: "Zephyr",
         instructions: "Test instructions",
       };
@@ -302,7 +300,7 @@ describe("Gemini Model", () => {
 
       const options = {
         apiKey: "test-key",
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-preview-tts",
         voice: "Zephyr",
         instructions: "Speak with emotion",
       };
@@ -315,11 +313,47 @@ describe("Gemini Model", () => {
       const promptText = callArgs.contents[0].parts[0].text;
 
       expect(promptText).toContain("Speak with emotion");
-      expect(promptText).toContain("Previous text");
       expect(promptText).toContain("Content: Hello world");
       expect(
         callArgs.config.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName,
       ).toBe("Zephyr");
+    });
+
+    it("should not include previous_context in the prompt sent to Gemini TTS", async () => {
+      // Gemini TTS returns INVALID_ARGUMENT when previous_context is present in the prompt:
+      // "Model tried to generate text, but it should only be used for TTS."
+      const mockResponse = {
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  inlineData: {
+                    data: "UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=",
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      };
+      mockGenerateContent.mockResolvedValue(mockResponse);
+
+      const options = {
+        apiKey: "test-key",
+        model: "gemini-2.5-flash-preview-tts",
+        voice: "Zephyr",
+      };
+
+      await geminiCallTextToSpeech("Hello world", options, DEFAULT_SETTINGS, {
+        textBefore: "Previous chunk text",
+      });
+
+      const promptText =
+        mockGenerateContent.mock.calls[0][0].contents[0].parts[0].text;
+      expect(promptText).not.toContain("previous_context");
+      expect(promptText).not.toContain("Previous chunk text");
+      expect(promptText).toContain("Content: Hello world");
     });
 
     it("should construct prompt without context when contextMode is false", async () => {
@@ -342,7 +376,7 @@ describe("Gemini Model", () => {
 
       const options = {
         apiKey: "test-key",
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-preview-tts",
         voice: "Zephyr",
         instructions: "Read clearly",
       };
@@ -382,7 +416,7 @@ describe("Gemini Model", () => {
 
       const options = {
         apiKey: "test-key",
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-preview-tts",
         voice: "Zephyr",
         instructions: "",
       };
@@ -421,7 +455,7 @@ describe("Gemini Model", () => {
 
       const options = {
         apiKey: "test-key",
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-preview-tts",
         voice: "Echo",
         instructions: "Test",
       };
@@ -444,7 +478,7 @@ describe("Gemini Model", () => {
 
       const options = {
         apiKey: "test-key",
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash-preview-tts",
         voice: "Zephyr",
         instructions: "Test",
       };
