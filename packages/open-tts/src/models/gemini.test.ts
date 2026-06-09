@@ -3,7 +3,9 @@ import {
   geminiTextToSpeech,
   validateApiKeyGemini,
   geminiCallTextToSpeech,
+  geminiRateLimiter,
 } from "./gemini";
+import { TTSErrorInfo } from "./tts-model";
 import { DEFAULT_SETTINGS } from "../player/TTSPluginSettings";
 
 // Create mock functions for Google GenAI
@@ -23,6 +25,8 @@ vi.mock("@google/genai", () => ({
 describe("Gemini Model", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset rate limiter so 429 cooldown from one test doesn't block the next
+    geminiRateLimiter.resetCooldown();
   });
 
   describe("convertToOptions", () => {
@@ -486,6 +490,65 @@ describe("Gemini Model", () => {
       await expect(
         geminiCallTextToSpeech("Test", options, DEFAULT_SETTINGS, {}),
       ).rejects.toThrow("Request failed 'INTERNAL'");
+    });
+
+    it("should map ApiError (SDK v2) 429 to RESOURCE_EXHAUSTED with httpErrorCode", async () => {
+      // @google/genai v2+ raises ApiError with .status instead of ClientError with message prefix
+      const error = Object.assign(new Error("Too many requests"), {
+        name: "ApiError",
+        status: 429,
+      });
+      mockGenerateContent.mockRejectedValue(error);
+
+      const options = {
+        apiKey: "k",
+        model: "gemini-2.5-flash-preview-tts",
+        voice: "Zephyr",
+      };
+      try {
+        await geminiCallTextToSpeech("Test", options, DEFAULT_SETTINGS, {});
+        expect.fail("should have thrown");
+      } catch (err) {
+        expect(err).toBeInstanceOf(TTSErrorInfo);
+        const ttsErr = err as TTSErrorInfo;
+        expect(ttsErr.httpErrorCode).toBe(429);
+        expect(ttsErr.isRetryable).toBe(true);
+        expect(ttsErr.status).toBe("RESOURCE_EXHAUSTED");
+      }
+    });
+
+    it("should map ApiError 500 to SERVER_ERROR as retryable", async () => {
+      const error = Object.assign(new Error("Internal"), {
+        name: "ApiError",
+        status: 500,
+      });
+      mockGenerateContent.mockRejectedValue(error);
+
+      const options = { apiKey: "k", model: "gemini-2.5-flash-preview-tts" };
+      try {
+        await geminiCallTextToSpeech("Test", options, DEFAULT_SETTINGS, {});
+      } catch (err) {
+        expect(err).toBeInstanceOf(TTSErrorInfo);
+        expect((err as TTSErrorInfo).httpErrorCode).toBe(500);
+        expect((err as TTSErrorInfo).isRetryable).toBe(true);
+      }
+    });
+
+    it("should map ApiError 403 as non-retryable", async () => {
+      const error = Object.assign(new Error("Forbidden"), {
+        name: "ApiError",
+        status: 403,
+      });
+      mockGenerateContent.mockRejectedValue(error);
+
+      const options = { apiKey: "k", model: "gemini-2.5-flash-preview-tts" };
+      try {
+        await geminiCallTextToSpeech("Test", options, DEFAULT_SETTINGS, {});
+      } catch (err) {
+        expect(err).toBeInstanceOf(TTSErrorInfo);
+        expect((err as TTSErrorInfo).httpErrorCode).toBe(403);
+        expect((err as TTSErrorInfo).isRetryable).toBe(false);
+      }
     });
   });
 });
