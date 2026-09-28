@@ -27,7 +27,8 @@ export type TTSPluginSettings = {
   MinimaxModelConfig &
   FishModelConfig &
   InworldModelConfig &
-  PollyModelConfig);
+  PollyModelConfig &
+  SpeechifyModelConfig);
 
 export interface InworldModelConfig {
   /** the API key to use */
@@ -143,6 +144,15 @@ export interface FishModelConfig {
   fish_sentencePause: FishSentencePause;
 }
 
+export interface SpeechifyModelConfig {
+  /** the API key to use */
+  speechify_apiKey: string;
+  /** the Speechify TTS model to use (simba-3.2 or simba-3.0) */
+  speechify_model: string;
+  /** the Speechify voice id to use */
+  speechify_voice: string;
+}
+
 export interface PollyModelConfig {
   /** AWS Access Key ID */
   polly_accessKeyId: string;
@@ -202,6 +212,7 @@ export const modelProviders = [
   "fish",
   "inworld",
   "polly",
+  "speechify",
 ] as const;
 export type ModelProvider = (typeof modelProviders)[number];
 
@@ -273,6 +284,11 @@ export const DEFAULT_SETTINGS: TTSPluginSettings = {
   polly_region: "us-east-1",
   polly_voiceId: "Joanna",
   polly_engine: "neural",
+
+  // speechify
+  speechify_apiKey: "",
+  speechify_model: "simba-3.2",
+  speechify_voice: "dominic_32",
 
   version: 2,
   audioFolder: "aloud",

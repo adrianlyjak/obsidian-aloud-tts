@@ -11,7 +11,7 @@ The Aloud TTS plugin offers a variety of settings to customize your text-to-spee
 
 These settings control the core behavior of the plugin.
 
--   **TTS Provider**: Choose the text-to-speech service you want to use. Each provider offers different voices and pricing. Supported providers include OpenAI, Google Gemini, ElevenLabs, Fish Audio, Inworld, many other TTS providers, and any OpenAI-compatible API.
+-   **TTS Provider**: Choose the text-to-speech service you want to use. Each provider offers different voices and pricing. Supported providers include OpenAI, Google Gemini, ElevenLabs, Fish Audio, Inworld, Speechify, many other TTS providers, and any OpenAI-compatible API.
 -   **Playback Speed**: Adjust the default playback speed. The default is `1.0x`. This can also be adjusted from the player UI.
 -   **Audio Folder**: The directory in your vault where exported audio files are saved. The default is `aloud/`.
 
@@ -118,3 +118,16 @@ Notes:
 Notes:
 -   Keys are stored locally inside Obsidian's plugin data. For best security, consider using a limited-permission IAM user.
 -   The voice list is loaded from Polly when credentials and region are set.
+
+### Speechify
+
+-   **API Key**: Your Speechify API key from [platform.speechify.ai](https://platform.speechify.ai/api-keys).
+-   **Model**: The Speechify TTS model to use:
+    -   `Simba 3.2` (simba-3.2): Recommended for new English integrations, with the lowest latency.
+    -   `Simba 3.0` (simba-3.0): Multilingual, supporting English, German, Spanish, French, Italian, and Brazilian Portuguese.
+-   **Voice**: The Speechify voice ID to use. The voice list is loaded from the API after entering a valid API key, and is filtered by the selected model.
+
+Notes:
+-   Speechify API access is separate from the Speechify reading app. API keys, usage, and billing are managed at [platform.speechify.ai](https://platform.speechify.ai/).
+-   The free plan includes 500K characters per month. Usage beyond that is billed per character.
+-   Text longer than 2,000 characters is automatically split into multiple requests and joined into a single audio file.

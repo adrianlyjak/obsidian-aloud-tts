@@ -10,6 +10,7 @@ import { minimaxTextToSpeech } from "./minimax";
 import { inworldTextToSpeech } from "./inworld";
 import { pollyTextToSpeech } from "./polly";
 import { fishTextToSpeech } from "./fish";
+import { speechifyTextToSpeech } from "./speechify";
 
 export const REGISTRY: Record<ModelProvider, TTSModel> = {
   openai: openAITextToSpeech,
@@ -22,6 +23,7 @@ export const REGISTRY: Record<ModelProvider, TTSModel> = {
   fish: fishTextToSpeech,
   inworld: inworldTextToSpeech,
   polly: pollyTextToSpeech,
+  speechify: speechifyTextToSpeech,
 };
 
 export function hasNamedVoice(provider: ModelProvider): boolean {
