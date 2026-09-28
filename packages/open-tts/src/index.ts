@@ -9,6 +9,7 @@ export * from "./models/minimax";
 export * from "./models/openai";
 export * from "./models/openai-like";
 export * from "./models/polly";
+export * from "./models/speechify";
 export * from "./models/registry";
 export * from "./models/tts-model";
 export * from "./player/ActiveAudioText";

@@ -27,6 +27,7 @@ import { MinimaxSettings } from "./settings/providers/provider-minimax";
 import { InworldSettings } from "./settings/providers/provider-inworld";
 import { PollySettings } from "./settings/providers/provider-polly";
 import { FishSettings } from "./settings/providers/provider-fish";
+import { SpeechifySettings } from "./settings/providers/provider-speechify";
 
 const providerSettingsViews: Record<
   ModelProvider,
@@ -42,6 +43,7 @@ const providerSettingsViews: Record<
   openai: OpenAISettings,
   openaicompat: OpenAICompatibleSettings,
   polly: PollySettings,
+  speechify: SpeechifySettings,
 };
 
 export const TTSSettingsTabComponent: React.FC<{
@@ -148,6 +150,7 @@ const labels: Record<ModelProvider, string> = {
   fish: "Fish Audio",
   inworld: "Inworld",
   polly: "AWS Polly",
+  speechify: "Speechify",
 };
 
 const ModelSwitcher: React.FC<{
