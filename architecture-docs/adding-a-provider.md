@@ -125,6 +125,7 @@ async function validate200Foo(response: Response) {
 Notes
 - Use `TTSErrorInfo` for HTTP errors so messages render consistently in the UI.
 - If you need to list voices/models, add helpers like `listFooVoices`, `listFooModels`.
+- Use `getHttpFetch()` from `src/util/http.ts` instead of the global `fetch` for provider requests. Obsidian's renderer blocks cross-origin `fetch` unless the API allows `app://obsidian.md`; the plugin routes `getHttpFetch` through Obsidian's `requestUrl` to avoid CORS. Tests can keep mocking `fetch`, since the default implementation delegates to it.
 
 Example: AWS Polly specifics
 - Polly requires AWS Signature Version 4 authentication. In this project we implement a minimal SigV4 signer using WebCrypto to avoid bundling the full AWS SDK, which keeps the plugin light and compatible with Obsidian environments.

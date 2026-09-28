@@ -26,4 +26,5 @@ export * from "./player/onMultiTextChanged";
 export * from "./util/Minhash";
 export * from "./util/audioProcessing";
 export { default as cleanMarkup } from "./util/cleanMarkdown";
+export * from "./util/http";
 export * from "./util/misc";

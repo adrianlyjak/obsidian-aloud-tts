@@ -18,8 +18,10 @@ import {
 import { ObsidianBridge, ObsidianBridgeImpl } from "./ObsidianBridge";
 import { configurableAudioCache } from "./ObsidianPlayer";
 import { AudioTextContext, TTSModel, TTSModelOptions } from "open-tts";
+import { setHttpFetch } from "open-tts";
 import { TTSEditorAction } from "./TTSEditorAction";
 import { DetachedPlayerHost } from "./components/DetachedPlayer";
+import { requestUrlFetch } from "./util/requestUrlFetch";
 
 // standard lucide.dev icon, but for some reason not working as a ribbon icon without registering it
 // https://lucide.dev/icons/audio-lines
@@ -47,6 +49,8 @@ export default class TTSPlugin extends Plugin {
   }
 
   async onload() {
+    // Route provider HTTP requests through requestUrl to avoid CORS limits
+    setHttpFetch(requestUrlFetch);
     await this.loadSettings();
 
     // add right click menu to play selection
