@@ -1,6 +1,11 @@
 import { openDB, DBSchema, IDBPDatabase } from "idb";
 import { AudioCache, hashAudioInputs } from "../player/AudioCache";
-import { AudioData, MediaFormat, TTSModelOptions } from "../models/tts-model";
+import {
+  AudioData,
+  MediaFormat,
+  TTSModelOptions,
+  WordTiming,
+} from "../models/tts-model";
 
 interface AudioCacheDB extends DBSchema {
   audio: {
@@ -8,6 +13,7 @@ interface AudioCacheDB extends DBSchema {
       hash: string;
       blob: Blob;
       format: MediaFormat;
+      wordTimings?: WordTiming[];
     };
     key: string;
   };
@@ -93,7 +99,11 @@ export class IndexedDBAudioStorage implements AudioCache {
       await this.db.put("audioMetadata", { ...metadata, lastread: now });
     }
     return got && buff
-      ? { data: buff, format: got.format ?? ("mp3" as MediaFormat) }
+      ? {
+          data: buff,
+          format: got.format ?? ("mp3" as MediaFormat),
+          wordTimings: got.wordTimings,
+        }
       : null;
   }
   async saveAudio(
@@ -107,6 +117,7 @@ export class IndexedDBAudioStorage implements AudioCache {
       hash,
       blob: new Blob([audio.data]),
       format: audio.format,
+      wordTimings: audio.wordTimings,
     });
     await this.db.put("audioMetadata", {
       hash,

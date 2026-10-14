@@ -130,12 +130,18 @@ export class AudioTextChunk {
     this.audio = audio;
     this.loading = false;
   }
+  /**
+   * @param timelineDuration the chunk's actual length on the playback timeline, when
+   * measured. Can differ slightly from the decoded duration (e.g. mp3 padding), and the
+   * difference adds up over many chunks.
+   */
   setDecodedAudioData(
     decodedAudio: DecodedAudioData,
     timelineStartSeconds: number,
     timelineEpoch: number,
+    timelineDuration: number = decodedAudio.duration,
   ) {
-    const duration = decodedAudio.duration;
+    const duration = timelineDuration;
     this.decodedAudio = decodedAudio;
     this.duration = duration;
     this.timelineEpoch = timelineEpoch;

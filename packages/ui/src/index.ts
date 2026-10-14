@@ -1,5 +1,6 @@
 export * from "./codemirror/TTSCodeMirrorCore";
 export * from "./codemirror/TTSLoadingExtension";
+export * from "./codemirror/TTSWordHighlight";
 export * from "./components/AudioVisualizer";
 export * from "./components/DownloadProgress";
 export * from "./components/EditorActionIcon";
