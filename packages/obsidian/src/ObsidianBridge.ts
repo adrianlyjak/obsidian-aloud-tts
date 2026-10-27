@@ -36,6 +36,7 @@ export interface ObsidianBridge
   playDetached: (text: string, filename?: string) => void;
   playSelection: () => void;
   playClipboard: () => Promise<void>;
+  onEditorClosed: (editor: EditorView) => void;
 }
 
 interface PdfTextItem {
@@ -119,6 +120,7 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
       isDetachedAudio: mobx.observable,
       _setFocusedEditor: mobx.action,
       _setActiveEditor: mobx.action,
+      onEditorClosed: mobx.action,
       _syncActiveViewType: mobx.action,
       _onLayoutChange: mobx.action,
       _onFileOpen: mobx.action,
@@ -281,7 +283,9 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     this.active = this.app.workspace?.activeEditor || null;
     this.activeEditorView =
       this.app.workspace.getActiveViewOfType(MarkdownView);
-    this.activeObsidianEditor = this.activeEditorView?.editor || undefined;
+    // the playing editor, which may be a hover editor rather than the view
+    this.activeObsidianEditor =
+      this.active?.editor || this.activeEditorView?.editor || undefined;
 
     this.activeFilename = this.active?.file?.name || null;
 
@@ -317,6 +321,20 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
       }
     }
   }
+
+  /**
+   * Closes the player when the editor it plays in is destroyed, such as a
+   * closed hover editor, so the next play starts from the focused editor
+   * instead of resuming text that is no longer on screen.
+   */
+  onEditorClosed = (editor: EditorView): void => {
+    if (editor !== this.activeEditor) {
+      return;
+    }
+    this.audio.closePlayer();
+    this.active = null;
+    this.activeObsidianEditor = undefined;
+  };
 
   _onFileOpen = () => {
     this._syncActiveViewType();

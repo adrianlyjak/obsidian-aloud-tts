@@ -1,5 +1,5 @@
 import { Extension } from "@codemirror/state";
-import { EditorView, Panel, showPanel } from "@codemirror/view";
+import { EditorView, Panel, ViewPlugin, showPanel } from "@codemirror/view";
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { AudioSink, AudioStore, TTSPluginSettingsStore } from "open-tts";
@@ -142,6 +142,17 @@ export function TTSCodeMirror(
     showPanel.of((editorView: EditorView) =>
       playerPanel(editorView, player, settings, sink, obsidian),
     ),
+    ViewPlugin.define((view) => ({
+      destroy() {
+        // Also called when extensions are reconfigured. The editor is only
+        // gone if its DOM has been removed once destroying finishes.
+        queueMicrotask(() => {
+          if (!view.dom.isConnected) {
+            obsidian.onEditorClosed(view);
+          }
+        });
+      },
+    })),
     createLoadingSpinnerExtension(loadingWidgetFactory),
   ];
 }
