@@ -408,12 +408,22 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
       return;
     }
 
-    const focused = this.focusedEditorView;
-    if (focused?.editor) {
-      this.triggerSelection(focused.file, focused.editor);
+    const target = this.playTarget();
+    if (target?.editor) {
+      this.triggerSelection(target.file, target.editor);
     } else {
       new Notice("Focus a file or select some text first to play");
     }
+  }
+
+  /**
+   * Obsidian's active editor includes hover popovers and other embedded
+   * editors, which are never the active view. Falls back to the last focused
+   * note when nothing editable is active.
+   */
+  private playTarget(): MarkdownFileInfo | null {
+    const active = this.app.workspace.activeEditor;
+    return active?.editor ? active : this.focusedEditorView;
   }
 
   private getActivePdfView(): PdfFileView | null {
