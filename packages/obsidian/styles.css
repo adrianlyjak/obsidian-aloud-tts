@@ -181,6 +181,8 @@
   display: flex;
   flex-direction: column;
   min-width: 220px;
+  /* Obsidian's .menu caps max-height at 100%, which here is the 24px button */
+  max-height: none;
   padding: var(--size-2-2, 4px);
   background: var(--background-primary, var(--bg-secondary, #252526));
   border: 1px solid
