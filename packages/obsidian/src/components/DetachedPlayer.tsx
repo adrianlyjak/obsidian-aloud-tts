@@ -64,6 +64,7 @@ export const DetachedPlayerView = observer(
     const shouldShow = hasDetachedPlayback || bridge.canPlayDetachedAudio;
     const [isMenuOpen, setIsMenuOpen] = React.useState(false);
     const buttonRef = React.useRef<HTMLButtonElement | null>(null);
+    const menuRef = React.useRef<HTMLDivElement | null>(null);
     const actions = React.useMemo(
       () => createTTSActions(player, settings, bridge),
       [player, settings, bridge],
@@ -81,9 +82,12 @@ export const DetachedPlayerView = observer(
       }
 
       const handleMouseDown = (event: MouseEvent): void => {
+        const target = event.target as Node;
+        // The menu renders beside the status content, not inside it
         if (
           buttonRef.current &&
-          !buttonRef.current.parentElement?.contains(event.target as Node)
+          !buttonRef.current.parentElement?.contains(target) &&
+          !menuRef.current?.contains(target)
         ) {
           setIsMenuOpen(false);
         }
@@ -145,6 +149,7 @@ export const DetachedPlayerView = observer(
         </div>
         {isMenuOpen && hasDetachedPlayback && (
           <div
+            ref={menuRef}
             className="menu tts-detached-player-menu"
             onClick={(event) => event.stopPropagation()}
           >
