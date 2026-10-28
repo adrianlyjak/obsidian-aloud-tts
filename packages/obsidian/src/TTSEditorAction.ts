@@ -1,4 +1,5 @@
 import { MarkdownView, Plugin, WorkspaceLeaf } from "obsidian";
+import type { ItemView } from "obsidian";
 import * as React from "react";
 import { createRoot, Root } from "react-dom/client";
 import { autorun, IReactionDisposer } from "mobx";
@@ -110,7 +111,7 @@ export class TTSEditorAction {
 
   private addToLeaf(leaf: WorkspaceLeaf | null): void {
     const view = leaf?.view;
-    if (!(view instanceof MarkdownView)) return;
+    if (!canHostAction(view)) return;
 
     // Prevent duplicates (leaf can be re-used)
     const container = view.containerEl as HTMLElement;
@@ -229,7 +230,7 @@ export class TTSEditorAction {
   private pruneLeafStates(): void {
     for (const [leaf, state] of this.leafStates) {
       const view = leaf.view;
-      if (!(view instanceof MarkdownView)) {
+      if (!canHostAction(view)) {
         this.disposeLeafState(leaf, state);
         continue;
       }
@@ -248,6 +249,18 @@ export class TTSEditorAction {
     state.root.unmount();
     this.leafStates.delete(leaf);
   }
+}
+
+/**
+ * Notes and PDFs get the action. PDFs play through the status bar player,
+ * which phones and tablets don't show, so this is their only control there.
+ */
+function canHostAction(view: unknown): view is ItemView {
+  return (
+    view instanceof MarkdownView ||
+    (typeof (view as ItemView | undefined)?.getViewType === "function" &&
+      (view as ItemView).getViewType() === "pdf")
+  );
 }
 
 /**
