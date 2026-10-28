@@ -61,6 +61,11 @@ function playerPanel(
 ): Panel {
   const dom = document.createElement("div");
   dom.classList.add("tts-toolbar");
+  // A hover popover's editor closes on any click whose target isn't inside it.
+  // Buttons here re-render on click (pause becomes resume), which detaches the
+  // target before the click reaches the window. Obsidian skips clicks that are
+  // already handled, and none of the toolbar's clicks need a default action.
+  dom.addEventListener("click", (event) => event.preventDefault());
   const root = createRoot(dom);
   root.render(
     React.createElement(ObsidianTooltipProvider, {

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { EditorState } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 import { TTSCodeMirror } from "./TTSCodemirror";
 import {
   createTestAudioStore,
@@ -65,5 +66,26 @@ describe("TTSCodemirror", () => {
     // Just verify the state was created successfully
     expect(state).toBeDefined();
     expect(state.doc.toString()).toBe("Hello world");
+  });
+
+  it("marks toolbar clicks as handled so hover popovers stay open", async () => {
+    const extension = TTSCodeMirror(
+      createTestAudioStore(),
+      await createTestSettingsStore(),
+      new FakeAudioSink(),
+      createMockObsidianBridge() as any,
+    );
+    const view = new EditorView({
+      state: EditorState.create({ doc: "Hello world", extensions: extension }),
+      parent: document.body,
+    });
+    const button = document.createElement("button");
+    view.dom.querySelector(".tts-toolbar")!.appendChild(button);
+
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    button.dispatchEvent(click);
+
+    expect(click.defaultPrevented).toBe(true);
+    view.destroy();
   });
 });
