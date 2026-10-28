@@ -96,6 +96,20 @@ describe("TTSActions", () => {
       actions.playPause();
       expect(play).toHaveBeenCalled();
     });
+
+    it("should start a new playback when the last one finished", () => {
+      const play = vi.fn();
+      player.activeText = {
+        isPlaying: false,
+        position: -1,
+        pause: vi.fn(),
+        play,
+      } as unknown as AudioStore["activeText"];
+
+      actions.playPause();
+      expect(bridge.playSelection).toHaveBeenCalled();
+      expect(play).not.toHaveBeenCalled();
+    });
   });
 
   describe("stop", () => {

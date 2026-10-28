@@ -53,7 +53,9 @@ export function createTTSActions(
 
     playPause(): void {
       const active = player.activeText;
-      if (!active) {
+      // position -1 means the text played to the end and its audio was
+      // cleared, so play() alone would do nothing
+      if (!active || active.position === -1) {
         bridge.playSelection();
       } else if (active.isPlaying) {
         active.pause();
