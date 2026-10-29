@@ -321,9 +321,9 @@ describe("ObsidianBridge", () => {
       await vi.waitFor(() => {
         expect(startPlayer).toHaveBeenCalledWith({
           filename: "sample.pdf",
-          text: "First page\n\nSecond\npage",
+          text: "First page Second page",
           start: 0,
-          end: 23,
+          end: 22,
         });
       });
 
