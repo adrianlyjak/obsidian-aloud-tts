@@ -9,6 +9,7 @@ import {
   Notice,
   Setting,
   TFile,
+  WorkspaceLeaf,
   loadPdfJs,
 } from "obsidian";
 import * as React from "react";
@@ -33,7 +34,7 @@ export interface ObsidianBridge
     editor: Editor,
     options?: { extendShort?: boolean },
   ) => void;
-  playDetached: (text: string, filename?: string) => void;
+  playDetached: (text: string, filename?: string, leaf?: WorkspaceLeaf) => void;
   playSelection: () => void;
   playClipboard: () => Promise<void>;
 }
@@ -67,6 +68,7 @@ interface PdfJs {
 
 type PdfFileView = {
   file: TFile | null;
+  leaf?: WorkspaceLeaf;
   getViewType: () => string;
   containerEl?: HTMLElement;
   contentEl?: HTMLElement;
@@ -85,6 +87,7 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
   isDetachedAudio: boolean = false;
   activeViewType: string | null = null;
   private _playingIconRoot: Root | null = null;
+  private _playingIconEl: HTMLElement | null = null;
   get detachedAudio(): boolean {
     return this.isDetachedAudio;
   }
@@ -285,18 +288,21 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
 
     this.activeFilename = this.active?.file?.name || null;
 
-    this._attachPlayingIconToEditor(this.activeEditorView);
+    this._attachPlayingIcon(this.activeEditorView?.leaf);
   };
 
-  _attachPlayingIconToEditor(editor: MarkdownView | null) {
+  /** Shows the playing icon on the tab of the leaf being played, if any. */
+  _attachPlayingIcon(leaf: WorkspaceLeaf | undefined) {
     // Unmount previous React root before creating a new one
     if (this._playingIconRoot) {
       this._playingIconRoot.unmount();
       this._playingIconRoot = null;
     }
+    this._playingIconEl?.remove();
+    this._playingIconEl = null;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tabElement = (editor?.leaf as any | undefined)?.tabHeaderEl;
+    const tabElement = (leaf as any | undefined)?.tabHeaderEl;
 
     if (tabElement) {
       const inner = tabElement.querySelector(".workspace-tab-header-inner");
@@ -309,11 +315,13 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
           React.createElement(IsPlaying, {
             audio: this.audio,
             bridge: this,
-            editor: this.activeEditor!,
+            // undefined while detached audio plays, which matches activeEditor
+            editor: this.activeEditor,
             className: "tts-toolbar-icon",
           }),
         );
         inner.prepend(iconSpan);
+        this._playingIconEl = iconSpan;
       }
     }
   }
@@ -363,6 +371,8 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
       this._playingIconRoot.unmount();
       this._playingIconRoot = null;
     }
+    this._playingIconEl?.remove();
+    this._playingIconEl = null;
   };
 
   async playClipboard(): Promise<void> {
@@ -379,12 +389,17 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     }
   }
 
-  playDetached(text: string, filename?: string): void {
+  /** `leaf` is the tab being played, such as a PDF view's. */
+  playDetached(text: string, filename?: string, leaf?: WorkspaceLeaf): void {
     if (!text.trim()) {
       new Notice("No text selected to speak");
       return;
     }
     this.isDetachedAudio = true;
+    // the last played note's editor no longer plays this text
+    this.active = null;
+    this.activeObsidianEditor = undefined;
+    this._attachPlayingIcon(leaf);
     void this.audio
       .startPlayer({
         filename: filename || text.slice(0, 20),
@@ -429,14 +444,14 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     }
     const selection = this.getPdfSelection(view);
     if (selection) {
-      this.playDetached(selection, file.path);
+      this.playDetached(selection, file.path, view.leaf);
       return;
     }
 
     try {
       new Notice("Loading PDF text");
       const text = await this.readPdfText(file);
-      this.playDetached(text, file.path);
+      this.playDetached(text, file.path, view.leaf);
     } catch (ex) {
       console.error("Failed to load PDF text", ex);
       new Notice("Failed to load PDF text");
