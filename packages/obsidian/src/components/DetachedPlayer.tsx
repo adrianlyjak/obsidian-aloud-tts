@@ -35,6 +35,7 @@ export class DetachedPlayerHost {
           sink={sink}
           bridge={bridge}
           audioElement={(sink as SinkWithElement).audioElement}
+          statusBarItem={this.container}
         />
       </ObsidianTooltipProvider>,
     );
@@ -52,12 +53,14 @@ export const DetachedPlayerView = observer(
     settings,
     bridge,
     audioElement,
+    statusBarItem,
   }: {
     player: AudioStore;
     settings: TTSPluginSettingsStore;
     sink: AudioSink;
     bridge: ObsidianBridge;
     audioElement?: HTMLAudioElement;
+    statusBarItem?: HTMLElement;
   }): React.ReactNode => {
     const active = player.activeText;
     const hasDetachedPlayback = bridge.detachedAudio && !!active;
@@ -74,6 +77,26 @@ export const DetachedPlayerView = observer(
         setIsMenuOpen(false);
       }
     }, [shouldShow]);
+
+    // The whole status bar item is the click target, waveform included, so it
+    // takes the theme's hover style for clickable status bar items
+    React.useEffect(() => {
+      if (!statusBarItem || !shouldShow) {
+        return;
+      }
+      const forwardClick = (event: MouseEvent): void => {
+        const target = event.target as HTMLElement;
+        if (!target.closest("button, a, .tts-detached-player-menu")) {
+          buttonRef.current?.click();
+        }
+      };
+      statusBarItem.classList.add("mod-clickable");
+      statusBarItem.addEventListener("click", forwardClick);
+      return () => {
+        statusBarItem.classList.remove("mod-clickable");
+        statusBarItem.removeEventListener("click", forwardClick);
+      };
+    }, [statusBarItem, shouldShow]);
 
     React.useEffect(() => {
       if (!isMenuOpen) {

@@ -227,6 +227,44 @@ describe("DetachedPlayerHost", () => {
     expect(document.body.contains(statusBarItem)).toBe(false);
   });
 
+  it("makes the whole status bar item clickable while it shows", async () => {
+    const player = { ...createPlayer(), activeText: null } as AudioStore;
+    const settings = await createTestSettingsStore();
+    const bridge = createMockObsidianBridge();
+    const statusBarItem = document.createElement("div");
+    document.body.appendChild(statusBarItem);
+    const host = new DetachedPlayerHost(
+      statusBarItem,
+      player,
+      settings,
+      createSink(),
+      bridge,
+    );
+    await new Promise((resolve) => setTimeout(resolve));
+
+    // hidden: nothing to hover or click
+    expect(statusBarItem.classList.contains("mod-clickable")).toBe(false);
+
+    host.destroy();
+    const shown = document.createElement("div");
+    document.body.appendChild(shown);
+    const shownHost = new DetachedPlayerHost(
+      shown,
+      player,
+      settings,
+      createSink(),
+      { ...bridge, canPlayDetachedAudio: true },
+    );
+    await screen.findByLabelText("Play PDF audio");
+
+    expect(shown.classList.contains("mod-clickable")).toBe(true);
+    // a click beside the button, such as on its padding or the waveform
+    fireEvent.click(shown);
+    expect(bridge.playSelection).toHaveBeenCalledTimes(1);
+
+    shownHost.destroy();
+  });
+
   it("renders detached controls when playDetached creates active text after host mount", async () => {
     const player = createTestAudioStore();
     const settings = await createTestSettingsStore();
