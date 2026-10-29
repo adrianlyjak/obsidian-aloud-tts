@@ -252,7 +252,9 @@
   max-width: 280px;
 }
 
-.tts-detached-status-button {
+/* Scoped to the container to outrank Obsidian's button:not(.clickable-icon) styles,
+   so the button reads as status bar text rather than a raised button */
+.tts-detached-status-content .tts-detached-status-button {
   display: flex;
   align-items: center;
   gap: var(--size-2-1);
@@ -261,13 +263,16 @@
   padding: 0 var(--size-2-1);
   border: 0;
   background: transparent;
+  box-shadow: none;
   color: var(--text-muted);
   cursor: var(--cursor);
   font: inherit;
 }
 
-.tts-detached-status-button:hover,
-.tts-detached-status-button[aria-expanded="true"] {
+.tts-detached-status-content .tts-detached-status-button:hover,
+.tts-detached-status-content .tts-detached-status-button[aria-expanded="true"] {
+  background: transparent;
+  box-shadow: none;
   color: var(--text-normal);
 }
 
