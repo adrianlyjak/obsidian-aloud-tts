@@ -395,6 +395,95 @@ describe("ObsidianBridge", () => {
       expect(bridge.activeEditor).toBeUndefined();
     });
 
+    describe("closing tabs while a PDF plays", () => {
+      async function playNoteThenPdf() {
+        const noteText = "Note text.";
+        const noteEditor = {
+          cm: {},
+          getCursor: () => ({ line: 0, ch: 0 }),
+          lastLine: () => 0,
+          getLine: () => noteText,
+          getRange: (from: { ch: number }, to: { ch: number }) =>
+            noteText.slice(from.ch, to.ch),
+        };
+        const noteView = {
+          editor: noteEditor,
+          file: { path: "note.md", name: "note.md" },
+          getViewType: () => "markdown",
+        };
+        const noteLeaf = { view: noteView };
+        Object.assign(noteView, { leaf: noteLeaf });
+        const PdfView = FileView as unknown as new (file: unknown) => FileView;
+        const pdfView = new PdfView({ path: "sample.pdf", name: "sample.pdf" });
+        const pdfLeaf = { view: pdfView };
+        Object.assign(pdfView, { leaf: pdfLeaf });
+        let openLeaves: unknown[] = [noteLeaf, pdfLeaf];
+        mockPdfJsText("PDF text.");
+        const mockApp = {
+          workspace: {
+            activeLeaf: noteLeaf,
+            activeEditor: noteView,
+            on: vi.fn(),
+            off: vi.fn(),
+            getActiveViewOfType: vi.fn((): unknown => noteView),
+            getLeavesOfType: (type: string) =>
+              openLeaves.filter(
+                (leaf) => (leaf as typeof noteLeaf).view.getViewType() === type,
+              ),
+            iterateAllLeaves: (callback: (leaf: unknown) => void) =>
+              openLeaves.forEach(callback),
+          },
+          vault: {
+            on: vi.fn(),
+            off: vi.fn(),
+            readBinary: vi.fn(() => Promise.resolve(new ArrayBuffer(8))),
+          },
+        } as any;
+        stubActiveSelection("");
+
+        const audioStore = createTestAudioStore();
+        const startPlayer = vi.spyOn(audioStore, "startPlayer");
+        const settingsStore = await createTestSettingsStore();
+        const bridge = new ObsidianBridgeImpl(
+          mockApp,
+          audioStore,
+          settingsStore,
+        );
+        bridge.triggerSelection(noteView.file as any, noteEditor as any);
+
+        mockApp.workspace.activeLeaf = pdfLeaf;
+        mockApp.workspace.activeEditor = null;
+        mockApp.workspace.getActiveViewOfType = vi.fn(() => null);
+        bridge.playSelection();
+        await vi.waitFor(() => expect(startPlayer).toHaveBeenCalledTimes(2));
+        const pause = vi.spyOn(audioStore.activeText!, "pause");
+
+        const closeTab = (leaf: unknown) => {
+          openLeaves = openLeaves.filter((open) => open !== leaf);
+          mockApp.workspace.on.mock.calls
+            .filter(([name]: [string]) => name === "layout-change")
+            .forEach(([, handler]: [string, () => void]) => handler());
+        };
+        return { closeTab, noteLeaf, pdfLeaf, pause };
+      }
+
+      it("keeps playing when the last played note's tab closes", async () => {
+        const { closeTab, noteLeaf, pause } = await playNoteThenPdf();
+
+        closeTab(noteLeaf);
+
+        expect(pause).not.toHaveBeenCalled();
+      });
+
+      it("pauses when the PDF's own tab closes", async () => {
+        const { closeTab, pdfLeaf, pause } = await playNoteThenPdf();
+
+        closeTab(pdfLeaf);
+
+        expect(pause).toHaveBeenCalled();
+      });
+    });
+
     it("should show a notice when the active PDF view has no file", async () => {
       const PdfView = FileView as unknown as new (file: unknown) => FileView;
       const mockApp = {

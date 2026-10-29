@@ -88,6 +88,8 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
   activeViewType: string | null = null;
   private _playingIconRoot: Root | null = null;
   private _playingIconEl: HTMLElement | null = null;
+  // the tab detached audio plays from, such as a PDF's
+  private _detachedLeaf: WorkspaceLeaf | null = null;
   get detachedAudio(): boolean {
     return this.isDetachedAudio;
   }
@@ -339,6 +341,13 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
 
   _onLayoutChange = () => {
     this._syncActiveViewType();
+    if (this.isDetachedAudio) {
+      // pause detached audio when its own tab closes; clipboard audio has none
+      if (this._detachedLeaf && !this._isLeafOpen(this._detachedLeaf)) {
+        this.audio.activeText?.pause();
+      }
+      return;
+    }
     // pause the current editor when its window closes
     const didMatch = this.app.workspace
       .getLeavesOfType("markdown")
@@ -350,6 +359,14 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
       this.activeFilename = this.active?.file?.name || null;
     }
   };
+
+  private _isLeafOpen(leaf: WorkspaceLeaf): boolean {
+    let open = false;
+    this.app.workspace.iterateAllLeaves((each) => {
+      open ||= each === leaf;
+    });
+    return open;
+  }
 
   _setFocusedEditor = () => {
     this._syncActiveViewType();
@@ -399,6 +416,7 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     // the last played note's editor no longer plays this text
     this.active = null;
     this.activeObsidianEditor = undefined;
+    this._detachedLeaf = leaf || null;
     this._attachPlayingIcon(leaf);
     void this.audio
       .startPlayer({
