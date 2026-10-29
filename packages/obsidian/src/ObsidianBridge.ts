@@ -35,6 +35,7 @@ export interface ObsidianBridge
   ) => void;
   playDetached: (text: string, filename?: string) => void;
   playSelection: () => void;
+  hasOtherTextInFocus: () => boolean;
   playClipboard: () => Promise<void>;
 }
 
@@ -414,6 +415,21 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     } else {
       new Notice("Focus a file or select some text first to play");
     }
+  }
+
+  /** Whether playSelection would play something other than the loaded text. */
+  hasOtherTextInFocus(): boolean {
+    const pdfView = this.getActivePdfView();
+    if (pdfView) {
+      return (
+        !this.isDetachedAudio ||
+        this.audio.activeText?.audio.filename !== pdfView.file?.path
+      );
+    }
+    if (!this.focusedEditor) {
+      return false;
+    }
+    return this.isDetachedAudio || this.focusedEditor !== this.activeEditor;
   }
 
   private getActivePdfView(): PdfFileView | null {

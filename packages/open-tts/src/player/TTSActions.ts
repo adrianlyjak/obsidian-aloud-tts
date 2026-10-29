@@ -3,6 +3,8 @@ import { TTSPluginSettingsStore } from "./TTSPluginSettings";
 
 export interface TTSPlaybackActionBridge {
   playSelection(): void;
+  /** Whether the focused view has text other than the loaded text. */
+  hasOtherTextInFocus?(): boolean;
 }
 
 /**
@@ -12,7 +14,11 @@ export interface TTSPlaybackActionBridge {
 export interface TTSActions {
   // Playback control
   playSelection(): void;
-  playPause(): void;
+  /**
+   * With `followFocus`, plays the focused text instead of resuming paused
+   * text from elsewhere, like a command run from another note.
+   */
+  playPause(options?: { followFocus?: boolean }): void;
   stop(): void;
   next(): void;
   previous(): void;
@@ -51,7 +57,7 @@ export function createTTSActions(
       bridge.playSelection();
     },
 
-    playPause(): void {
+    playPause({ followFocus = false } = {}): void {
       const active = player.activeText;
       // position -1 means the text played to the end and its audio was
       // cleared, so play() alone would do nothing
@@ -59,6 +65,8 @@ export function createTTSActions(
         bridge.playSelection();
       } else if (active.isPlaying) {
         active.pause();
+      } else if (followFocus && bridge.hasOtherTextInFocus?.()) {
+        bridge.playSelection();
       } else {
         active.play();
       }
