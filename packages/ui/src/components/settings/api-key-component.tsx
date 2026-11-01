@@ -1,13 +1,14 @@
 import { observer } from "mobx-react-lite";
 import React from "react";
-import { ModelProvider, TTSPluginSettingsStore } from "open-tts";
+import { ModelProvider, SecretField, TTSPluginSettingsStore } from "open-tts";
+import { SecretPickerContext } from "../../util/SecretPickerContext";
 import { IconButton, TooltipSpan, Spinner } from "../IconButton";
 import { Check, AlertCircle } from "lucide-react";
 
 export interface ApiKeyComponentProps {
   store: TTSPluginSettingsStore;
   provider: ModelProvider;
-  fieldName: keyof TTSPluginSettingsStore["settings"];
+  fieldName: SecretField;
   displayName: string;
   helpUrl?: string;
   helpText?: React.ReactNode;
@@ -25,6 +26,11 @@ export const ApiKeyComponent: React.FC<ApiKeyComponentProps> = observer(
     showValidation = false,
   }) => {
     const [showPassword, setShowPassword] = React.useState(false);
+    const renderSecretPicker = React.useContext(SecretPickerContext);
+    const useSecretPicker = store.usesSecretStore && !!renderSecretPicker;
+    const missing = store.missingSecrets.find(
+      (secret) => secret.field === fieldName,
+    );
 
     let validIcon: string | null = null;
     if (showValidation) {
@@ -70,7 +76,18 @@ export const ApiKeyComponent: React.FC<ApiKeyComponentProps> = observer(
       <div className="setting-item">
         <div className="setting-item-info">
           <div className="setting-item-name">{displayName}</div>
-          <div className="setting-item-description">{description}</div>
+          <div className="setting-item-description">
+            {description}
+            {useSecretPicker && !missing && (
+              <> Kept in Obsidian&apos;s keychain on this device.</>
+            )}
+          </div>
+          {missing && (
+            <div className="setting-item-description tts-secret-missing">
+              The secret &quot;{missing.name}&quot; isn&apos;t on this device.
+              Keychain secrets aren&apos;t synced, so add it here once.
+            </div>
+          )}
         </div>
         <div className="setting-item-control">
           {validIcon &&
@@ -89,24 +106,53 @@ export const ApiKeyComponent: React.FC<ApiKeyComponentProps> = observer(
                 ) : null}
               </TooltipSpan>
             ))}
-          <input
-            type={showPassword ? "text" : "password"}
-            placeholder="API Key"
-            aria-label={displayName}
-            value={store.settings[fieldName] as string}
-            onChange={onChange}
-            className={
-              showValidation && validIcon === "alert-circle"
-                ? "tts-error-input"
-                : ""
-            }
-          />
-          <IconButton
-            icon={showPassword ? "eye-off" : "eye"}
-            onClick={() => setShowPassword(!showPassword)}
-          />
+          {useSecretPicker && renderSecretPicker ? (
+            <SecretPicker
+              render={renderSecretPicker}
+              value={store.settings.secretNames[fieldName] ?? ""}
+              onChange={(name) =>
+                void store.setSecretName(provider, fieldName, name)
+              }
+            />
+          ) : (
+            <>
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="API Key"
+                aria-label={displayName}
+                value={store.settings[fieldName]}
+                onChange={onChange}
+                className={
+                  showValidation && validIcon === "alert-circle"
+                    ? "tts-error-input"
+                    : ""
+                }
+              />
+              <IconButton
+                icon={showPassword ? "eye-off" : "eye"}
+                onClick={() => setShowPassword(!showPassword)}
+              />
+            </>
+          )}
         </div>
       </div>
     );
   },
 );
+
+const SecretPicker: React.FC<{
+  render: NonNullable<React.ContextType<typeof SecretPickerContext>>;
+  value: string;
+  onChange: (name: string | null) => void;
+}> = ({ render, value, onChange }) => {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const onChangeRef = React.useRef(onChange);
+  onChangeRef.current = onChange;
+  React.useEffect(() => {
+    if (!ref.current) {
+      return;
+    }
+    return render(ref.current, value, (name) => onChangeRef.current(name));
+  }, [render, value]);
+  return <div className="tts-secret-picker" ref={ref} />;
+};

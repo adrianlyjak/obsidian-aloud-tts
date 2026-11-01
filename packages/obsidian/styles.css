@@ -541,3 +541,7 @@ details[open] .tts-error-details {
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
+
+.tts-secret-missing {
+  color: var(--text-warning);
+}

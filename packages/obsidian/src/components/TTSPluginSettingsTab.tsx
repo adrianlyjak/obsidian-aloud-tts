@@ -3,7 +3,8 @@ import * as React from "react";
 import { Root, createRoot } from "react-dom/client";
 import { AudioStore } from "open-tts";
 import { TTSPluginSettingsStore } from "open-tts";
-import { TTSSettingsTabComponent } from "@open-tts/ui";
+import { SecretPickerContext, TTSSettingsTabComponent } from "@open-tts/ui";
+import { obsidianSecretPicker } from "../util/keychain";
 import { ObsidianTooltipProvider } from "../util/ObsidianTooltipService";
 
 export class TTSSettingTab extends PluginSettingTab {
@@ -31,10 +32,12 @@ export class TTSSettingTab extends PluginSettingTab {
     this.containerRoot = createRoot(containerEl);
     this.containerRoot.render(
       <ObsidianTooltipProvider>
-        <TTSSettingsTabComponent
-          store={this.settings}
-          player={this.mainPlayer}
-        />
+        <SecretPickerContext.Provider value={obsidianSecretPicker(this.app)}>
+          <TTSSettingsTabComponent
+            store={this.settings}
+            player={this.mainPlayer}
+          />
+        </SecretPickerContext.Provider>
       </ObsidianTooltipProvider>,
     );
   }

@@ -11,6 +11,36 @@ describe("pluginSettingsStore", () => {
     requestUrl: vi.fn(),
     debounce: () => vi.fn(),
   }));
+  it("keeps keys in the keychain: migrated on load, in memory, never saved", async () => {
+    const secrets: Record<string, string> = {};
+    const keychain = {
+      getSecret: (id: string) => secrets[id] ?? null,
+      setSecret: (id: string, value: string) => {
+        secrets[id] = value;
+      },
+      listSecrets: () => Object.keys(secrets),
+    };
+    const saved: unknown[] = [];
+    const store = await pluginSettingsStore(
+      async () => ({
+        ...DEFAULT_SETTINGS,
+        version: 2,
+        openaicompat_apiKey: "sk-or-123",
+      }),
+      async (data) => {
+        saved.push(JSON.parse(JSON.stringify(data)));
+      },
+      keychain,
+    );
+    expect(store.settings.openaicompat_apiKey).toEqual("sk-or-123");
+    expect(secrets).toEqual({ "aloud-openaicompat-api-key": "sk-or-123" });
+    expect(saved.length).toBeGreaterThan(0);
+    await store.updateSettings({ playbackSpeed: 1.5 });
+    for (const data of saved) {
+      expect(JSON.stringify(data)).not.toContain("sk-or-123");
+    }
+  });
+
   it("should load default settings when data is undefined", async () => {
     const loadData = async () => undefined;
     const saveData = async (data: unknown) => {};

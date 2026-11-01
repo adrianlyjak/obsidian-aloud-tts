@@ -8,3 +8,4 @@ export * from "./components/PlayerView";
 export * from "./components/ToolbarOverflowMenu";
 export * from "./components/TTSSettingsTabComponent";
 export * from "./util/TooltipContext";
+export * from "./util/SecretPickerContext";

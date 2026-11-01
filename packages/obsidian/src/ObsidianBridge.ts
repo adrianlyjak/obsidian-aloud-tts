@@ -14,7 +14,7 @@ import {
 import * as React from "react";
 import { createRoot, Root } from "react-dom/client";
 import { IsPlaying } from "./components/ObsidianIsPlaying";
-import { AudioStore } from "open-tts";
+import { AudioStore, missingSecretsFor } from "open-tts";
 import { hashString } from "open-tts";
 import { TTSPluginSettingsStore } from "open-tts";
 import { TTSEditorBridge } from "@open-tts/ui";
@@ -379,7 +379,28 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     }
   }
 
+  /**
+   * Keychain secrets aren't synced, so a key named on another device may be
+   * missing here. Say so up front instead of sending a request that fails.
+   */
+  private blockedByMissingSecret(): boolean {
+    const missing = missingSecretsFor(
+      this.settings.settings.modelProvider,
+      this.settings.missingSecrets,
+    );
+    if (!missing.length) {
+      return false;
+    }
+    new Notice(
+      `Aloud: the keychain secret "${missing[0].name}" isn't on this device. Add it in Aloud's settings.`,
+    );
+    return true;
+  }
+
   playDetached(text: string, filename?: string): void {
+    if (this.blockedByMissingSecret()) {
+      return;
+    }
     if (!text.trim()) {
       new Notice("No text selected to speak");
       return;
@@ -402,6 +423,9 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
   }
 
   playSelection(): void {
+    if (this.blockedByMissingSecret()) {
+      return;
+    }
     const pdfView = this.getActivePdfView();
     if (pdfView) {
       void this.playPdfSelectionOrDocument(pdfView);
