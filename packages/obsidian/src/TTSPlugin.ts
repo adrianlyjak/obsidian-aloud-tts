@@ -9,6 +9,7 @@ import { WebAudioSink } from "open-tts/browser";
 import { AudioStore, loadAudioStore } from "open-tts";
 import { AudioSystem, createAudioSystem } from "open-tts";
 import { ChunkLoader } from "open-tts";
+import { createTTSActions } from "open-tts";
 import {
   MARKETING_NAME,
   TTSPluginSettings,
@@ -138,21 +139,17 @@ export default class TTSPlugin extends Plugin {
     );
 
     // this pause/resumes the current audio, or initiates a new audio if nothing is playing
+    // or the paused audio is from another note than the focused one
     this.addCommand({
       id: "play-pause",
       name: "Play/pause",
       checkCallback: (checking) => {
-        const active = this.player.activeText;
         if (checking) {
           return true;
         }
-        if (!active) {
-          this.bridge.playSelection();
-        } else if (this.player.activeText?.isPlaying) {
-          this.player.activeText?.pause();
-        } else {
-          this.player.activeText?.play();
-        }
+        createTTSActions(this.player, this.settings, this.bridge).playPause({
+          followFocus: true,
+        });
       },
     });
 

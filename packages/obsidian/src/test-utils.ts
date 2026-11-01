@@ -20,6 +20,7 @@ export const createMockObsidianBridge = () => ({
   triggerSelection: vi.fn(),
   playSelection: vi.fn(),
   playDetached: vi.fn(),
+  hasOtherTextInFocus: vi.fn(() => false),
   playClipboard: vi.fn(),
   onTextChanged: vi.fn(),
   openSettings: vi.fn(),

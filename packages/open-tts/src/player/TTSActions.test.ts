@@ -96,6 +96,48 @@ describe("TTSActions", () => {
       actions.playPause();
       expect(play).toHaveBeenCalled();
     });
+
+    it("should start a new playback when the last one finished", () => {
+      const play = vi.fn();
+      player.activeText = {
+        isPlaying: false,
+        position: -1,
+        pause: vi.fn(),
+        play,
+      } as unknown as AudioStore["activeText"];
+
+      actions.playPause();
+      expect(bridge.playSelection).toHaveBeenCalled();
+      expect(play).not.toHaveBeenCalled();
+    });
+
+    it("should play the focused text when following focus away from paused text", () => {
+      const play = vi.fn();
+      player.activeText = {
+        isPlaying: false,
+        pause: vi.fn(),
+        play,
+      } as unknown as AudioStore["activeText"];
+      bridge.hasOtherTextInFocus = () => true;
+
+      actions.playPause({ followFocus: true });
+      expect(bridge.playSelection).toHaveBeenCalled();
+      expect(play).not.toHaveBeenCalled();
+    });
+
+    it("should resume paused text from the player's own controls", () => {
+      const play = vi.fn();
+      player.activeText = {
+        isPlaying: false,
+        pause: vi.fn(),
+        play,
+      } as unknown as AudioStore["activeText"];
+      bridge.hasOtherTextInFocus = () => true;
+
+      actions.playPause();
+      expect(play).toHaveBeenCalled();
+      expect(bridge.playSelection).not.toHaveBeenCalled();
+    });
   });
 
   describe("stop", () => {

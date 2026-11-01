@@ -331,6 +331,92 @@ describe("ObsidianBridge", () => {
       expect(destroy).toHaveBeenCalled();
     });
 
+    describe("hasOtherTextInFocus", () => {
+      function noteView(path: string) {
+        const text = `Text of ${path}.`;
+        const editor = {
+          cm: {},
+          getCursor: () => ({ line: 0, ch: 0 }),
+          lastLine: () => 0,
+          getLine: () => text,
+          getRange: (from: { ch: number }, to: { ch: number }) =>
+            text.slice(from.ch, to.ch),
+        };
+        return {
+          editor,
+          file: { path, name: path },
+          getViewType: () => "markdown",
+        };
+      }
+
+      async function setup() {
+        const mockApp = {
+          workspace: {
+            activeLeaf: null as unknown,
+            activeEditor: null as unknown,
+            on: vi.fn(),
+            off: vi.fn(),
+            getActiveViewOfType: vi.fn((): unknown => null),
+          },
+          vault: {
+            on: vi.fn(),
+            off: vi.fn(),
+            readBinary: vi.fn(() => Promise.resolve(new ArrayBuffer(8))),
+          },
+        } as any;
+        const onLeafChange = () =>
+          mockApp.workspace.on.mock.calls
+            .filter(([name]: [string]) => name === "active-leaf-change")
+            .forEach(([, handler]: [string, () => void]) => handler());
+        const focus = (view: { getViewType(): string }) => {
+          mockApp.workspace.activeLeaf = { view };
+          const isNote = view.getViewType() === "markdown";
+          mockApp.workspace.activeEditor = isNote ? view : null;
+          mockApp.workspace.getActiveViewOfType = vi.fn(() =>
+            isNote ? view : null,
+          );
+          onLeafChange();
+        };
+        const audioStore = createTestAudioStore();
+        const settingsStore = await createTestSettingsStore();
+        const bridge = new ObsidianBridgeImpl(
+          mockApp,
+          audioStore,
+          settingsStore,
+        );
+        return { bridge, audioStore, focus };
+      }
+
+      it("is false on the note that's loaded and true on another note", async () => {
+        const { bridge, focus } = await setup();
+        const first = noteView("first.md");
+        const second = noteView("second.md");
+
+        focus(first);
+        bridge.triggerSelection(first.file as any, first.editor as any);
+        expect(bridge.hasOtherTextInFocus()).toBe(false);
+
+        focus(second);
+        expect(bridge.hasOtherTextInFocus()).toBe(true);
+      });
+
+      it("is false on the PDF that's loaded and true on a note", async () => {
+        const { bridge, audioStore, focus } = await setup();
+        const PdfView = FileView as unknown as new (file: unknown) => FileView;
+        const pdf = new PdfView({ path: "sample.pdf", name: "sample.pdf" });
+        mockPdfJsText("PDF text.");
+        stubActiveSelection("");
+
+        focus(pdf);
+        bridge.playSelection();
+        await vi.waitFor(() => expect(audioStore.activeText).toBeTruthy());
+        expect(bridge.hasOtherTextInFocus()).toBe(false);
+
+        focus(noteView("note.md"));
+        expect(bridge.hasOtherTextInFocus()).toBe(true);
+      });
+    });
+
     it("should show a notice when the active PDF view has no file", async () => {
       const PdfView = FileView as unknown as new (file: unknown) => FileView;
       const mockApp = {
