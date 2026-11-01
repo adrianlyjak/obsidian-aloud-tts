@@ -14,6 +14,7 @@ import {
 import * as React from "react";
 import { createRoot, Root } from "react-dom/client";
 import { IsPlaying } from "./components/ObsidianIsPlaying";
+import { PdfText, buildPdfText, firstVisibleSpan } from "./PdfText";
 import { AudioStore } from "open-tts";
 import { hashString } from "open-tts";
 import { TTSPluginSettingsStore } from "open-tts";
@@ -33,14 +34,9 @@ export interface ObsidianBridge
     editor: Editor,
     options?: { extendShort?: boolean },
   ) => void;
-  playDetached: (text: string, filename?: string) => void;
+  playDetached: (text: string, filename?: string, start?: number) => void;
   playSelection: () => void;
   playClipboard: () => Promise<void>;
-}
-
-interface PdfTextItem {
-  str: string;
-  hasEOL?: boolean;
 }
 
 interface PdfTextContent {
@@ -379,7 +375,8 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     }
   }
 
-  playDetached(text: string, filename?: string): void {
+  /** `start` is where `text` begins in its document, when it's part of one. */
+  playDetached(text: string, filename?: string, start = 0): void {
     if (!text.trim()) {
       new Notice("No text selected to speak");
       return;
@@ -389,8 +386,8 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
       .startPlayer({
         filename: filename || text.slice(0, 20),
         text,
-        start: 0,
-        end: text.length,
+        start,
+        end: start + text.length,
       })
       .catch((ex) => {
         console.error("Couldn't start player!", ex);
@@ -435,8 +432,16 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
 
     try {
       new Notice("Loading PDF text");
-      const text = await this.readPdfText(file);
-      this.playDetached(text, file.path);
+      const pdf = await this.readPdfText(file);
+      // Without a selection, start from the text at the top of the viewer
+      const container = (view.contentEl || view.containerEl)?.querySelector(
+        ".pdf-viewer-container",
+      );
+      const visible =
+        container instanceof HTMLElement ? firstVisibleSpan(container) : null;
+      const start =
+        (visible && pdf.offsetAt(visible.pageNumber, visible.spanIndex)) ?? 0;
+      this.playDetached(pdf.text.slice(start), file.path, start);
     } catch (ex) {
       console.error("Failed to load PDF text", ex);
       new Notice("Failed to load PDF text");
@@ -470,27 +475,17 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     return "";
   }
 
-  private async readPdfText(file: TFile): Promise<string> {
+  private async readPdfText(file: TFile): Promise<PdfText> {
     const pdfjs = (await loadPdfJs()) as PdfJs;
     const data = new Uint8Array(await this.app.vault.readBinary(file));
     const document = await pdfjs.getDocument({ data }).promise;
     try {
-      const pages: string[] = [];
+      const pages: unknown[][] = [];
       for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber++) {
         const page = await document.getPage(pageNumber);
-        const content = await page.getTextContent();
-        const text = content.items
-          .filter(isPdfTextItem)
-          .map((item) => (item.hasEOL ? `${item.str}\n` : item.str))
-          .join(" ")
-          .replace(/[ \t]+\n/g, "\n")
-          .replace(/\n[ \t]+/g, "\n")
-          .trim();
-        if (text) {
-          pages.push(text);
-        }
+        pages.push((await page.getTextContent()).items);
       }
-      return pages.join("\n\n");
+      return buildPdfText(pages);
     } finally {
       await document.destroy?.();
     }
@@ -624,15 +619,6 @@ class ExportDestinationModal extends Modal {
     this.onChoice(choice);
     this.close();
   }
-}
-
-function isPdfTextItem(item: unknown): item is PdfTextItem {
-  return (
-    typeof item === "object" &&
-    item !== null &&
-    "str" in item &&
-    typeof item.str === "string"
-  );
 }
 
 function isPdfFileView(view: unknown): view is PdfFileView {
