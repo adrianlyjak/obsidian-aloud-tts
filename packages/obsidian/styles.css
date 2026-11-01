@@ -252,23 +252,23 @@
   max-width: 280px;
 }
 
-.tts-detached-status-button {
+/* Scoped to the container to outrank Obsidian's button:not(.clickable-icon) styles,
+   so the button reads as status bar text rather than a raised button. The status
+   bar item around it is mod-clickable and takes the theme's hover style. */
+.tts-detached-status-content .tts-detached-status-button,
+.tts-detached-status-content .tts-detached-status-button:hover {
   display: flex;
   align-items: center;
   gap: var(--size-2-1);
   height: 100%;
   max-width: 280px;
-  padding: 0 var(--size-2-1);
+  padding: 0;
   border: 0;
   background: transparent;
-  color: var(--text-muted);
+  box-shadow: none;
+  color: inherit;
   cursor: var(--cursor);
   font: inherit;
-}
-
-.tts-detached-status-button:hover,
-.tts-detached-status-button[aria-expanded="true"] {
-  color: var(--text-normal);
 }
 
 .tts-detached-status-button .svg-icon {
