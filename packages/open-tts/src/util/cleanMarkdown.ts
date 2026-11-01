@@ -37,6 +37,15 @@ export default function cleanMarkup(md: string) {
     .replace(/\[([^\]]*?)\][[(].*?[\])]/g, "$1")
     // remove obsidian links
     .replace(/!\[\[.*?\]\]/g, "")
+    // Speak the alias of aliased wikilinks
+    .replace(/\[\[[^\]|]*\|([^\]]*)\]\]/g, "$1")
+    // Speak the note name (and heading) of plain wikilinks
+    .replace(/\[\[([^\]]*)\]\]/g, (_, target: string) =>
+      target
+        .replace(/#\^.*$/, "")
+        .replace(/^#/, "")
+        .replace("#", ", "),
+    )
     // Remove blockquotes
     .replace(/^(\n)?\s{0,3}>\s?/gm, "$1")
     // .replace(/(^|\n)\s{0,3}>\s?/g, '\n\n')

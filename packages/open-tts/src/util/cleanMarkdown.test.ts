@@ -152,6 +152,43 @@ This is the real content.`;
     expect(cleaned).toEqual("Here is a link  in text");
   });
 
+  it("should speak the alias of an aliased wikilink", () => {
+    const md = "The point is [[Zettels should be atomic|atomicity]] here";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("The point is atomicity here");
+  });
+
+  it("should speak the note name of a plain wikilink", () => {
+    const md = "See [[Zettels should be atomic]] for more";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("See Zettels should be atomic for more");
+  });
+
+  it("should speak the note and heading of a heading wikilink", () => {
+    const md = "See [[Embedded Source#Second Section]] for more";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("See Embedded Source, Second Section for more");
+  });
+
+  it("should not speak the block id of a block wikilink", () => {
+    const md = "See [[Embedded Source#^key-block]] for more";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("See Embedded Source for more");
+  });
+
+  it("should speak only the heading of a same-note heading wikilink", () => {
+    const md = "Jump to [[#Second Section]] below";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("Jump to Second Section below");
+  });
+
+  it("should keep the text between two aliased wikilinks on one line", () => {
+    const md =
+      "[[Zettels should be atomic|first]] and then [[Embedded Source#Second Section|second]]";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("first and then second");
+  });
+
   it("should not remove text that just happens to have dashes", () => {
     const md = `---not frontmatter---
 Just some text with dashes`;
