@@ -541,3 +541,39 @@ details[open] .tts-error-details {
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* Highlights inside rendered markdown (embeds, Reading View), painted with the
+   CSS Highlight API. Colors follow the editor's word and sentence settings. */
+::highlight(tts-rendered-sentence) {
+  background-color: color-mix(
+    in srgb,
+    var(--tts-sentence-color, rgb(var(--color-purple-rgb))) 30%,
+    transparent
+  );
+}
+
+::highlight(tts-rendered-word) {
+  background-color: color-mix(
+    in srgb,
+    var(--tts-word-color, rgb(168, 85, 247)) 55%,
+    transparent
+  );
+}
+
+/* The player at the top of Reading View, above the scrolling note */
+.markdown-reading-view:has(> .tts-reading-toolbar:not(:empty)) {
+  display: flex;
+  flex-direction: column;
+}
+
+.markdown-reading-view
+  > .tts-reading-toolbar:not(:empty)
+  ~ .markdown-preview-view {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.tts-reading-toolbar:not(:empty) {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--background-modifier-border);
+}

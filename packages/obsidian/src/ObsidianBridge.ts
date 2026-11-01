@@ -14,7 +14,13 @@ import {
 import * as React from "react";
 import { createRoot, Root } from "react-dom/client";
 import { IsPlaying } from "./components/ObsidianIsPlaying";
-import { AudioStore } from "open-tts";
+import { AudioStore, expandEmbeds } from "open-tts";
+import { readEmbed } from "./util/readEmbed";
+import {
+  firstVisibleOffset,
+  isReadingView,
+  selectedSourceRange,
+} from "./reading/readingSections";
 import { hashString } from "open-tts";
 import { TTSPluginSettingsStore } from "open-tts";
 import { TTSEditorBridge } from "@open-tts/ui";
@@ -409,7 +415,9 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     }
 
     const focused = this.focusedEditorView;
-    if (focused?.editor) {
+    if (focused && isReadingView(focused)) {
+      this.triggerReadingSelection(focused);
+    } else if (focused?.editor) {
       this.triggerSelection(focused.file, focused.editor);
     } else {
       new Notice("Focus a file or select some text first to play");
@@ -524,24 +532,56 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
 
     const selection = editor.getRange(from, to);
     if (selection) {
-      try {
-        player
-          .startPlayer({
-            text: selection,
-            filename:
-              [file?.path, file?.name].filter((x) => x).join("/") || "Untitled",
-            start,
-            end: start + selection.length,
-          })
-          .catch((ex) => {
-            console.error("Couldn't start player!", ex);
-          });
-      } catch (ex) {
-        console.error("Couldn't start player!", ex);
-      }
+      this.startTrack(player, file, selection, start);
     } else {
       new Notice("No text selected to speak");
     }
+  }
+
+  /**
+   * Plays from Reading View: the selected text, or else from the first section
+   * on screen to the end of the note.
+   */
+  triggerReadingSelection(view: MarkdownView) {
+    this._setActiveEditor();
+    const source = view.data;
+    const selected = selectedSourceRange(view, source);
+    const start = selected?.start ?? firstVisibleOffset(view);
+    const end = selected?.end ?? source.length;
+    const text = source.slice(start, end);
+    if (text.trim()) {
+      this.startTrack(this.audio, view.file, text, start);
+    } else {
+      new Notice("No text to speak");
+    }
+  }
+
+  /** Resolves the text's embeds, then starts playing it from `start` in the file */
+  private startTrack(
+    player: AudioStore,
+    file: TFile | null,
+    text: string,
+    start: number,
+  ) {
+    const sourcePath = file?.path ?? "";
+    expandEmbeds(text, (link) => readEmbed(this.app, link, sourcePath))
+      .catch((ex) => {
+        console.error("Couldn't read embedded notes", ex);
+        return [];
+      })
+      .then((embeds) =>
+        player.startPlayer({
+          text,
+          filename:
+            [file?.path, file?.name].filter((x) => x).join("/") || "Untitled",
+          start,
+          end: start + text.length,
+          embeds,
+        }),
+      )
+      .catch((ex) => {
+        console.error("Couldn't start player!", ex);
+      });
   }
 
   openSettings(): void {

@@ -1,5 +1,10 @@
 import type { TTSPluginSettings } from "../player/TTSPluginSettings";
 import type { AudioData } from "./tts-model";
+import { base64ToArrayBuffer } from "../util/misc";
+import {
+  CharacterAlignment,
+  wordTimingsFromAlignment,
+} from "../util/wordTiming";
 import {
   AudioTextContext,
   ErrorMessage,
@@ -37,7 +42,8 @@ export async function validateApiKeyElevenLabs(
   } catch (error) {
     if (error instanceof TTSErrorInfo) {
       if (error.httpErrorCode === 401) {
-        return "Invalid API key";
+        const message = error.ttsJsonMessage();
+        return message?.includes("permission") ? message : "Invalid API key";
       } else if (error.httpErrorCode !== undefined) {
         return `HTTP error code ${error.httpErrorCode}: ${error.ttsJsonMessage() || error.message}`;
       } else {
@@ -102,7 +108,7 @@ export async function elevenLabsCallTextToSpeech(
   }
 
   const response = await fetch(
-    `${ELEVENLABS_API_URL}/v1/text-to-speech/${options.voice}?output_format=mp3_44100_128`,
+    `${ELEVENLABS_API_URL}/v1/text-to-speech/${options.voice}/with-timestamps?output_format=mp3_44100_128`,
     {
       method: "POST",
       headers: {
@@ -115,8 +121,17 @@ export async function elevenLabsCallTextToSpeech(
   );
 
   await validate200ElevenLabs(response);
-  const buf = await response.arrayBuffer();
-  return { data: buf, format: "mp3" };
+  const body: {
+    audio_base64: string;
+    alignment?: CharacterAlignment | null;
+  } = await response.json();
+  return {
+    data: base64ToArrayBuffer(body.audio_base64),
+    format: "mp3",
+    wordTimings: body.alignment
+      ? wordTimingsFromAlignment(body.alignment)
+      : undefined,
+  };
 }
 
 export type ElevenLabsVoice = {
@@ -172,10 +187,12 @@ export async function listElevenLabsModels(
   await validate200ElevenLabs(response);
   const data = await response.json();
 
-  return data.map((model: any) => ({
-    id: model.model_id,
-    name: model.name,
-  }));
+  return data
+    .filter((model: any) => model.can_do_text_to_speech !== false)
+    .map((model: any) => ({
+      id: model.model_id,
+      name: model.name,
+    }));
 }
 
 async function validate200ElevenLabs(response: Response) {

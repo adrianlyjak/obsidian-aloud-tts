@@ -6,11 +6,13 @@ import {
   ModelProvider,
   PlayerViewMode,
   TTSPluginSettingsStore,
+  WordHighlightAnimation,
   audioExportDestinations,
   isAudioExportDestination,
   isPlayerViewMode,
   modelProviders,
   playViewModes,
+  wordHighlightAnimations,
 } from "open-tts";
 import { IconButton, Spinner } from "./IconButton";
 import { Play, Pause } from "lucide-react";
@@ -27,6 +29,7 @@ import { MinimaxSettings } from "./settings/providers/provider-minimax";
 import { InworldSettings } from "./settings/providers/provider-inworld";
 import { PollySettings } from "./settings/providers/provider-polly";
 import { FishSettings } from "./settings/providers/provider-fish";
+import { KokoroSettings } from "./settings/providers/provider-kokoro";
 
 const providerSettingsViews: Record<
   ModelProvider,
@@ -37,6 +40,7 @@ const providerSettingsViews: Record<
   gemini: GeminiSettings,
   hume: HumeSettings,
   inworld: InworldSettings,
+  kokoro: KokoroSettings,
   minimax: MinimaxSettings,
   fish: FishSettings,
   openai: OpenAISettings,
@@ -72,6 +76,10 @@ export const TTSSettingsTabComponent: React.FC<{
       <SettingSection title="User Interface">
         <PlayerDisplayMode store={store} />
         <EditorActionButtonToggle store={store} />
+      </SettingSection>
+
+      <SettingSection title="Playback Highlighting">
+        <HighlightSettings store={store} />
       </SettingSection>
 
       <SettingSection title="Storage">
@@ -148,6 +156,7 @@ const labels: Record<ModelProvider, string> = {
   fish: "Fish Audio",
   inworld: "Inworld",
   polly: "AWS Polly",
+  kokoro: "Kokoro (Self-Hosted)",
 };
 
 const ModelSwitcher: React.FC<{
@@ -223,6 +232,109 @@ const PlayerDisplayMode: React.FC<{
     </div>
   );
 });
+
+const animationLabels: Record<WordHighlightAnimation, string> = {
+  sweep: "Sweep",
+  pop: "Pop",
+  glow: "Glow",
+  underline: "Underline",
+  none: "None",
+};
+
+const HighlightSettings: React.FC<{
+  store: TTSPluginSettingsStore;
+}> = observer(({ store }) => {
+  const { settings } = store;
+  return (
+    <>
+      <div className="setting-item">
+        <div className="setting-item-info">
+          <div className="setting-item-name">Highlight Spoken Word</div>
+          <div className="setting-item-description">
+            Highlight each word as it is spoken. ElevenLabs uses exact word
+            timings; other providers use an estimate.
+          </div>
+        </div>
+        <div className="setting-item-control">
+          <div
+            className={`checkbox-container${settings.highlightWords ? " is-enabled" : ""}`}
+            onClick={() =>
+              store.updateSettings({ highlightWords: !settings.highlightWords })
+            }
+          >
+            <input type="checkbox" tabIndex={0} />
+          </div>
+        </div>
+      </div>
+      <ColorSetting
+        name="Word Color"
+        description="The color of the word currently being spoken."
+        value={settings.highlightWordColor}
+        fallback="#a855f7"
+        onChange={(highlightWordColor) =>
+          store.updateSettings({ highlightWordColor })
+        }
+      />
+      <ColorSetting
+        name="Sentence Color"
+        description="The color of the sentence currently being spoken. The rest of the selection uses a lighter shade."
+        value={settings.highlightSentenceColor}
+        fallback="#800080"
+        onChange={(highlightSentenceColor) =>
+          store.updateSettings({ highlightSentenceColor })
+        }
+      />
+      <div className="setting-item">
+        <div className="setting-item-info">
+          <div className="setting-item-name">Word Animation</div>
+          <div className="setting-item-description">
+            How the highlight moves onto each new word.
+          </div>
+        </div>
+        <div className="setting-item-control">
+          <OptionSelect
+            options={wordHighlightAnimations.map((value) => ({
+              label: animationLabels[value],
+              value,
+            }))}
+            value={settings.highlightWordAnimation}
+            onChange={(value) =>
+              store.updateSettings({
+                highlightWordAnimation: value as WordHighlightAnimation,
+              })
+            }
+          />
+        </div>
+      </div>
+    </>
+  );
+});
+
+const ColorSetting: React.FC<{
+  name: string;
+  description: string;
+  value: string;
+  fallback: string;
+  onChange: (value: string) => void;
+}> = ({ name, description, value, fallback, onChange }) => {
+  return (
+    <div className="setting-item">
+      <div className="setting-item-info">
+        <div className="setting-item-name">{name}</div>
+        <div className="setting-item-description">{description}</div>
+      </div>
+      <div className="setting-item-control">
+        {value && <button onClick={() => onChange("")}>Reset to theme</button>}
+        <input
+          type="color"
+          aria-label={name}
+          value={value || fallback}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      </div>
+    </div>
+  );
+};
 
 const EditorActionButtonToggle: React.FC<{
   store: TTSPluginSettingsStore;

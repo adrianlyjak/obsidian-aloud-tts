@@ -1,4 +1,5 @@
 import { TTSCodeMirror } from "./TTSCodemirror";
+import { ReadingViewSupport } from "./reading/ReadingViewSupport";
 import { createPlayerSynchronizer } from "@open-tts/ui";
 
 import { MarkdownView, Plugin, addIcon } from "obsidian";
@@ -30,6 +31,7 @@ addIcon(
 
 export default class TTSPlugin extends Plugin {
   settings: TTSPluginSettingsStore;
+  readingView?: ReadingViewSupport;
 
   system: AudioSystem;
   bridge: ObsidianBridge;
@@ -253,6 +255,13 @@ export default class TTSPlugin extends Plugin {
     this.registerEditorExtension(
       TTSCodeMirror(this.player, this.settings, this.audio, this.bridge),
     );
+    this.readingView = new ReadingViewSupport(
+      this.app,
+      this.player,
+      this.settings,
+      this.audio,
+      this.bridge,
+    );
 
     // This adds a settings tab so the user can configure various aspects of the plugin
     this.addSettingTab(
@@ -261,6 +270,7 @@ export default class TTSPlugin extends Plugin {
   }
 
   onunload() {
+    this.readingView?.destroy();
     this.detachedPlayerHost?.destroy();
     this.editorAction?.destroy();
     this._playerSyncDisposer?.();

@@ -11,9 +11,22 @@ The Aloud TTS plugin offers a variety of settings to customize your text-to-spee
 
 These settings control the core behavior of the plugin.
 
--   **TTS Provider**: Choose the text-to-speech service you want to use. Each provider offers different voices and pricing. Supported providers include OpenAI, Google Gemini, ElevenLabs, Fish Audio, Inworld, many other TTS providers, and any OpenAI-compatible API.
+-   **TTS Provider**: Choose the text-to-speech service you want to use. Each provider offers different voices and pricing. Supported providers include OpenAI, Google Gemini, ElevenLabs, Fish Audio, Inworld, self-hosted Kokoro, many other TTS providers, and any OpenAI-compatible API.
 -   **Playback Speed**: Adjust the default playback speed. The default is `1.0x`. This can also be adjusted from the player UI.
 -   **Audio Folder**: The directory in your vault where exported audio files are saved. The default is `aloud/`.
+
+## Playback Highlighting
+
+These settings control how text is highlighted while it is read aloud.
+
+-   **Highlight Spoken Word**: Highlight each word as it is spoken, in addition to the current sentence. ElevenLabs and Kokoro provide exact word timings; for other providers the timing is estimated from the length of each word.
+-   **Word Color**: The color of the word being spoken. Leave it unset to use the theme default.
+-   **Sentence Color**: The color of the sentence being spoken. The rest of the text being read uses a lighter shade of the same color. Leave it unset to use the theme default.
+-   **Word Animation**: How the highlight moves onto each new word:
+    -   `Sweep` (default): fills the word from left to right, paced to how long the word is spoken.
+    -   `Pop`, `Glow`, `Underline`, or `None`.
+
+Animations are turned off when your system has "reduce motion" enabled.
 
 ## Cache Settings
 
@@ -53,6 +66,15 @@ Each TTS provider has its own specific settings. You only need to configure the 
     -   `Max Quality` (inworld-tts-1-max)
 -   **Voice**: The Inworld voice to use. The voice list is loaded from the API after entering a valid API key.
 
+### Kokoro (Self-Hosted)
+
+-   **Server URL**: The address of your [Kokoro-FastAPI](https://github.com/remsky/Kokoro-FastAPI) server, e.g. `http://localhost:8880`. No API key is needed.
+-   **Voice**: The Kokoro voice to use. The voice list is loaded from the server. The prefix shows the language and gender, e.g. `af_` = American English female, `bm_` = British English male.
+
+Notes:
+-   Audio is requested from the server's `/dev/captioned_speech` endpoint, which also returns word timestamps used for word highlighting.
+-   The server must be reachable from the device running Obsidian.
+
 ### OpenAI-Compatible API
 
 For users who self-host a TTS service or use a third-party provider with an OpenAI-compatible API.
@@ -65,7 +87,7 @@ For users who self-host a TTS service or use a third-party provider with an Open
 ### ElevenLabs
 
 -   **API Key**: Your API key from [ElevenLabs](https://elevenlabs.io/app/settings/api-keys).
--   **Model**: One of the supported ElevenLabs TTS models (e.g., `eleven_multilingual_v2`, `eleven_flash_v2.5`).
+-   **Model**: One of the supported ElevenLabs TTS models. The list is loaded from the API; `eleven_v4` (Eleven v4, the default) and `eleven_v4_turbo` (Eleven v4 Turbo, lower latency) are recommended. Older models such as `eleven_multilingual_v2` and `eleven_flash_v2_5` remain available.
 -   **Voice**: The ElevenLabs voice ID to use.
 -   **Stability**: Controls how stable/consistent the voice is (0–1).
 -   **Similarity Boost**: Controls how closely the output matches the base voice (0–1).

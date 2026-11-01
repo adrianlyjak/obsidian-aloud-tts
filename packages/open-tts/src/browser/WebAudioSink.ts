@@ -1,5 +1,10 @@
 import * as mobx from "mobx";
-import { AudioSink, DecodedAudioData, TrackStatus } from "../player/AudioSink";
+import {
+  AppendedMediaRange,
+  AudioSink,
+  DecodedAudioData,
+  TrackStatus,
+} from "../player/AudioSink";
 import { CancellablePromise } from "../player/CancellablePromise";
 
 type WindowWithManagedMediaSource = Window & {
@@ -156,18 +161,22 @@ export class WebAudioSink implements AudioSink {
     this._updateTrackStatus();
   }
 
-  async appendMedia(data: ArrayBuffer): Promise<void> {
+  async appendMedia(data: ArrayBuffer): Promise<AppendedMediaRange | void> {
     await onceBuffUpdateEnd(this._sourceBuffer);
     const buffered = this._sourceBuffer.buffered;
     if (buffered.length > 0) {
       this._sourceBuffer.timestampOffset = buffered.end(buffered.length - 1);
       await onceBuffUpdateEnd(this._sourceBuffer);
     }
+    const start = this._sourceBuffer.timestampOffset;
     this._sourceBuffer.appendBuffer(data);
     await onceBuffUpdateEnd(this._sourceBuffer);
+    const after = this._sourceBuffer.buffered;
+    const end = after.length > 0 ? after.end(after.length - 1) : undefined;
     await this._evictOldBufferData();
     this.loopCheckCompletion();
     this._updateTrackStatus();
+    return end !== undefined && end > start ? { start, end } : undefined;
   }
 
   private static readonly MAX_BUFFER_BEHIND_SECS = 60;

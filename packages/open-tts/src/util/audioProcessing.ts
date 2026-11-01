@@ -26,7 +26,7 @@ export async function convertToPlayableFormat(
 
   if (audio.format === "wav") {
     const mp3Data = await wavBufferToMp3Buffer(audio.data);
-    return { data: mp3Data, format: "mp3" };
+    return { data: mp3Data, format: "mp3", wordTimings: audio.wordTimings };
   }
 
   if (audio.format === "pcm") {
@@ -38,7 +38,7 @@ export async function convertToPlayableFormat(
       channels: audio.pcmMetadata.channels,
       bitDepth: audio.pcmMetadata.bitDepth,
     });
-    return { data: mp3Data, format: "mp3" };
+    return { data: mp3Data, format: "mp3", wordTimings: audio.wordTimings };
   }
 
   throw new Error(`Unsupported audio format: ${audio.format}`);
