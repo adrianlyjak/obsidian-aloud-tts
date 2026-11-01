@@ -184,6 +184,28 @@ describe("DetachedPlayerView", () => {
     expect(player.destroy).toHaveBeenCalled();
   });
 
+  it("keeps the menu open and runs the button when a menu button is pressed", async () => {
+    const player = createPlayer();
+    const settings = await createTestSettingsStore();
+    const bridge = { ...createMockObsidianBridge(), detachedAudio: true };
+
+    render(
+      <DetachedPlayerView
+        player={player}
+        settings={settings}
+        sink={createSink()}
+        bridge={bridge}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("Open playback controls"));
+    fireEvent.mouseDown(screen.getByLabelText("Pause"));
+    fireEvent.click(screen.getByLabelText("Pause"));
+
+    expect(player.activeText?.pause).toHaveBeenCalled();
+    expect(screen.getByLabelText("Previous")).toBeTruthy();
+  });
+
   it("closes the full controls menu on outside click", async () => {
     const player = createPlayer();
     const settings = await createTestSettingsStore();
