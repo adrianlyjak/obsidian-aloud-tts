@@ -36,6 +36,7 @@ export interface ObsidianBridge
   playDetached: (text: string, filename?: string) => void;
   playSelection: () => void;
   playClipboard: () => Promise<void>;
+  onEditorClosed: (editor: EditorView) => void;
 }
 
 interface PdfTextItem {
@@ -119,6 +120,7 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
       isDetachedAudio: mobx.observable,
       _setFocusedEditor: mobx.action,
       _setActiveEditor: mobx.action,
+      onEditorClosed: mobx.action,
       _syncActiveViewType: mobx.action,
       _onLayoutChange: mobx.action,
       _onFileOpen: mobx.action,
@@ -281,7 +283,9 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
     this.active = this.app.workspace?.activeEditor || null;
     this.activeEditorView =
       this.app.workspace.getActiveViewOfType(MarkdownView);
-    this.activeObsidianEditor = this.activeEditorView?.editor || undefined;
+    // the playing editor, which may be a hover editor rather than the view
+    this.activeObsidianEditor =
+      this.active?.editor || this.activeEditorView?.editor || undefined;
 
     this.activeFilename = this.active?.file?.name || null;
 
@@ -317,6 +321,20 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
       }
     }
   }
+
+  /**
+   * Closes the player when the editor it plays in is destroyed, such as a
+   * closed hover editor, so the next play starts from the focused editor
+   * instead of resuming text that is no longer on screen.
+   */
+  onEditorClosed = (editor: EditorView): void => {
+    if (editor !== this.activeEditor) {
+      return;
+    }
+    this.audio.closePlayer();
+    this.active = null;
+    this.activeObsidianEditor = undefined;
+  };
 
   _onFileOpen = () => {
     this._syncActiveViewType();
@@ -408,12 +426,22 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
       return;
     }
 
-    const focused = this.focusedEditorView;
-    if (focused?.editor) {
-      this.triggerSelection(focused.file, focused.editor);
+    const target = this.playTarget();
+    if (target?.editor) {
+      this.triggerSelection(target.file, target.editor);
     } else {
       new Notice("Focus a file or select some text first to play");
     }
+  }
+
+  /**
+   * Obsidian's active editor includes hover popovers and other embedded
+   * editors, which are never the active view. Falls back to the last focused
+   * note when nothing editable is active.
+   */
+  private playTarget(): MarkdownFileInfo | null {
+    const active = this.app.workspace.activeEditor;
+    return active?.editor ? active : this.focusedEditorView;
   }
 
   private getActivePdfView(): PdfFileView | null {

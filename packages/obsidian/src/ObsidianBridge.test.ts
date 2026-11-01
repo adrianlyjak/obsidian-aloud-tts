@@ -36,6 +36,50 @@ function mockPdfJsText(text: string): { destroy: ReturnType<typeof vi.fn> } {
   return { destroy };
 }
 
+/**
+ * A hover editor showing Linked.md, open over Note.md. Hover editors become
+ * Obsidian's active editor but never the active view.
+ */
+async function hoverEditorOverNote() {
+  // A one-line editor with the cursor at the start and nothing selected
+  const editorWith = (text: string) => ({
+    cm: { text },
+    getCursor: () => ({ line: 0, ch: 0 }),
+    lastLine: () => 0,
+    getLine: () => text,
+    getRange: (
+      from: { line: number; ch: number },
+      to: { line: number; ch: number },
+    ) => text.slice(from.ch, to.ch),
+  });
+  const note = {
+    file: { path: "Note.md", name: "Note.md" },
+    editor: editorWith("note text"),
+  };
+  const hover = {
+    file: { path: "Linked.md", name: "Linked.md" },
+    editor: editorWith("hover text"),
+  };
+  const mockApp = {
+    workspace: {
+      activeEditor: hover,
+      on: vi.fn(),
+      off: vi.fn(),
+      getActiveViewOfType: vi.fn(() => note),
+    },
+    vault: {
+      on: vi.fn(),
+      off: vi.fn(),
+    },
+  } as any;
+
+  const audioStore = createTestAudioStore();
+  const startPlayer = vi.spyOn(audioStore, "startPlayer");
+  const settingsStore = await createTestSettingsStore();
+  const bridge = new ObsidianBridgeImpl(mockApp, audioStore, settingsStore);
+  return { bridge, audioStore, startPlayer, note, hover };
+}
+
 // Mock React and DOM utilities
 vi.mock("react-dom/client", () => ({
   createRoot: vi.fn(() => ({
@@ -142,6 +186,54 @@ describe("ObsidianBridge", () => {
       expect(bridge.activeEditor).toBeUndefined(); // No active editor initially
       expect(bridge.focusedEditor).toBeUndefined(); // No focused editor initially
       expect(typeof bridge.detachedAudio).toBe("boolean");
+    });
+
+    it("should play a hover editor's text, not the note behind it", async () => {
+      const { bridge, startPlayer } = await hoverEditorOverNote();
+
+      bridge.playSelection();
+
+      await vi.waitFor(() =>
+        expect(startPlayer).toHaveBeenCalledWith(
+          expect.objectContaining({
+            text: "hover text",
+            filename: "Linked.md/Linked.md",
+          }),
+        ),
+      );
+    });
+
+    it("should scroll the hover editor it plays in, not the note behind it", async () => {
+      const { bridge, hover } = await hoverEditorOverNote();
+
+      bridge.playSelection();
+
+      expect(bridge.activeObsidianEditor).toBe(hover.editor);
+    });
+
+    it("should close the player when the editor it plays in is closed", async () => {
+      const { bridge, audioStore, startPlayer, hover } =
+        await hoverEditorOverNote();
+      bridge.playSelection();
+      await vi.waitFor(() => expect(startPlayer).toHaveBeenCalled());
+      await vi.waitFor(() => expect(audioStore.activeText).not.toBeNull());
+
+      bridge.onEditorClosed(hover.editor.cm as any);
+
+      expect(audioStore.activeText).toBeNull();
+      expect(bridge.activeEditor).toBeUndefined();
+    });
+
+    it("should keep playing when some other editor is closed", async () => {
+      const { bridge, audioStore, startPlayer, note } =
+        await hoverEditorOverNote();
+      bridge.playSelection();
+      await vi.waitFor(() => expect(startPlayer).toHaveBeenCalled());
+      await vi.waitFor(() => expect(audioStore.activeText).not.toBeNull());
+
+      bridge.onEditorClosed(note.editor.cm as any);
+
+      expect(audioStore.activeText).not.toBeNull();
     });
 
     it("should play selected PDF text from the active PDF view", async () => {
