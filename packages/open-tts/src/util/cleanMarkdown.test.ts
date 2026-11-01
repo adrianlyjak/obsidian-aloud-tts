@@ -152,6 +152,19 @@ This is the real content.`;
     expect(cleaned).toEqual("Here is a link  in text");
   });
 
+  it("should not speak obsidian block ids", () => {
+    const md = "This sentence is the key block. ^key-block\nNext line";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("This sentence is the key block.\nNext line");
+  });
+
+  it("should not speak a block id that starts the text or stands on its own line", () => {
+    expect(cleanMarkup("^key-block")).toEqual("");
+    expect(cleanMarkup("| a | b |\n^table-id\nAfter")).not.toContain(
+      "table-id",
+    );
+  });
+
   it("should not remove text that just happens to have dashes", () => {
     const md = `---not frontmatter---
 Just some text with dashes`;

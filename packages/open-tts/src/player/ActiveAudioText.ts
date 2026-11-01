@@ -154,33 +154,77 @@ export class ActiveAudioTextImpl implements ActiveAudioText {
   }
 }
 
+interface TrackSegment {
+  rawText: string;
+  /** offset in `opts.text` */
+  start: number;
+  /** offset in `opts.text` */
+  end: number;
+  embedded: boolean;
+}
+
+/**
+ * Splits text into chunk-sized segments. Text from an ![[embed]] is split the
+ * same way, but every segment of it is anchored to the embed's range, since the
+ * embedded text isn't in the document itself.
+ */
+function splitIntoSegments(
+  opts: AudioTextOptions,
+  chunkType: "sentence" | "paragraph",
+): TrackSegment[] {
+  const split = (text: string): string[] =>
+    chunkType === "sentence"
+      ? splitSentences(text, { minLength: opts.minChunkLength ?? 20 })
+      : splitParagraphs(text, { maxChunkSize: 1000 });
+  const segments: TrackSegment[] = [];
+  const addText = (from: number, to: number) => {
+    let start = from;
+    for (const rawText of split(opts.text.slice(from, to))) {
+      segments.push({
+        rawText,
+        start,
+        end: start + rawText.length,
+        embedded: false,
+      });
+      start += rawText.length;
+    }
+  };
+  let lastIndex = 0;
+  const embeds = [...(opts.embeds ?? [])].sort((a, b) => a.from - b.from);
+  for (const embed of embeds) {
+    addText(lastIndex, embed.from);
+    for (const rawText of split(embed.text)) {
+      segments.push({
+        rawText,
+        start: embed.from,
+        end: embed.to,
+        embedded: true,
+      });
+    }
+    lastIndex = embed.to;
+  }
+  addText(lastIndex, opts.text.length);
+  return segments;
+}
+
 export function buildTrack(
   opts: AudioTextOptions,
   chunkType: "sentence" | "paragraph" = "sentence",
 ): AudioText {
-  const splits =
-    chunkType === "sentence"
-      ? splitSentences(opts.text, {
-          minLength: opts.minChunkLength ?? 20,
-        })
-      : splitParagraphs(opts.text, { maxChunkSize: 1000 });
+  const segments = splitIntoSegments(opts, chunkType);
+  const splits = segments.map((segment) => segment.rawText);
 
-  let start = opts.start;
   const chunks = [];
-  for (const s of splits) {
-    const end = start + s.length;
+  for (const segment of segments) {
     const chunk: AudioTextChunk = new AudioTextChunk({
-      rawText: s,
-      start,
-      end,
+      rawText: segment.rawText,
+      start: opts.start + segment.start,
+      end: opts.start + segment.end,
+      embedded: segment.embedded,
     });
     // Only include chunks that have actual text content after cleaning
     if (chunk.text.trim().length > 0) {
-      start = end;
       chunks.push(chunk);
-    } else {
-      // Skip empty chunks but maintain the character position
-      start = end;
     }
   }
   return observable({

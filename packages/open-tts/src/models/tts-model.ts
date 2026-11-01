@@ -11,6 +11,17 @@ export interface AudioData {
   format: MediaFormat;
   /** PCM metadata - required when format is "pcm" */
   pcmMetadata?: PcmMetadata;
+  /** Per-word timings for the text that was sent, when the provider returns alignment data */
+  wordTimings?: WordTiming[];
+}
+
+export interface WordTiming {
+  /** The word, as tokenized from the text sent to the provider */
+  word: string;
+  /** Start time in seconds, relative to the start of the audio */
+  start: number;
+  /** End time in seconds, relative to the start of the audio */
+  end: number;
 }
 
 export interface PcmMetadata {

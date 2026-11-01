@@ -22,6 +22,8 @@ vi.mock("@open-tts/ui", () => ({
   destroyDOM: vi.fn(),
   createLoadingSpinnerExtension: vi.fn(() => []),
   createTTSHighlightExtension: vi.fn(() => []),
+  createWordHighlightExtension: vi.fn(() => []),
+  createEmbedHighlightExtension: vi.fn(() => []),
   ObsidianLoadingWidgetFactory: vi.fn(),
 }));
 

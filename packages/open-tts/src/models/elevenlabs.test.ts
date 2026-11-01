@@ -13,6 +13,16 @@ import { DEFAULT_SETTINGS } from "../player/TTSPluginSettings";
 // Mock the global fetch
 global.fetch = vi.fn();
 
+function timestampResponse(audio: ArrayBuffer): {
+  audio_base64: string;
+  alignment: null;
+} {
+  return {
+    audio_base64: btoa(String.fromCharCode(...new Uint8Array(audio))),
+    alignment: null,
+  };
+}
+
 describe("ElevenLabs Model", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -119,11 +129,11 @@ describe("ElevenLabs Model", () => {
     };
 
     it("should make correct API call for basic TTS request", async () => {
-      const mockAudioBytes = new ArrayBuffer(1024);
+      const mockAudioBytes = new Uint8Array([1, 2, 3, 250]).buffer;
       const mockResponse = {
         ok: true,
         status: 200,
-        arrayBuffer: vi.fn().mockResolvedValue(mockAudioBytes),
+        json: vi.fn().mockResolvedValue(timestampResponse(mockAudioBytes)),
       };
 
       vi.mocked(fetch).mockResolvedValue(mockResponse as any);
@@ -136,7 +146,7 @@ describe("ElevenLabs Model", () => {
       );
 
       expect(fetch).toHaveBeenCalledWith(
-        `${ELEVENLABS_API_URL}/v1/text-to-speech/test-voice-id?output_format=mp3_44100_128`,
+        `${ELEVENLABS_API_URL}/v1/text-to-speech/test-voice-id/with-timestamps?output_format=mp3_44100_128`,
         {
           method: "POST",
           headers: {
@@ -154,8 +164,36 @@ describe("ElevenLabs Model", () => {
         },
       );
 
-      expect(result.data).toBe(mockAudioBytes);
+      expect(new Uint8Array(result.data)).toEqual(
+        new Uint8Array(mockAudioBytes),
+      );
       expect(result.format).toBe("mp3");
+    });
+
+    it("should convert character alignment into word timings", async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({
+          ...timestampResponse(new ArrayBuffer(4)),
+          alignment: {
+            characters: "Hi, you".split(""),
+            character_start_times_seconds: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
+            character_end_times_seconds: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7],
+          },
+        }),
+      } as any);
+
+      const result = await elevenLabsCallTextToSpeech(
+        "Hi, you",
+        { ...mockOptions, model: "eleven_v4" },
+        DEFAULT_SETTINGS,
+      );
+
+      expect(result.wordTimings).toEqual([
+        { word: "Hi", start: 0, end: 0.2 },
+        { word: "you", start: 0.4, end: 0.7 },
+      ]);
     });
 
     it("should include voice settings when provided", async () => {
@@ -163,7 +201,7 @@ describe("ElevenLabs Model", () => {
       const mockResponse = {
         ok: true,
         status: 200,
-        arrayBuffer: vi.fn().mockResolvedValue(mockAudioBytes),
+        json: vi.fn().mockResolvedValue(timestampResponse(mockAudioBytes)),
       };
 
       vi.mocked(fetch).mockResolvedValue(mockResponse as any);
@@ -201,7 +239,7 @@ describe("ElevenLabs Model", () => {
       const mockResponse = {
         ok: true,
         status: 200,
-        arrayBuffer: vi.fn().mockResolvedValue(mockAudioBytes),
+        json: vi.fn().mockResolvedValue(timestampResponse(mockAudioBytes)),
       };
 
       vi.mocked(fetch).mockResolvedValue(mockResponse as any);

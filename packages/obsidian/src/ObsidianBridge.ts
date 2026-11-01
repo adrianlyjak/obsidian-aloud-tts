@@ -14,7 +14,8 @@ import {
 import * as React from "react";
 import { createRoot, Root } from "react-dom/client";
 import { IsPlaying } from "./components/ObsidianIsPlaying";
-import { AudioStore } from "open-tts";
+import { AudioStore, expandEmbeds } from "open-tts";
+import { readEmbed } from "./util/readEmbed";
 import { hashString } from "open-tts";
 import { TTSPluginSettingsStore } from "open-tts";
 import { TTSEditorBridge } from "@open-tts/ui";
@@ -524,15 +525,24 @@ export class ObsidianBridgeImpl implements ObsidianBridge {
 
     const selection = editor.getRange(from, to);
     if (selection) {
+      const sourcePath = file?.path ?? "";
       try {
-        player
-          .startPlayer({
-            text: selection,
-            filename:
-              [file?.path, file?.name].filter((x) => x).join("/") || "Untitled",
-            start,
-            end: start + selection.length,
+        expandEmbeds(selection, (link) => readEmbed(this.app, link, sourcePath))
+          .catch((ex) => {
+            console.error("Couldn't read embedded notes", ex);
+            return [];
           })
+          .then((embeds) =>
+            player.startPlayer({
+              text: selection,
+              filename:
+                [file?.path, file?.name].filter((x) => x).join("/") ||
+                "Untitled",
+              start,
+              end: start + selection.length,
+              embeds,
+            }),
+          )
           .catch((ex) => {
             console.error("Couldn't start player!", ex);
           });

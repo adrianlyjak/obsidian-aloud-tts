@@ -64,6 +64,7 @@ describe("AudioStore", () => {
         minChunkLength = 1,
         start = 0,
         end = start + text.length,
+        embeds,
       }: Partial<AudioTextOptions> = {},
       deps: MaybeStoreDependencies = {},
     ): Promise<ActiveAudioText> {
@@ -75,6 +76,7 @@ describe("AudioStore", () => {
         start,
         end,
         minChunkLength,
+        embeds,
       });
       return active;
     }
@@ -279,6 +281,27 @@ describe("AudioStore", () => {
 
       expect(tts.call.mock.calls.length).toEqual(4);
       expect(tts.call.mock.calls[3][0]).toMatch(/^New /);
+    });
+
+    test("should not splice edits inside an embed into the embedded text", async () => {
+      const text = "Intro sentence here. ![[Source]] Outro sentence here.";
+      const from = text.indexOf("![[");
+      const to = text.indexOf("]]") + 2;
+      const embeddedText = "The embedded sentence.";
+      const aat = await createActiveTrack({
+        text,
+        minChunkLength: 1,
+        embeds: [{ from, to, text: embeddedText }],
+      });
+      aat.onTextChanged(from + 4, "add", "X");
+      const tracks = mobx.toJS(aat.audio.chunks);
+      expect(tracks.map((track) => track.rawText.trim())).toEqual([
+        "Intro sentence here.",
+        embeddedText,
+        "Outro sentence here.",
+      ]);
+      expect([tracks[1].start, tracks[1].end]).toEqual([from, to + 1]);
+      expect(tracks[2].start).toEqual(to + 1);
     });
 
     test("should update the tracks' positions forward when the text is added before", async () => {

@@ -8,6 +8,8 @@ import {
   destroyDOM,
   createLoadingSpinnerExtension,
   createTTSHighlightExtension,
+  createWordHighlightExtension,
+  createEmbedHighlightExtension,
   ObsidianLoadingWidgetFactory,
   PlayerView,
 } from "@open-tts/ui";
@@ -138,6 +140,18 @@ export function TTSCodeMirror(
         player.markProgrammaticScroll();
         obsidianEditor.scrollIntoView({ from: fromPos, to: toPos }, true);
       },
+    ),
+    createWordHighlightExtension(
+      player,
+      sink,
+      settings.settings,
+      () => obsidian.activeEditor,
+    ),
+    createEmbedHighlightExtension(
+      player,
+      sink,
+      settings.settings,
+      () => obsidian.activeEditor,
     ),
     showPanel.of((editorView: EditorView) =>
       playerPanel(editorView, player, settings, sink, obsidian),

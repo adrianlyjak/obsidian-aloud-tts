@@ -10,6 +10,12 @@ export interface DecodedAudioData {
   getChannelData(channel: number): Float32Array;
 }
 
+/** Where appended media landed on the playback timeline, in seconds */
+export interface AppendedMediaRange {
+  start: number;
+  end: number;
+}
+
 export interface AudioSink {
   /**
    * Indicates whether audio should currently be playing. This can be true
@@ -30,7 +36,8 @@ export interface AudioSink {
   decodeAudioData(audio: ArrayBuffer): Promise<DecodedAudioData>;
   waitForSeeking(): CancellablePromise<void>;
   switchMedia(data: ArrayBuffer): Promise<void>;
-  appendMedia(data: ArrayBuffer): Promise<void>;
+  /** Appends media after existing media. Returns the actual timeline range when known. */
+  appendMedia(data: ArrayBuffer): Promise<AppendedMediaRange | void>;
   mediaComplete(): Promise<void>;
   destroy(): void;
 }

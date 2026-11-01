@@ -1,6 +1,6 @@
 import * as mobx from "mobx";
 import { ActiveAudioText } from "./ActiveAudioText";
-import { AudioSink } from "./AudioSink";
+import { AppendedMediaRange, AudioSink } from "./AudioSink";
 import { AudioSystem } from "./AudioSystem";
 import { AudioTextChunk } from "./AudioTextChunk";
 import { ChunkLoader } from "./ChunkLoader";
@@ -727,21 +727,25 @@ const loadCheckLoop = (
         chunk.setLoaded(result);
         // Clone the buffer before appending to prevent detachment during decodeAudioData
         const bufferForAppend = result.data.slice(0);
+        let appended: AppendedMediaRange | void;
         return system.audioSink
           .appendMedia(bufferForAppend)
-          .then(() => system.audioSink.decodeAudioData(result.data))
+          .then((range) => {
+            appended = range;
+            return system.audioSink.decodeAudioData(result.data);
+          })
           .then((buff) => {
             const chunk = activeText.audio.chunks[position];
             if (chunk.audio) {
-              const timeline = assignTimeline(
-                activeText,
-                position,
-                buff.duration,
-              );
+              const duration = appended
+                ? appended.end - appended.start
+                : buff.duration;
+              const timeline = assignTimeline(activeText, position, duration);
               activeText.audio.chunks[position].setDecodedAudioData(
                 buff,
                 timeline.timelineStartSeconds,
                 timeline.timelineEpoch,
+                duration,
               );
               pruneEvictedChunkState(activeText, system.audioSink, chunkLoader);
               releaseDecodedAudioBehindPosition(activeText);
