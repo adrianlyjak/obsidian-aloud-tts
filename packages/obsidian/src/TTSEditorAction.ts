@@ -192,9 +192,11 @@ export class TTSEditorAction {
     backdrop.addEventListener("click", () => this.closeMenu());
     document.body.appendChild(backdrop);
 
-    // Create the menu container - no positioning, let Obsidian CSS handle it
+    // Create the menu container - no positioning, let Obsidian CSS handle it.
+    // Recent Obsidian versions only place phone menus on screen as a bottom
+    // sheet when they carry mod-sheet, as Obsidian's own menus do.
     this.menuContainer = document.createElement("div");
-    this.menuContainer.addClass("menu");
+    this.menuContainer.addClass("menu", "mod-sheet");
     document.body.appendChild(this.menuContainer);
 
     // Store backdrop for cleanup
