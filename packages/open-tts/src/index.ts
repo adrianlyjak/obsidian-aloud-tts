@@ -26,4 +26,6 @@ export * from "./player/onMultiTextChanged";
 export * from "./util/Minhash";
 export * from "./util/audioProcessing";
 export { default as cleanMarkup } from "./util/cleanMarkdown";
+export { expandEmbeds } from "./util/expandEmbeds";
+export type { EmbedLookup, ResolvedEmbed } from "./util/expandEmbeds";
 export * from "./util/misc";

@@ -31,7 +31,8 @@ export function onMultiTextChanged(
               track.end += text.length;
               if (position < track.start) {
                 track.start += text.length;
-              } else {
+              } else if (!track.embedded) {
+                // embedded text isn't in the document, so only its range grows
                 const split = position - track.start;
                 const updatedText =
                   track.text.slice(0, split) + text + track.text.slice(split);
@@ -109,7 +110,8 @@ export function onMultiTextChanged(
             //     return `${x}: '${(track as any)[x]}' -> '${(updates as any)[x]}'`;
             //   }),
             // );
-            if (rawText !== undefined) {
+            // embedded text isn't in the document, so only its range changes
+            if (rawText !== undefined && !track.embedded) {
               const cleanedText = cleanMarkup(rawText);
 
               if (rawText != track.rawText) {

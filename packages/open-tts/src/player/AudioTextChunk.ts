@@ -5,6 +5,7 @@ import { AudioData } from "../models/tts-model";
 import * as mobx from "mobx";
 import { action, observable } from "mobx";
 import { DecodedAudioData } from "./AudioSink";
+import { ResolvedEmbed } from "../util/expandEmbeds";
 
 /** data to run TTS on */
 export interface AudioTextOptions {
@@ -16,6 +17,8 @@ export interface AudioTextOptions {
   end: number;
   // minimum chunk length before merging with the next (e.g. short sentences are added to the next sentence)
   minChunkLength?: number;
+  // ![[embeds]] in `text` to read in place, with offsets relative to `text`
+  embeds?: ResolvedEmbed[];
 }
 
 /** Container for lazily loaded TTS that's text has been chunked for faster streaming of output and seeking of position by chunk */
@@ -56,7 +59,19 @@ export class AudioTextChunk {
   /** Monotonic timeline end (seconds) within the owning epoch */
   timelineEndSeconds?: number;
 
-  constructor(opts: { rawText: string; start: number; end: number }) {
+  /**
+   * Whether the text comes from an ![[embed]] rather than the document. Embedded
+   * chunks span the embed's range, and edits move them but never change their text.
+   */
+  readonly embedded: boolean;
+
+  constructor(opts: {
+    rawText: string;
+    start: number;
+    end: number;
+    embedded?: boolean;
+  }) {
+    this.embedded = opts.embedded ?? false;
     this.rawText = opts.rawText;
     this.text = cleanMarkup(this.rawText);
     this.start = opts.start;
