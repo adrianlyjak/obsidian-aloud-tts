@@ -42,6 +42,23 @@ describe("AudioStore", () => {
     expect(store.activeText?.isPlaying).toEqual(true);
   });
 
+  test("should skip comments when the comment setting says skip", async () => {
+    store.destroy();
+    store = createStore({
+      ttsSettings: { ...DEFAULT_SETTINGS, commentHandling: "skip" },
+    });
+    const text = "Spoken sentence here. %% Hidden sentence here. %%";
+    const txt = await store.startPlayer({
+      text,
+      filename: "note.md",
+      start: 0,
+      end: text.length,
+    });
+    expect(txt.audio.chunks.map((chunk) => chunk.text.trim())).toEqual([
+      "Spoken sentence here.",
+    ]);
+  });
+
   test("should activate", async () => {
     const text = "later tater";
     await store.startPlayer({

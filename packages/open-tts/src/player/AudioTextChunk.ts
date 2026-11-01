@@ -1,4 +1,4 @@
-import cleanMarkup from "../util/cleanMarkdown";
+import cleanMarkup, { CleanMarkupOptions } from "../util/cleanMarkdown";
 import { CancellablePromise } from "./CancellablePromise";
 import { TTSErrorInfo } from "../models/tts-model";
 import { AudioData } from "../models/tts-model";
@@ -56,9 +56,18 @@ export class AudioTextChunk {
   /** Monotonic timeline end (seconds) within the owning epoch */
   timelineEndSeconds?: number;
 
-  constructor(opts: { rawText: string; start: number; end: number }) {
+  /** How this chunk's raw text is cleaned into speakable text */
+  readonly cleanOptions: CleanMarkupOptions;
+
+  constructor(opts: {
+    rawText: string;
+    start: number;
+    end: number;
+    cleanOptions?: CleanMarkupOptions;
+  }) {
     this.rawText = opts.rawText;
-    this.text = cleanMarkup(this.rawText);
+    this.cleanOptions = opts.cleanOptions ?? {};
+    this.text = cleanMarkup(this.rawText, this.cleanOptions);
     this.start = opts.start;
     this.end = opts.end;
     this.duration = undefined;
@@ -110,7 +119,7 @@ export class AudioTextChunk {
       return;
     }
     this.rawText = rawText;
-    this.text = cleanMarkup(this.rawText);
+    this.text = cleanMarkup(this.rawText, this.cleanOptions);
     this.reset();
   }
 

@@ -35,7 +35,10 @@ export function onMultiTextChanged(
                 const split = position - track.start;
                 const updatedText =
                   track.text.slice(0, split) + text + track.text.slice(split);
-                const cleanedText = cleanMarkup(updatedText);
+                const cleanedText = cleanMarkup(
+                  updatedText,
+                  track.cleanOptions,
+                );
                 if (updatedText != track.rawText) {
                   track.rawText = updatedText;
                 }
@@ -110,7 +113,7 @@ export function onMultiTextChanged(
             //   }),
             // );
             if (rawText !== undefined) {
-              const cleanedText = cleanMarkup(rawText);
+              const cleanedText = cleanMarkup(rawText, track.cleanOptions);
 
               if (rawText != track.rawText) {
                 track.rawText = rawText;

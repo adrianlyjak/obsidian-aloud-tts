@@ -1,6 +1,6 @@
 import { observer } from "mobx-react-lite";
 import * as React from "react";
-import { AudioStore } from "open-tts";
+import { AudioStore, CommentHandling } from "open-tts";
 import {
   AudioExportDestination,
   ModelProvider,
@@ -91,27 +91,51 @@ const AudioOptions: React.FC<{
   store: TTSPluginSettingsStore;
 }> = observer(({ store }) => {
   return (
-    <div className="setting-item">
-      <div className="setting-item-info">
-        <div className="setting-item-name">Text Chunking</div>
-        <div className="setting-item-description">
-          Split text into sentences or paragraphs for playback.
+    <>
+      <div className="setting-item">
+        <div className="setting-item-info">
+          <div className="setting-item-name">Text Chunking</div>
+          <div className="setting-item-description">
+            Split text into sentences or paragraphs for playback.
+          </div>
+        </div>
+        <div className="setting-item-control">
+          <select
+            value={store.settings.chunkType}
+            onChange={(e) =>
+              void store.updateSettings({
+                chunkType: e.target.value as "sentence" | "paragraph",
+              })
+            }
+          >
+            <option value="sentence">Sentence</option>
+            <option value="paragraph">Paragraph</option>
+          </select>
         </div>
       </div>
-      <div className="setting-item-control">
-        <select
-          value={store.settings.chunkType}
-          onChange={(e) =>
-            store.updateSettings({
-              chunkType: e.target.value as "sentence" | "paragraph",
-            })
-          }
-        >
-          <option value="sentence">Sentence</option>
-          <option value="paragraph">Paragraph</option>
-        </select>
+      <div className="setting-item">
+        <div className="setting-item-info">
+          <div className="setting-item-name">Comments</div>
+          <div className="setting-item-description">
+            Read %% comments %% aloud with a &quot;comment:&quot; prefix, or
+            skip them as reading view does.
+          </div>
+        </div>
+        <div className="setting-item-control">
+          <select
+            value={store.settings.commentHandling}
+            onChange={(e) =>
+              void store.updateSettings({
+                commentHandling: e.target.value as CommentHandling,
+              })
+            }
+          >
+            <option value="read">Read aloud</option>
+            <option value="skip">Skip</option>
+          </select>
+        </div>
       </div>
-    </div>
+    </>
   );
 });
 

@@ -6,6 +6,7 @@ import { ChunkPlayer } from "./ChunkPlayer";
 import { onMultiTextChanged } from "./onMultiTextChanged";
 import { TTSErrorInfo } from "../models/tts-model";
 import { AudioText, AudioTextChunk, AudioTextOptions } from "./AudioTextChunk";
+import { CleanMarkupOptions } from "../util/cleanMarkdown";
 
 export interface TextEdit {
   position: number;
@@ -154,16 +155,45 @@ export class ActiveAudioTextImpl implements ActiveAudioText {
   }
 }
 
+/**
+ * Splits text into chunks, keeping each obsidian %% comment %% whole so that
+ * cleanMarkup sees both of its delimiters.
+ */
+function splitIntoChunks(
+  text: string,
+  chunkType: "sentence" | "paragraph",
+  minChunkLength: number,
+): string[] {
+  const splitText = (part: string): string[] =>
+    chunkType === "sentence"
+      ? splitSentences(part, { minLength: minChunkLength })
+      : splitParagraphs(part, { maxChunkSize: 1000 });
+  const splits: string[] = [];
+  let lastIndex = 0;
+  for (const comment of text.matchAll(/%%[\s\S]*?(?:%%|$)/g)) {
+    const index = comment.index!;
+    if (index > lastIndex) {
+      splits.push(...splitText(text.slice(lastIndex, index)));
+    }
+    splits.push(comment[0]);
+    lastIndex = index + comment[0].length;
+  }
+  if (lastIndex < text.length) {
+    splits.push(...splitText(text.slice(lastIndex)));
+  }
+  return splits;
+}
+
 export function buildTrack(
   opts: AudioTextOptions,
   chunkType: "sentence" | "paragraph" = "sentence",
+  cleanOptions: CleanMarkupOptions = {},
 ): AudioText {
-  const splits =
-    chunkType === "sentence"
-      ? splitSentences(opts.text, {
-          minLength: opts.minChunkLength ?? 20,
-        })
-      : splitParagraphs(opts.text, { maxChunkSize: 1000 });
+  const splits = splitIntoChunks(
+    opts.text,
+    chunkType,
+    opts.minChunkLength ?? 20,
+  );
 
   let start = opts.start;
   const chunks = [];
@@ -173,6 +203,7 @@ export function buildTrack(
       rawText: s,
       start,
       end,
+      cleanOptions,
     });
     // Only include chunks that have actual text content after cleaning
     if (chunk.text.trim().length > 0) {

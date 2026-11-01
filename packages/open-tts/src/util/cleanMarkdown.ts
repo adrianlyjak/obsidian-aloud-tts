@@ -4,11 +4,27 @@
  * Has miscellaneous additions to support weird stuff like Better Bibtex Citekeys
  *
  * */
-export default function cleanMarkup(md: string) {
+export type CommentHandling = "read" | "skip";
+
+export interface CleanMarkupOptions {
+  /** How obsidian %% comments %% are spoken. Defaults to "read". */
+  comments?: CommentHandling;
+}
+
+export default function cleanMarkup(
+  md: string,
+  { comments = "read" }: CleanMarkupOptions = {},
+) {
   let output = md || "";
 
   // First, remove frontmatter (must be done before other transformations)
   output = removeFrontMatter(output);
+
+  // Read obsidian %% comments %% with a spoken prefix, or drop them.
+  // Like obsidian, an unclosed %% comments out the rest of the text.
+  output = output.replace(/%%([\s\S]*?)(?:%%|$)/g, (_, comment: string) =>
+    comments === "skip" ? "" : `comment: ${comment.trim()}`,
+  );
 
   // Convert LaTeX math to speakable text (before other markdown processing
   // since $ can interfere with emphasis regexes)

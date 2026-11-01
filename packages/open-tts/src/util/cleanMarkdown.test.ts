@@ -152,6 +152,26 @@ This is the real content.`;
     expect(cleaned).toEqual("Here is a link  in text");
   });
 
+  it("should read an obsidian comment with a comment prefix", () => {
+    const md = "%% this is a comment %%";
+    const cleaned = cleanMarkup(md);
+    expect(cleaned).toEqual("comment: this is a comment");
+  });
+
+  it("should drop obsidian comments when comments are skipped", () => {
+    const md = "Before %% hidden note %% after";
+    const cleaned = cleanMarkup(md, { comments: "skip" });
+    expect(cleaned).toEqual("Before  after");
+  });
+
+  it("should treat an unclosed obsidian comment as running to the end", () => {
+    const md = "Visible text. %% the rest is hidden";
+    expect(cleanMarkup(md)).toEqual(
+      "Visible text. comment: the rest is hidden",
+    );
+    expect(cleanMarkup(md, { comments: "skip" })).toEqual("Visible text. ");
+  });
+
   it("should not remove text that just happens to have dashes", () => {
     const md = `---not frontmatter---
 Just some text with dashes`;

@@ -4,11 +4,13 @@ import { debounce } from "../util/misc";
 import { hashStrings } from "../util/Minhash";
 import { OPENAI_API_URL } from "../models/openai";
 import { REGISTRY } from "../models/registry";
+import { CommentHandling } from "../util/cleanMarkdown";
 export { MARKETING_NAME, MARKETING_NAME_LONG } from "../marketing";
 
 export type TTSPluginSettings = {
   modelProvider: ModelProvider;
   chunkType: "sentence" | "paragraph";
+  commentHandling: CommentHandling;
   playbackSpeed: number;
   cacheType: "local" | "vault";
   cacheDurationMillis: number;
@@ -208,6 +210,7 @@ export type ModelProvider = (typeof modelProviders)[number];
 export const DEFAULT_SETTINGS: TTSPluginSettings = {
   modelProvider: "openai",
   chunkType: "sentence",
+  commentHandling: "read",
   playbackSpeed: 1.0,
   cacheDurationMillis: 1000 * 60 * 60 * 24 * 7, // 7 days
   cacheType: "local",
