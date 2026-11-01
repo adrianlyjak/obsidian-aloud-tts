@@ -14,7 +14,8 @@ export const IsPlaying = observer(
   }: {
     audio: AudioStore;
     bridge: ObsidianBridge;
-    editor: EditorView;
+    /** undefined for detached audio, such as a PDF */
+    editor: EditorView | undefined;
     className?: string;
   }) => {
     const isPlaying =
