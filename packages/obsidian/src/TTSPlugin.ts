@@ -5,10 +5,11 @@ import { MarkdownView, Plugin, addIcon } from "obsidian";
 import { REGISTRY } from "open-tts";
 import { TTSSettingTab } from "./components/TTSPluginSettingsTab";
 import { AudioSink } from "open-tts";
-import { WebAudioSink } from "open-tts/browser";
+import { MediaSessionControls, WebAudioSink } from "open-tts/browser";
 import { AudioStore, loadAudioStore } from "open-tts";
 import { AudioSystem, createAudioSystem } from "open-tts";
 import { ChunkLoader } from "open-tts";
+import { createTTSActions } from "open-tts";
 import {
   MARKETING_NAME,
   TTSPluginSettings,
@@ -36,6 +37,7 @@ export default class TTSPlugin extends Plugin {
   cache: { destroy: () => void } | undefined;
   editorAction: TTSEditorAction | undefined;
   detachedPlayerHost: DetachedPlayerHost | undefined;
+  mediaSession: MediaSessionControls | undefined;
   private _playerSyncDisposer: (() => void) | undefined;
 
   get player(): AudioStore {
@@ -129,6 +131,14 @@ export default class TTSPlugin extends Plugin {
       this.audio,
     );
     this.editorAction.register();
+    // media keys and the system media controls
+    if ("mediaSession" in navigator) {
+      this.mediaSession = new MediaSessionControls(
+        navigator.mediaSession,
+        this.player,
+        createTTSActions(this.player, this.settings, this.bridge),
+      );
+    }
     this.detachedPlayerHost = new DetachedPlayerHost(
       this.addStatusBarItem(),
       this.player,
@@ -262,6 +272,7 @@ export default class TTSPlugin extends Plugin {
 
   onunload() {
     this.detachedPlayerHost?.destroy();
+    this.mediaSession?.destroy();
     this.editorAction?.destroy();
     this._playerSyncDisposer?.();
     this.player?.destroy();
