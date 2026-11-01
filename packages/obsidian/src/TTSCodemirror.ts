@@ -103,6 +103,12 @@ const obsidianTheme = EditorView.theme({
   ".cm-panels-top": {
     borderBottom: `1px solid var(--background-modifier-border)`,
   },
+  // Every editor gets the toolbar panel, but it renders nothing while the player
+  // is hidden. Without this, popovers, table cells, and other embedded editors
+  // show a stray divider line under their top edge.
+  ".cm-panels-top:has(> .tts-toolbar:only-child:empty)": {
+    borderBottom: "none",
+  },
   ".tts-cm-playing-before, .tts-cm-playing-after": {
     backgroundColor: "rgba(var(--color-purple-rgb), 0.2)",
   },
