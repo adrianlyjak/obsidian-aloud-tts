@@ -57,6 +57,8 @@
 
 .tts-audio-status-container {
   flex: 1 1 auto;
+  /* Stretch to the toolbar's height so the visualizer's percentage height resolves */
+  align-self: stretch;
   display: flex;
   overflow: hidden;
   align-items: center;
@@ -284,6 +286,8 @@
 }
 
 .tts-detached-status-info {
+  /* Stretch to the status bar item's height so the visualizer's percentage height resolves */
+  align-self: stretch;
   display: flex;
   align-items: center;
   max-width: 96px;
